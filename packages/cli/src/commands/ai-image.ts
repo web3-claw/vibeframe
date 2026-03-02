@@ -42,6 +42,7 @@ aiCommand
   .option("-q, --quality <quality>", "Quality: standard, hd (openai only)", "standard")
   .option("--style <style>", "Style: vivid, natural (openai only)", "vivid")
   .option("-n, --count <n>", "Number of images to generate", "1")
+  .option("-m, --model <model>", "Gemini model: flash, 3.1-flash, latest (Nano Banana 2), pro (4K)")
   .action(async (prompt: string, options) => {
     try {
       const provider = options.provider.toLowerCase();
@@ -148,7 +149,16 @@ aiCommand
         const gemini = new GeminiProvider();
         await gemini.initialize({ apiKey });
 
+        const geminiModelNames: Record<string, string> = {
+          flash: "Nano Banana",
+          "3.1-flash": "Nano Banana 2",
+          latest: "Nano Banana 2",
+          pro: "Nano Banana Pro",
+        };
+        const modelLabel = geminiModelNames[options.model] || "Nano Banana";
+
         const result = await gemini.generateImage(prompt, {
+          model: options.model,
           aspectRatio: options.ratio as "1:1" | "2:3" | "3:2" | "3:4" | "4:3" | "4:5" | "5:4" | "9:16" | "16:9" | "21:9",
         });
 
@@ -157,7 +167,7 @@ aiCommand
           process.exit(1);
         }
 
-        spinner.succeed(chalk.green(`Generated ${result.images.length} image(s) with Gemini (Nano Banana)`));
+        spinner.succeed(chalk.green(`Generated ${result.images.length} image(s) with Gemini (${modelLabel})`));
 
         console.log();
         console.log(chalk.bold.cyan("Generated Images"));
@@ -859,7 +869,7 @@ aiCommand
   .argument("<prompt>", "Text prompt describing the image")
   .option("-k, --api-key <key>", "Google API key (or set GOOGLE_API_KEY env)")
   .option("-o, --output <path>", "Output file path", "output.png")
-  .option("-m, --model <model>", "Model: flash (fast), 3.1-flash (Nano Banana 2), pro (professional, 4K)", "flash")
+  .option("-m, --model <model>", "Model: flash (fast), 3.1-flash / latest (Nano Banana 2), pro (professional, 4K)", "flash")
   .option("-r, --ratio <ratio>", "Aspect ratio: 1:1, 1:4, 1:8, 4:1, 8:1, 16:9, 9:16, 4:3, 3:4, 21:9, etc.", "1:1")
   .option("-s, --size <resolution>", "Resolution: 512px, 1K, 2K, 4K")
   .option("--grounding", "Enable Google Search grounding (Pro only)")
@@ -877,6 +887,7 @@ aiCommand
       const modelNames: Record<string, string> = {
         flash: "gemini-2.5-flash-image",
         "3.1-flash": "gemini-3.1-flash-image-preview",
+        latest: "gemini-3.1-flash-image-preview",
         pro: "gemini-3-pro-image-preview",
       };
       const modelName = modelNames[options.model] || modelNames.flash;
@@ -926,7 +937,7 @@ aiCommand
   .argument("<images...>", "Input image file(s) followed by edit prompt")
   .option("-k, --api-key <key>", "Google API key (or set GOOGLE_API_KEY env)")
   .option("-o, --output <path>", "Output file path", "edited.png")
-  .option("-m, --model <model>", "Model: flash (max 3 images), 3.1-flash (max 3 images), pro (max 14 images)", "flash")
+  .option("-m, --model <model>", "Model: flash (max 3 images), 3.1-flash / latest (max 3 images), pro (max 14 images)", "flash")
   .option("-r, --ratio <ratio>", "Output aspect ratio")
   .option("-s, --size <resolution>", "Resolution: 1K, 2K, 4K (Pro model only)")
   .action(async (args: string[], options) => {
@@ -959,6 +970,7 @@ aiCommand
       const editModelNames: Record<string, string> = {
         flash: "gemini-2.5-flash-image",
         "3.1-flash": "gemini-3.1-flash-image-preview",
+        latest: "gemini-3.1-flash-image-preview",
         pro: "gemini-3-pro-image-preview",
       };
       const editModelName = editModelNames[options.model] || editModelNames.flash;
