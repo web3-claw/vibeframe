@@ -264,12 +264,10 @@ async function setupClaudeCode(): Promise<void> {
   const targetFile = resolve(targetDir, "cli-reference.md");
 
   // Check if already exists
+  let isUpdate = false;
   try {
     await access(targetFile);
-    console.log();
-    console.log(chalk.yellow("! .claude/rules/cli-reference.md already exists."));
-    console.log(chalk.dim("  Overwriting with latest version..."));
-    console.log();
+    isUpdate = true;
   } catch {
     // doesn't exist yet, fresh install
   }
@@ -287,9 +285,9 @@ async function setupClaudeCode(): Promise<void> {
   await writeFile(targetFile, cliReference, "utf-8");
 
   console.log();
-  console.log(chalk.green("✓ Claude Code integration set up!"));
+  console.log(chalk.green(`✓ Claude Code integration ${isUpdate ? "updated" : "set up"}!`));
   console.log();
-  console.log(chalk.dim(`  Created: ${targetFile}`));
+  console.log(chalk.dim(`  ${isUpdate ? "Updated" : "Created"}: ${targetFile}`));
   console.log();
   console.log("  Claude Code now knows all VibeFrame commands.");
   console.log("  It will use " + chalk.cyan("vibe") + " commands directly without running --help.");
