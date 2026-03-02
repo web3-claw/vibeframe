@@ -18,6 +18,8 @@ import chalk from "chalk";
 import ora from "ora";
 import { GeminiProvider, KlingProvider, RunwayProvider } from "@vibeframe/ai-providers";
 import { getApiKey } from "../utils/api-key.js";
+import { getApiKeyFromConfig } from "../config/index.js";
+import { uploadToImgbb } from "./ai-script-pipeline.js";
 
 /**
  * Download video from URL with appropriate auth headers.
@@ -187,9 +189,31 @@ export function registerVideoCommands(aiCommand: Command): void {
             process.exit(1);
           }
 
+          // Kling v2.x requires image URL, not base64 — auto-upload to ImgBB
+          let klingImage = referenceImage;
+          if (klingImage && klingImage.startsWith("data:")) {
+            spinner.text = "Uploading image to ImgBB for Kling...";
+            const imgbbKey = (await getApiKeyFromConfig("imgbb")) || process.env.IMGBB_API_KEY;
+            if (!imgbbKey) {
+              spinner.fail(chalk.red("Kling requires image URL. Set IMGBB_API_KEY for auto-upload."));
+              console.error(chalk.dim("Run: vibe setup --full  to configure ImgBB"));
+              process.exit(1);
+            }
+            // Extract raw base64 from data URI
+            const base64Data = klingImage.split(",")[1];
+            const imageBuffer = Buffer.from(base64Data, "base64");
+            const uploadResult = await uploadToImgbb(imageBuffer, imgbbKey);
+            if (!uploadResult.success || !uploadResult.url) {
+              spinner.fail(chalk.red(`ImgBB upload failed: ${uploadResult.error}`));
+              process.exit(1);
+            }
+            klingImage = uploadResult.url;
+            spinner.text = "Starting video generation...";
+          }
+
           result = await kling.generateVideo(prompt, {
             prompt,
-            referenceImage,
+            referenceImage: klingImage,
             duration: parseInt(options.duration) as 5 | 10,
             aspectRatio: options.ratio as "16:9" | "9:16" | "1:1",
             negativePrompt: options.negative,
@@ -495,11 +519,31 @@ export function registerVideoCommands(aiCommand: Command): void {
           isImageToVideo = true;
         }
 
+        // Kling v2.x requires image URL, not base64 — auto-upload to ImgBB
+        let klingImage = referenceImage;
+        if (klingImage && klingImage.startsWith("data:")) {
+          spinner.text = "Uploading image to ImgBB for Kling...";
+          const imgbbKey = (await getApiKeyFromConfig("imgbb")) || process.env.IMGBB_API_KEY;
+          if (!imgbbKey) {
+            spinner.fail(chalk.red("Kling requires image URL. Set IMGBB_API_KEY for auto-upload."));
+            console.error(chalk.dim("Run: vibe setup --full  to configure ImgBB"));
+            process.exit(1);
+          }
+          const base64Data = klingImage.split(",")[1];
+          const imageBuffer = Buffer.from(base64Data, "base64");
+          const uploadResult = await uploadToImgbb(imageBuffer, imgbbKey);
+          if (!uploadResult.success || !uploadResult.url) {
+            spinner.fail(chalk.red(`ImgBB upload failed: ${uploadResult.error}`));
+            process.exit(1);
+          }
+          klingImage = uploadResult.url;
+        }
+
         spinner.text = "Starting video generation...";
 
         const result = await kling.generateVideo(prompt, {
           prompt,
-          referenceImage,
+          referenceImage: klingImage,
           duration: parseInt(options.duration) as 5 | 10,
           aspectRatio: options.ratio as "16:9" | "9:16" | "1:1",
           negativePrompt: options.negative,
@@ -521,7 +565,7 @@ export function registerVideoCommands(aiCommand: Command): void {
           spinner.succeed(chalk.green("Generation started"));
           console.log();
           console.log(chalk.dim("Check status with:"));
-          console.log(chalk.dim(`  pnpm vibe ai kling-status ${result.id}${isImageToVideo ? " --type image2video" : ""}`));
+          console.log(chalk.dim(`  vibe ai kling-status ${result.id}${isImageToVideo ? " --type image2video" : ""}`));
           console.log();
           return;
         }
