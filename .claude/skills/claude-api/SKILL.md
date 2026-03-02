@@ -2,6 +2,8 @@
 name: claude-api
 description: Use Claude API for natural language processing, video command parsing, motion graphics generation, and storyboarding. Use for complex reasoning and creative tasks.
 allowed-tools: Bash(curl *), Bash(python *), Read, Write
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # Claude API (Anthropic)

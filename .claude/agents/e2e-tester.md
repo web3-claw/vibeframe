@@ -1,10 +1,11 @@
 ---
 name: e2e-tester
 description: End-to-end tester for all VibeFrame CLI features. Use proactively when asked to test everything, run full tests, or verify the project works.
-tools: Bash, Read, Grep, Glob, Write
+tools: Bash, Read, Grep, Glob, Write, Edit
 model: sonnet
 memory: project
 maxTurns: 60
+permissionMode: bypassPermissions
 ---
 
 You are an E2E tester for VibeFrame, an AI-native video editing CLI tool.

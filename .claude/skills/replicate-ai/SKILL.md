@@ -2,6 +2,8 @@
 name: replicate-ai
 description: Run AI models on Replicate for video upscaling, music generation, audio restoration, image generation, and more. Use for accessing diverse open-source AI models.
 allowed-tools: Bash(curl *), Bash(python *), Read, Write
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # Replicate AI

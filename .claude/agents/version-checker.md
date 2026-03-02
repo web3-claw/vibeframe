@@ -4,6 +4,7 @@ description: Checks version and info sync across all package.json files, landing
 tools: Read, Grep, Glob, Bash
 model: haiku
 maxTurns: 15
+permissionMode: default
 ---
 
 You are a version and info sync checker for VibeFrame, an AI-native video editing CLI monorepo.

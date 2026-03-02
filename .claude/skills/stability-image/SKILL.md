@@ -2,6 +2,8 @@
 name: stability-image
 description: Generate and edit images using Stability AI. Use for image generation, upscaling, inpainting, outpainting, and background removal.
 allowed-tools: Bash(curl *), Bash(python *), Read, Write
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # Stability AI Image Generation & Editing

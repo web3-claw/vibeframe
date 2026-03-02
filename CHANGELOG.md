@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.4] - 2026-02-24
+
+### Security
+- Eliminated 95+ command injection vulnerabilities across 20 files
+- Replaced all `exec()`/`execSync()` template literal calls with safe `execFile`-based `execSafe()` utility
+- Shell `rm`/`rmdir`/`mv` commands replaced with `node:fs/promises` equivalents
+
+### Added
+- `packages/cli/src/utils/exec-safe.ts` — safe subprocess execution utilities
+- `bugs` field in all package.json files
+- CODE_OF_CONDUCT.md (Contributor Covenant v2.1)
+
 ## [0.19.3] - 2026-02-24
 
 ### Changed

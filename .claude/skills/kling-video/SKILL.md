@@ -2,6 +2,8 @@
 name: kling-video
 description: Generate videos using Kling AI. Use for text-to-video and image-to-video generation with high quality results.
 allowed-tools: Bash(curl *), Bash(python *), Read, Write
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # Kling AI Video Generation

@@ -2,6 +2,8 @@
 name: openai-api
 description: Use OpenAI APIs for GPT chat completion, DALL-E image generation, and Whisper transcription. Use for natural language processing, image creation, and audio transcription tasks.
 allowed-tools: Bash(curl *), Bash(python *), Read, Write
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # OpenAI API

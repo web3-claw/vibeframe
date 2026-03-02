@@ -37,7 +37,7 @@ Please be respectful and considerate of others. We want to foster an inclusive a
 
 ```bash
 # All tests (note: default vitest runs in watch mode)
-pnpm -F @vibeframe/cli exec vitest run       # CLI tests (~256 tests, ~58s)
+pnpm -F @vibeframe/cli exec vitest run       # CLI tests (~232 tests, ~58s)
 pnpm -F @vibeframe/core exec vitest run       # Core tests (~8 tests, <1s)
 
 # With coverage
@@ -136,7 +136,6 @@ const myCommandTool: ToolDefinition = {
 
 - `CLAUDE.md` - Update tool counts and tables
 - `ROADMAP.md` - Mark completed items
-- `GUIDE.md` - Add usage examples
 - `MODELS.md` - If adding a new AI model/provider
 
 ## Commit Message Guidelines

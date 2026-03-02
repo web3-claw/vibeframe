@@ -1,10 +1,11 @@
 ---
 name: pipeline-tester
 description: Tests all AI pipeline commands end-to-end with Gemini video review for quality validation. Use when asked to test pipelines, script-to-video, highlights, viral, auto-shorts, or video quality.
-tools: Bash, Read, Grep, Glob, Write
+tools: Bash, Read, Grep, Glob, Write, Edit
 model: sonnet
 memory: project
 maxTurns: 40
+permissionMode: bypassPermissions
 ---
 
 You are a pipeline tester for VibeFrame, an AI-native video editing CLI tool.

@@ -2,6 +2,8 @@
 name: runway-video
 description: Generate videos and images using Runway API. Use for text-to-image, image-to-video generation.
 allowed-tools: Bash(curl *), Bash(python *), Read, Write
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # Runway Media Generation

@@ -2,6 +2,8 @@
 name: elevenlabs-tts
 description: Generate speech, sound effects, and clone voices using ElevenLabs API. Use for narration, voiceovers, SFX, and voice cloning.
 allowed-tools: Bash(curl *), Bash(python *), Read, Write
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # ElevenLabs Audio Generation

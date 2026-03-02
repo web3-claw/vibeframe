@@ -2,6 +2,8 @@
 name: gemini-video
 description: Analyze and understand videos using Google Gemini. Use for video summarization, Q&A, content extraction, timestamp analysis, and YouTube video processing.
 allowed-tools: Bash(curl *), Bash(python *), Read, Write
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # Gemini Video Understanding
