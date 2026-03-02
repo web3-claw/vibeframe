@@ -25,15 +25,21 @@ vibe agent -p claude                                # Interactive agent mode
 ## Image Generation & Editing
 
 ```bash
-# Generate image (default: Gemini)
+# Generate image (default: Gemini Nano Banana)
 vibe ai image "<prompt>" -o out.png
-vibe ai image "<prompt>" -o out.png -p openai       # Use DALL-E
-vibe ai image "<prompt>" -o out.png -p stability    # Use Stability
-vibe ai image "<prompt>" -o out.png -r 16:9         # Aspect ratio
+vibe ai image "<prompt>" -o out.png -m latest        # Gemini latest (Nano Banana 2)
+vibe ai image "<prompt>" -o out.png -m pro           # Gemini Pro (4K)
+vibe ai image "<prompt>" -o out.png -p openai        # Use DALL-E
+vibe ai image "<prompt>" -o out.png -p stability     # Use Stability
+vibe ai image "<prompt>" -o out.png -r 16:9          # Aspect ratio
+
+# Gemini model selection: flash (default), latest/3.1-flash (Nano Banana 2), pro (4K)
+# When user says "latest" or "newest", always use -m latest
 
 # Gemini image editing (up to 3 input images with flash, 14 with pro)
 vibe ai gemini-edit <image> "<instruction>" -o out.png
 vibe ai gemini-edit <img1> <img2> "<instruction>" -o out.png -m pro
+vibe ai gemini-edit <image> "<instruction>" -o out.png -m latest
 
 # Stability AI image tools
 vibe ai sd-upscale <image> -o out.png
