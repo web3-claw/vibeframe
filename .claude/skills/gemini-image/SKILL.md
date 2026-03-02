@@ -2,6 +2,8 @@
 name: gemini-image
 description: Generate images using Google Gemini (Nano Banana). Use for creating visual assets, thumbnails, backgrounds, UI mockups, or any image generation task.
 allowed-tools: Bash(curl *), Bash(python *), Read, Write
+disable-model-invocation: true
+user-invocable: true
 ---
 
 # Gemini Image Generation (Nano Banana)
@@ -13,17 +15,20 @@ Generate and edit high-quality images using Google's Gemini models with native i
 | Model | ID | Description | Best For |
 |-------|-----|-------------|----------|
 | Nano Banana | `gemini-2.5-flash-image` | Speed-optimized | High-volume, low-latency tasks |
+| Nano Banana 2 | `gemini-3.1-flash-image-preview` | Next-gen flash | Image Search grounding, 512px resolution |
 | Nano Banana Pro | `gemini-3-pro-image-preview` | Professional quality | Complex instructions, 4K output, text rendering |
 
 ### Key Differences
 
-| Feature | Flash | Pro |
-|---------|-------|-----|
-| Max Resolution | 1K | 4K |
-| Reference Images | Up to 3 | Up to 14 |
-| Thinking Mode | No | Yes (default) |
-| Google Search Grounding | No | Yes |
-| Text Rendering | Basic | Advanced |
+| Feature | Flash | 3.1 Flash | Pro |
+|---------|-------|-----------|-----|
+| Min Resolution | 1K | 512px | 1K |
+| Max Resolution | 1K | 1K | 4K |
+| Reference Images | Up to 3 | Up to 3 | Up to 14 |
+| Thinking Mode | No | Optional | Yes (default) |
+| Google Search Grounding | No | Yes (Image Search) | Yes (Web Search) |
+| Image Search Grounding | No | Yes | No |
+| Text Rendering | Basic | Basic | Advanced |
 
 ## Authentication
 
@@ -53,7 +58,7 @@ POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateCon
 }
 ```
 
-### With Resolution (Pro Only)
+### With Resolution
 
 ```json
 {
@@ -65,6 +70,34 @@ POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateCon
       "imageSize": "2K"
     }
   }
+}
+```
+
+Resolution options: `512px` (all models), `1K` (all), `2K` (Pro), `4K` (Pro)
+
+### With Thinking Config (3.1 Flash / Pro)
+
+```json
+{
+  "contents": [{"parts": [{"text": "Your image prompt"}]}],
+  "generationConfig": {
+    "responseModalities": ["TEXT", "IMAGE"],
+    "imageConfig": { "aspectRatio": "1:1" },
+    "thinkingConfig": { "thinkingLevel": "High", "includeThoughts": true }
+  }
+}
+```
+
+### Image Search Grounding (3.1 Flash)
+
+```json
+{
+  "contents": [{"parts": [{"text": "Generate an image of the latest iPhone"}]}],
+  "generationConfig": {
+    "responseModalities": ["TEXT", "IMAGE"],
+    "imageConfig": { "aspectRatio": "1:1" }
+  },
+  "tools": [{"googleSearch": {"searchTypes": {"webSearch": {}, "imageSearch": {}}}}]
 }
 ```
 
@@ -129,10 +162,12 @@ Generate images based on real-time information:
 
 ## Aspect Ratios & Resolutions
 
-### Flash Model (1K only)
+Supported ratios (14 total): `1:1`, `1:4`, `1:8`, `2:3`, `3:2`, `3:4`, `4:1`, `4:3`, `4:5`, `5:4`, `8:1`, `9:16`, `16:9`, `21:9`
 
-| Aspect Ratio | Resolution | Tokens |
-|--------------|------------|--------|
+### Flash / 3.1 Flash Model (512px-1K)
+
+| Aspect Ratio | Resolution (1K) | Tokens |
+|--------------|-----------------|--------|
 | 1:1 | 1024x1024 | 1290 |
 | 16:9 | 1344x768 | 1290 |
 | 9:16 | 768x1344 | 1290 |
@@ -141,6 +176,9 @@ Generate images based on real-time information:
 | 4:3 | 1184x864 | 1290 |
 | 3:4 | 864x1184 | 1290 |
 | 21:9 | 1536x672 | 1290 |
+| 4:1 / 1:4 / 8:1 / 1:8 | varies | 1290 |
+
+512px resolution available for all models (smaller, faster output).
 
 ### Pro Model (1K/2K/4K)
 

@@ -141,7 +141,7 @@ Every command supports `--help`. Run `vibe ai --help` for a full list.
 | **Export** | `export` | `vibe export project.vibe.json -o out.mp4` |
 | **Agent** | `agent`, `setup` | `vibe agent -p claude` |
 
-**58+ AI commands** across 11 providers. Every command supports `--help`.
+**59+ AI commands** across 11 providers. Every command supports `--help`.
 
 ---
 
@@ -157,7 +157,7 @@ vibe agent -p xai              # Use xAI Grok
 vibe agent -p ollama           # Use local Ollama
 ```
 
-58 tools across project, timeline, AI generation, media, export, batch, and filesystem. The LLM reasons, calls tools, and executes autonomously.
+59 tools across project, timeline, AI generation, media, export, batch, and filesystem. The LLM reasons, calls tools, and executes autonomously.
 
 ---
 
@@ -181,7 +181,7 @@ vibe agent -p ollama           # Use local Ollama
 ```
 vibeframe/
 ├── packages/
-│   ├── cli/               # CLI + Agent (58 tools, 262+ tests)
+│   ├── cli/               # CLI + Agent (59 tools, 262+ tests)
 │   ├── core/              # Timeline engine (Zustand + Immer + FFmpeg)
 │   ├── ai-providers/      # Pluggable AI providers
 │   ├── mcp-server/        # MCP server (npm: @vibeframe/mcp-server)

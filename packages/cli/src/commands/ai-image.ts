@@ -38,7 +38,7 @@ aiCommand
   .option("-k, --api-key <key>", "API key (or set env: OPENAI_API_KEY, GOOGLE_API_KEY, STABILITY_API_KEY)")
   .option("-o, --output <path>", "Output file path (downloads image)")
   .option("-s, --size <size>", "Image size (openai: 1024x1024, 1536x1024, 1024x1536)", "1024x1024")
-  .option("-r, --ratio <ratio>", "Aspect ratio (gemini: 1:1, 16:9, 9:16, 3:4, 4:3)", "1:1")
+  .option("-r, --ratio <ratio>", "Aspect ratio (gemini: 1:1, 1:4, 1:8, 4:1, 8:1, 16:9, 9:16, 3:4, 4:3, etc.)", "1:1")
   .option("-q, --quality <quality>", "Quality: standard, hd (openai only)", "standard")
   .option("--style <style>", "Style: vivid, natural (openai only)", "vivid")
   .option("-n, --count <n>", "Number of images to generate", "1")
@@ -859,10 +859,12 @@ aiCommand
   .argument("<prompt>", "Text prompt describing the image")
   .option("-k, --api-key <key>", "Google API key (or set GOOGLE_API_KEY env)")
   .option("-o, --output <path>", "Output file path", "output.png")
-  .option("-m, --model <model>", "Model: flash (fast), pro (professional, 4K)", "flash")
-  .option("-r, --ratio <ratio>", "Aspect ratio: 1:1, 16:9, 9:16, 4:3, 3:4, 21:9, etc.", "1:1")
-  .option("-s, --size <resolution>", "Resolution: 1K, 2K, 4K (Pro model only)")
+  .option("-m, --model <model>", "Model: flash (fast), 3.1-flash (Nano Banana 2), pro (professional, 4K)", "flash")
+  .option("-r, --ratio <ratio>", "Aspect ratio: 1:1, 1:4, 1:8, 4:1, 8:1, 16:9, 9:16, 4:3, 3:4, 21:9, etc.", "1:1")
+  .option("-s, --size <resolution>", "Resolution: 512px, 1K, 2K, 4K")
   .option("--grounding", "Enable Google Search grounding (Pro only)")
+  .option("--thinking <level>", "Enable thinking mode: minimal or high")
+  .option("--image-search", "Enable Image Search grounding (3.1 Flash only)")
   .action(async (prompt: string, options) => {
     try {
       const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
@@ -872,7 +874,12 @@ aiCommand
         process.exit(1);
       }
 
-      const modelName = options.model === "pro" ? "gemini-3-pro-image-preview" : "gemini-2.5-flash-image";
+      const modelNames: Record<string, string> = {
+        flash: "gemini-2.5-flash-image",
+        "3.1-flash": "gemini-3.1-flash-image-preview",
+        pro: "gemini-3-pro-image-preview",
+      };
+      const modelName = modelNames[options.model] || modelNames.flash;
       const spinner = ora(`Generating image with ${modelName}...`).start();
 
       const gemini = new GeminiProvider();
@@ -883,6 +890,8 @@ aiCommand
         aspectRatio: options.ratio,
         resolution: options.size,
         grounding: options.grounding,
+        thinkingConfig: options.thinking ? { thinkingLevel: options.thinking } : undefined,
+        imageSearchGrounding: options.imageSearch,
       });
 
       if (!result.success || !result.images || result.images.length === 0) {
@@ -917,7 +926,7 @@ aiCommand
   .argument("<images...>", "Input image file(s) followed by edit prompt")
   .option("-k, --api-key <key>", "Google API key (or set GOOGLE_API_KEY env)")
   .option("-o, --output <path>", "Output file path", "edited.png")
-  .option("-m, --model <model>", "Model: flash (max 3 images), pro (max 14 images)", "flash")
+  .option("-m, --model <model>", "Model: flash (max 3 images), 3.1-flash (max 3 images), pro (max 14 images)", "flash")
   .option("-r, --ratio <ratio>", "Output aspect ratio")
   .option("-s, --size <resolution>", "Resolution: 1K, 2K, 4K (Pro model only)")
   .action(async (args: string[], options) => {
@@ -947,8 +956,13 @@ aiCommand
         imageBuffers.push(buffer);
       }
 
-      const modelName = options.model === "pro" ? "gemini-3-pro-image-preview" : "gemini-2.5-flash-image";
-      spinner.text = `Editing with ${modelName}...`;
+      const editModelNames: Record<string, string> = {
+        flash: "gemini-2.5-flash-image",
+        "3.1-flash": "gemini-3.1-flash-image-preview",
+        pro: "gemini-3-pro-image-preview",
+      };
+      const editModelName = editModelNames[options.model] || editModelNames.flash;
+      spinner.text = `Editing with ${editModelName}...`;
 
       const gemini = new GeminiProvider();
       await gemini.initialize({ apiKey });

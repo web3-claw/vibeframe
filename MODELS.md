@@ -56,20 +56,26 @@ Used for Remotion component code generation (`vibe ai motion`).
 
 ---
 
-## Text-to-Image (4)
+## Text-to-Image (5)
 
 | Provider | Model | Env Key | CLI Option | Notes |
 |----------|-------|---------|------------|-------|
 | OpenAI | `gpt-image-1.5` | `OPENAI_API_KEY` | `-p openai` | Quality tiers: low ($0.009), medium ($0.035), high ($0.133) |
 | Gemini | `gemini-2.5-flash-image` | `GOOGLE_API_KEY` | `-p gemini` | Default. Nano Banana Flash - fast |
+| Gemini | `gemini-3.1-flash-image-preview` | `GOOGLE_API_KEY` | `-p gemini -m 3.1-flash` | Nano Banana 2 - Image Search grounding, 512px |
 | Gemini | `gemini-3-pro-image-preview` | `GOOGLE_API_KEY` | `-p gemini -m pro` | Nano Banana Pro - higher quality, up to 4K |
 | Stability | `stable-diffusion-xl` | `STABILITY_API_KEY` | `-p stability` | For image editing (upscale, remove-bg, outpaint) |
+
+### Image Aspect Ratios (Gemini)
+
+All Gemini image models support 14 aspect ratios: `1:1`, `1:4`, `1:8`, `2:3`, `3:2`, `3:4`, `4:1`, `4:3`, `4:5`, `5:4`, `8:1`, `9:16`, `16:9`, `21:9`
 
 ### Image Editing (Gemini)
 
 | Model | Max Input Images | Features |
 |-------|------------------|----------|
 | Flash | 3 | Fast editing, 1K output |
+| 3.1 Flash | 3 | Image Search grounding, 512px-1K output |
 | Pro | 14 | Multi-image composition, up to 4K output |
 
 ---
@@ -80,10 +86,22 @@ Used for Remotion component code generation (`vibe ai motion`).
 |----------|-------|----------|---------|------------|-------|
 | Kling | `kling-v2-5-turbo` | 5-10 sec | `KLING_API_KEY` | `-p kling` | Default, fast (~36s generation) |
 | Kling | `kling-v2-6` | 5-10 sec | `KLING_API_KEY` | `-p kling -m v2.6` | Higher quality |
-| Veo | `veo-3.1-fast-generate-preview` | 4-8 sec | `GOOGLE_API_KEY` | `-p veo` | Native audio support |
-| Veo | `veo-3.0-generate-preview` | 5-8 sec | `GOOGLE_API_KEY` | `-p veo -m 3.0` | Native audio support |
+| Veo | `veo-3.1-fast-generate-preview` | 4-8 sec | `GOOGLE_API_KEY` | `-p veo` | Native audio, fast |
+| Veo | `veo-3.1-generate-preview` | 4-8 sec | `GOOGLE_API_KEY` | `-p veo --veo-model 3.1` | Native audio, higher quality |
+| Veo | `veo-3.0-generate-preview` | 5-8 sec | `GOOGLE_API_KEY` | `-p veo --veo-model 3.0` | Native audio |
 | Runway | `gen4_turbo` | 5-10 sec | `RUNWAY_API_SECRET` | `-p runway` | Top-ranked quality |
 | xAI Grok | `grok-imagine-video` | 1-15 sec | `XAI_API_KEY` | `-p grok` | Native audio, $4.20/min |
+
+### Veo Advanced Options
+
+| Option | Values | Description |
+|--------|--------|-------------|
+| `--negative-prompt` | text | What to avoid in the generated video |
+| `--resolution` | 720p, 1080p, 4k | Video resolution |
+| `--last-frame` | image path | Frame interpolation (first→last frame) |
+| `--ref-images` | image paths (max 3) | Character consistency (Veo 3.1 only) |
+| `--person` | allow_all, allow_adult | Person generation setting |
+| `veo-extend` | operation-name | Extend a previously generated Veo video |
 
 ### Image-to-Video
 

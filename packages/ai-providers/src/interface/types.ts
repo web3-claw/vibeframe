@@ -97,6 +97,14 @@ export interface GenerateOptions {
   referenceImage?: Blob | string;
   /** Reference video for video-to-video */
   referenceVideo?: Blob | string;
+  /** Video resolution (Veo: 720p, 1080p, 4k) */
+  resolution?: string;
+  /** Last frame image for frame interpolation (Veo) */
+  lastFrame?: string;
+  /** Reference images for character consistency (Veo 3.1, max 3) */
+  referenceImages?: Array<{ base64: string; mimeType: string }>;
+  /** Person generation setting (Veo) */
+  personGeneration?: string;
   /** Model-specific options */
   modelOptions?: Record<string, unknown>;
 }

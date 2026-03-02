@@ -54,6 +54,12 @@ vibe ai video "<prompt>" -o out.mp4 -p veo          # Google Veo
 # Image-to-video
 vibe ai video "<prompt>" -i image.png -o out.mp4 -p runway
 
+# Veo options
+vibe ai video "<prompt>" -p veo --resolution 1080p -o out.mp4
+vibe ai video "<prompt>" -p veo --veo-model 3.1 --last-frame end.png -o out.mp4
+vibe ai video "<prompt>" -p veo --ref-images ref1.png ref2.png -o out.mp4
+vibe ai veo-extend <operation-name> -o extended.mp4 -d 6    # Extend Veo video
+
 # Kling specific
 vibe ai kling "<prompt>" -o out.mp4 -d 5 -m pro     # Pro mode
 vibe ai kling "<prompt>" -o out.mp4 -r 9:16          # Vertical
@@ -219,3 +225,5 @@ vibe ai grade captioned.mp4 -o final.mp4 -p cinematic-warm
 | `ai gemini-video` / `ai analyze` / `ai review` | `GOOGLE_API_KEY` |
 | `ai silence-cut` / `ai noise-reduce` / `ai fade` | None (FFmpeg only) |
 | `ai script-to-video -g runway` | `ANTHROPIC_API_KEY` + `GOOGLE_API_KEY` + `ELEVENLABS_API_KEY` + `RUNWAY_API_SECRET` |
+| `ai script-to-video -g veo` | `ANTHROPIC_API_KEY` + `GOOGLE_API_KEY` + `ELEVENLABS_API_KEY` |
+| `ai veo-extend` | `GOOGLE_API_KEY` |

@@ -10,7 +10,7 @@
  *   executeRegenerateScene - Re-generate specific scene(s) in an existing project
  *
  * Also exports shared helpers: uploadToImgbb, extendVideoToTarget,
- * generateVideoWithRetryKling, generateVideoWithRetryRunway, waitForVideoWithRetry
+ * generateVideoWithRetryKling, generateVideoWithRetryRunway, generateVideoWithRetryVeo, waitForVideoWithRetry
  *
  * @dependencies Claude (storyboard), ElevenLabs (TTS), OpenAI/Gemini/Stability (images),
  *              Kling/Runway (video), FFmpeg (assembly/extension)
@@ -297,6 +297,55 @@ export async function generateVideoWithRetryRunway(
 }
 
 /**
+ * Generate video with retry logic for Veo (Gemini) provider
+ */
+export async function generateVideoWithRetryVeo(
+  gemini: GeminiProvider,
+  segment: StoryboardSegment,
+  options: {
+    duration: 4 | 6 | 8;
+    aspectRatio: "16:9" | "9:16" | "1:1";
+    referenceImage?: string;
+  },
+  maxRetries: number,
+  onProgress?: (message: string) => void
+): Promise<{ operationName: string } | null> {
+  const prompt = segment.visualStyle
+    ? `${segment.visuals}. Style: ${segment.visualStyle}`
+    : segment.visuals;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await gemini.generateVideo(prompt, {
+        prompt,
+        referenceImage: options.referenceImage,
+        duration: options.duration,
+        aspectRatio: options.aspectRatio,
+        model: "veo-3.1-fast-generate-preview",
+      });
+
+      if (result.status !== "failed" && result.id) {
+        return { operationName: result.id };
+      }
+
+      if (attempt < maxRetries) {
+        onProgress?.(`⚠ Retry ${attempt + 1}/${maxRetries}...`);
+        await sleep(RETRY_DELAY_MS);
+      }
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (attempt < maxRetries) {
+        onProgress?.(`⚠ Error: ${errMsg.slice(0, 50)}... retry ${attempt + 1}/${maxRetries}`);
+        await sleep(RETRY_DELAY_MS);
+      } else {
+        console.error(chalk.dim(`\n  [Veo error: ${errMsg}]`));
+      }
+    }
+  }
+  return null;
+}
+
+/**
  * Wait for video completion with retry logic
  */
 export async function waitForVideoWithRetry(
@@ -358,7 +407,7 @@ export interface ScriptToVideoOptions {
   /** ElevenLabs voice name or ID */
   voice?: string;
   /** Video generation provider */
-  generator?: "runway" | "kling";
+  generator?: "runway" | "kling" | "veo";
   /** Image generation provider */
   imageProvider?: "openai" | "dalle" | "stability" | "gemini";
   /** Video aspect ratio */
@@ -513,6 +562,11 @@ export async function executeScriptToVideo(
         videoApiKey = (await getApiKey("KLING_API_KEY", "Kling")) ?? undefined;
         if (!videoApiKey) {
           return { success: false, outputDir, scenes: 0, error: "Kling API key required (or use imagesOnly option)" };
+        }
+      } else if (options.generator === "veo") {
+        videoApiKey = (await getApiKey("GOOGLE_API_KEY", "Google")) ?? undefined;
+        if (!videoApiKey) {
+          return { success: false, outputDir, scenes: 0, error: "Google API key required for Veo video generation (or use imagesOnly option)" };
         }
       } else {
         videoApiKey = (await getApiKey("RUNWAY_API_SECRET", "Runway")) ?? undefined;
@@ -669,7 +723,6 @@ export async function executeScriptToVideo(
       try {
         let imageBuffer: Buffer | undefined;
         let imageUrl: string | undefined;
-        let imageError: string | undefined;
 
         if ((imageProvider === "openai" || imageProvider === "dalle") && openaiImageInstance) {
           const imageResult = await openaiImageInstance.generateImage(imagePrompt, {
@@ -684,9 +737,8 @@ export async function executeScriptToVideo(
             } else if (img.url) {
               imageUrl = img.url;
             }
-          } else {
-            imageError = imageResult.error;
           }
+          // else: imageResult.error is available but not captured
         } else if (imageProvider === "stability" && stabilityInstance) {
           const imageResult = await stabilityInstance.generateImage(imagePrompt, {
             aspectRatio: stabilityAspectRatios[options.aspectRatio || "16:9"] || "16:9",
@@ -699,18 +751,16 @@ export async function executeScriptToVideo(
             } else if (img.url) {
               imageUrl = img.url;
             }
-          } else {
-            imageError = imageResult.error;
           }
+          // else: imageResult.error is available but not captured
         } else if (imageProvider === "gemini" && geminiInstance) {
           const imageResult = await geminiInstance.generateImage(imagePrompt, {
             aspectRatio: (options.aspectRatio || "16:9") as "16:9" | "9:16" | "1:1",
           });
           if (imageResult.success && imageResult.images?.[0]?.base64) {
             imageBuffer = Buffer.from(imageResult.images[0].base64, "base64");
-          } else {
-            imageError = imageResult.error;
           }
+          // else: imageResult.error is available but not captured
         }
 
         const imagePath = resolve(absOutputDir, `scene-${i + 1}.png`);
@@ -725,7 +775,7 @@ export async function executeScriptToVideo(
           imagePaths.push(imagePath);
           result.images!.push(imagePath);
         } else {
-          // Track failed scene - error details are in imageError but not exposed in result type
+          // Track failed scene - error details not captured (see provider imageResult.error)
           // The failedScenes array tracks which scenes failed for the caller
           imagePaths.push("");
         }
@@ -805,6 +855,62 @@ export async function executeScriptToVideo(
             result.failedScenes!.push(i + 1);
           }
         }
+      } else if (options.generator === "veo") {
+        // Veo (Gemini)
+        const veo = new GeminiProvider();
+        await veo.initialize({ apiKey: videoApiKey });
+
+        for (let i = 0; i < segments.length; i++) {
+          if (!imagePaths[i]) {
+            videoPaths.push("");
+            continue;
+          }
+
+          const segment = segments[i] as StoryboardSegment;
+          const veoDuration = (segment.duration > 6 ? 8 : segment.duration > 4 ? 6 : 4) as 4 | 6 | 8;
+
+          const taskResult = await generateVideoWithRetryVeo(
+            veo,
+            segment,
+            { duration: veoDuration, aspectRatio: (options.aspectRatio || "16:9") as "16:9" | "9:16" | "1:1" },
+            maxRetries
+          );
+
+          if (taskResult) {
+            try {
+              const waitResult = await veo.waitForVideoCompletion(taskResult.operationName, undefined, 300000);
+              if (waitResult.status === "completed" && waitResult.videoUrl) {
+                const videoPath = resolve(absOutputDir, `scene-${i + 1}.mp4`);
+                const response = await fetch(waitResult.videoUrl);
+                const buffer = Buffer.from(await response.arrayBuffer());
+                await writeFile(videoPath, buffer);
+
+                // Extend video to match narration duration if needed
+                const targetDuration = segment.duration;
+                const actualVideoDuration = await getVideoDuration(videoPath);
+
+                if (actualVideoDuration < targetDuration - 0.1) {
+                  const extendedPath = resolve(absOutputDir, `scene-${i + 1}-extended.mp4`);
+                  await extendVideoNaturally(videoPath, targetDuration, extendedPath);
+                  await unlink(videoPath);
+                  await rename(extendedPath, videoPath);
+                }
+
+                videoPaths.push(videoPath);
+                result.videos!.push(videoPath);
+              } else {
+                videoPaths.push("");
+                result.failedScenes!.push(i + 1);
+              }
+            } catch {
+              videoPaths.push("");
+              result.failedScenes!.push(i + 1);
+            }
+          } else {
+            videoPaths.push("");
+            result.failedScenes!.push(i + 1);
+          }
+        }
       } else {
         // Runway
         const runway = new RunwayProvider();
@@ -843,13 +949,12 @@ export async function executeScriptToVideo(
                 await writeFile(videoPath, buffer);
 
                 // Extend video to match narration duration if needed
-                const targetDuration = segment.duration; // Already updated to narration length
+                const targetDuration = segment.duration;
                 const actualVideoDuration = await getVideoDuration(videoPath);
 
                 if (actualVideoDuration < targetDuration - 0.1) {
                   const extendedPath = resolve(absOutputDir, `scene-${i + 1}-extended.mp4`);
                   await extendVideoNaturally(videoPath, targetDuration, extendedPath);
-                  // Replace original with extended version
                   await unlink(videoPath);
                   await rename(extendedPath, videoPath);
                 }
@@ -1045,7 +1150,7 @@ export interface RegenerateSceneOptions {
   /** Only regenerate scene image */
   imageOnly?: boolean;
   /** Video generation provider */
-  generator?: "kling" | "runway";
+  generator?: "kling" | "runway" | "veo";
   /** Image generation provider */
   imageProvider?: "gemini" | "openai" | "stability";
   /** ElevenLabs voice name or ID */

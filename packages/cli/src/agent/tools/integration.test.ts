@@ -17,8 +17,6 @@ import { registerMediaTools } from "./media.js";
 import { registerAITools } from "./ai.js";
 import { registerExportTools } from "./export.js";
 import { registerBatchTools } from "./batch.js";
-import type { ToolDefinition } from "../types.js";
-
 // Mock the imported CLI functions to avoid actual API calls
 vi.mock("../../commands/ai.js", () => ({
   executeScriptToVideo: vi.fn().mockResolvedValue({
@@ -139,9 +137,9 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
   });
 
   describe("Tool Registration", () => {
-    it("should register all 58 tools", () => {
+    it("should register all 59 tools", () => {
       const tools = registry.getAll();
-      expect(tools.length).toBe(58);
+      expect(tools.length).toBe(59);
     });
 
     it("should register all project tools (5)", () => {
@@ -273,7 +271,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
     it("all parameter properties should have type and description", () => {
       const tools = registry.getAll();
       for (const tool of tools) {
-        for (const [paramName, paramDef] of Object.entries(
+        for (const paramDef of Object.values(
           tool.parameters.properties
         )) {
           const param = paramDef as { type?: string; description?: string };
@@ -630,11 +628,11 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       expect(timelineTools.length).toBe(11);  // Added timeline_clear
       expect(fsTools.length).toBe(4);
       expect(mediaTools.length).toBe(8);  // Added media_compress, media_convert, media_concat
-      expect(aiTools.length).toBe(24);  // +4: noise_reduce, fade, thumbnail, translate_srt
+      expect(aiTools.length).toBe(25);  // +5: noise_reduce, fade, thumbnail, translate_srt, veo
       expect(exportTools.length).toBe(3);
       expect(batchTools.length).toBe(3);  // New batch tools
 
-      // Total should be 58
+      // Total should be 59
       expect(
         projectTools.length +
           timelineTools.length +
@@ -643,7 +641,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
           aiTools.length +
           exportTools.length +
           batchTools.length
-      ).toBe(58);
+      ).toBe(59);
     });
   });
 });

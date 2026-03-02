@@ -48,7 +48,12 @@ export function registerVideoCommands(aiCommand: Command): void {
     .option("-r, --ratio <ratio>", "Aspect ratio: 16:9, 9:16, or 1:1", "16:9")
     .option("-s, --seed <number>", "Random seed for reproducibility (Runway only)")
     .option("-m, --mode <mode>", "Generation mode: std or pro (Kling only)", "std")
-    .option("-n, --negative <prompt>", "Negative prompt - what to avoid (Kling only)")
+    .option("-n, --negative <prompt>", "Negative prompt - what to avoid (Kling/Veo)")
+    .option("--resolution <res>", "Video resolution: 720p, 1080p, 4k (Veo only)")
+    .option("--last-frame <path>", "Last frame image for frame interpolation (Veo only)")
+    .option("--ref-images <paths...>", "Reference images for character consistency (Veo 3.1 only, max 3)")
+    .option("--person <mode>", "Person generation: allow_all, allow_adult (Veo only)")
+    .option("--veo-model <model>", "Veo model: 3.0, 3.1, 3.1-fast (default: 3.1-fast)", "3.1-fast")
     .option("--no-wait", "Start generation and return task ID without waiting")
     .action(async (prompt: string, options) => {
       try {
@@ -205,13 +210,50 @@ export function registerVideoCommands(aiCommand: Command): void {
           const gemini = new GeminiProvider();
           await gemini.initialize({ apiKey });
 
+          // Map Veo model alias to full model ID
+          const veoModelMap: Record<string, string> = {
+            "3.0": "veo-3.0-generate-preview",
+            "3.1": "veo-3.1-generate-preview",
+            "3.1-fast": "veo-3.1-fast-generate-preview",
+          };
+          const veoModel = veoModelMap[options.veoModel] || "veo-3.1-fast-generate-preview";
+
           const veoDuration = parseInt(options.duration) <= 6 ? 6 : 8;
+
+          // Prepare last frame if provided
+          let lastFrame: string | undefined;
+          if (options.lastFrame) {
+            const lastFramePath = resolve(process.cwd(), options.lastFrame);
+            const lastFrameBuffer = await readFile(lastFramePath);
+            const ext = options.lastFrame.toLowerCase().split(".").pop();
+            const mimeType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext || "png"}`;
+            lastFrame = `data:${mimeType};base64,${lastFrameBuffer.toString("base64")}`;
+          }
+
+          // Prepare reference images if provided
+          let refImages: Array<{ base64: string; mimeType: string }> | undefined;
+          if (options.refImages && options.refImages.length > 0) {
+            refImages = [];
+            for (const refPath of options.refImages.slice(0, 3)) {
+              const absRefPath = resolve(process.cwd(), refPath);
+              const refBuffer = await readFile(absRefPath);
+              const ext = refPath.toLowerCase().split(".").pop();
+              const mimeType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext || "png"}`;
+              refImages.push({ base64: refBuffer.toString("base64"), mimeType });
+            }
+          }
+
           result = await gemini.generateVideo(prompt, {
             prompt,
             referenceImage,
             duration: veoDuration,
-            aspectRatio: options.ratio as "16:9" | "9:16",
-            model: "veo-3.1-fast-generate-preview",
+            aspectRatio: options.ratio as "16:9" | "9:16" | "1:1",
+            model: veoModel as "veo-3.0-generate-preview" | "veo-3.1-generate-preview" | "veo-3.1-fast-generate-preview",
+            negativePrompt: options.negative,
+            resolution: options.resolution as "720p" | "1080p" | "4k" | undefined,
+            lastFrame,
+            referenceImages: refImages,
+            personGeneration: options.person as "allow_all" | "allow_adult" | undefined,
           });
 
           if (result.status === "failed") {
@@ -243,8 +285,8 @@ export function registerVideoCommands(aiCommand: Command): void {
           );
         }
 
-        if (finalResult.status !== "completed") {
-          spinner.fail(chalk.red(finalResult.error || "Generation failed"));
+        if (!finalResult || finalResult.status !== "completed") {
+          spinner.fail(chalk.red(finalResult?.error || "Generation failed"));
           process.exit(1);
         }
 
@@ -664,6 +706,104 @@ export function registerVideoCommands(aiCommand: Command): void {
         }
         if (finalResult.duration) {
           console.log(`Duration: ${finalResult.duration}s`);
+        }
+        console.log();
+
+        if (options.output && finalResult.videoUrl) {
+          const downloadSpinner = ora("Downloading video...").start();
+          try {
+            const response = await fetch(finalResult.videoUrl);
+            const buffer = Buffer.from(await response.arrayBuffer());
+            const outputPath = resolve(process.cwd(), options.output);
+            await writeFile(outputPath, buffer);
+            downloadSpinner.succeed(chalk.green(`Saved to: ${outputPath}`));
+          } catch {
+            downloadSpinner.fail(chalk.red("Failed to download video"));
+          }
+        }
+      } catch (error) {
+        console.error(chalk.red("Video extension failed"));
+        console.error(error);
+        process.exit(1);
+      }
+    });
+
+  aiCommand
+    .command("veo-extend")
+    .description("Extend a Veo video using the operation name from a previous generation")
+    .argument("<operation-name>", "Veo operation name (from generation result)")
+    .option("-k, --api-key <key>", "Google API key (or set GOOGLE_API_KEY env)")
+    .option("-o, --output <path>", "Output file path")
+    .option("-p, --prompt <text>", "Continuation prompt")
+    .option("-d, --duration <sec>", "Duration: 4, 6, or 8 seconds", "6")
+    .option("--veo-model <model>", "Veo model: 3.0, 3.1, 3.1-fast", "3.1")
+    .option("--no-wait", "Start extension and return operation name without waiting")
+    .action(async (operationName: string, options) => {
+      try {
+        const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
+        if (!apiKey) {
+          console.error(chalk.red("Google API key required."));
+          console.error(chalk.dim("Use --api-key or set GOOGLE_API_KEY environment variable"));
+          process.exit(1);
+        }
+
+        const spinner = ora("Initializing Veo...").start();
+
+        const gemini = new GeminiProvider();
+        await gemini.initialize({ apiKey });
+
+        const veoModelMap: Record<string, string> = {
+          "3.0": "veo-3.0-generate-preview",
+          "3.1": "veo-3.1-generate-preview",
+          "3.1-fast": "veo-3.1-fast-generate-preview",
+        };
+        const veoModel = veoModelMap[options.veoModel] || "veo-3.1-generate-preview";
+
+        spinner.text = "Starting video extension...";
+
+        const result = await gemini.extendVideo(operationName, options.prompt, {
+          duration: parseInt(options.duration) as 4 | 6 | 8,
+          model: veoModel as "veo-3.0-generate-preview" | "veo-3.1-generate-preview" | "veo-3.1-fast-generate-preview",
+        });
+
+        if (result.status === "failed") {
+          spinner.fail(chalk.red(result.error || "Failed to start extension"));
+          process.exit(1);
+        }
+
+        console.log();
+        console.log(chalk.bold.cyan("Veo Video Extension Started"));
+        console.log(chalk.dim("─".repeat(60)));
+        console.log(`Operation: ${chalk.bold(result.id)}`);
+
+        if (!options.wait) {
+          spinner.succeed(chalk.green("Extension started"));
+          console.log();
+          console.log(chalk.dim("Check status or wait with:"));
+          console.log(chalk.dim(`  vibe ai veo-extend ${result.id} --wait`));
+          console.log();
+          return;
+        }
+
+        spinner.text = "Extending video (this may take 1-3 minutes)...";
+        const finalResult = await gemini.waitForVideoCompletion(
+          result.id,
+          (status) => {
+            spinner.text = `Extending video... ${status.status}`;
+          },
+          300000
+        );
+
+        if (finalResult.status !== "completed") {
+          spinner.fail(chalk.red(finalResult.error || "Extension failed"));
+          process.exit(1);
+        }
+
+        spinner.succeed(chalk.green("Video extended"));
+
+        console.log();
+        if (finalResult.videoUrl) {
+          console.log(`Video URL: ${finalResult.videoUrl}`);
         }
         console.log();
 

@@ -24,12 +24,13 @@ import urllib.error
 
 MODELS = {
     "flash": "gemini-2.5-flash-image",
+    "3.1-flash": "gemini-3.1-flash-image-preview",
     "pro": "gemini-3-pro-image-preview",
 }
 
-ASPECT_RATIOS = ["1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"]
+ASPECT_RATIOS = ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9"]
 
-RESOLUTIONS = ["1K", "2K", "4K"]
+RESOLUTIONS = ["512px", "1K", "2K", "4K"]
 
 
 def generate_image(

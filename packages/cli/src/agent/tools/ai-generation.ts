@@ -4,7 +4,7 @@
  * storyboard, motion). Wraps providers for agent use. Some features require
  * async polling -- tool returns immediately with task status.
  *
- * ## Tools: ai_image, ai_video, ai_kling, ai_tts, ai_sfx, ai_music, ai_storyboard, ai_motion
+ * ## Tools: ai_image, ai_video, ai_kling, ai_veo, ai_tts, ai_sfx, ai_music, ai_storyboard, ai_motion
  * ## Dependencies: OpenAI, Gemini, Stability, Runway, Kling, ElevenLabs, Replicate, Claude, Remotion
  * @see MODELS.md for the Single Source of Truth (SSOT) on supported providers/models
  */
@@ -106,6 +106,42 @@ const klingDef: ToolDefinition = {
         type: "string",
         description: "Quality mode (std or pro)",
         enum: ["std", "pro"],
+      },
+    },
+    required: ["prompt"],
+  },
+};
+
+const veoDef: ToolDefinition = {
+  name: "ai_veo",
+  description: "Generate video using Google Veo 3.1. Supports text-to-video and image-to-video. Native audio support. Good for high-quality video generation.",
+  parameters: {
+    type: "object",
+    properties: {
+      prompt: {
+        type: "string",
+        description: "Video generation prompt",
+      },
+      image: {
+        type: "string",
+        description: "Optional input image path for image-to-video",
+      },
+      output: {
+        type: "string",
+        description: "Output file path",
+      },
+      duration: {
+        type: "number",
+        description: "Video duration in seconds (4, 6, or 8)",
+      },
+      negativePrompt: {
+        type: "string",
+        description: "What to avoid in the generated video",
+      },
+      resolution: {
+        type: "string",
+        description: "Video resolution",
+        enum: ["720p", "1080p", "4k"],
       },
     },
     required: ["prompt"],
@@ -257,12 +293,11 @@ const motionDef: ToolDefinition = {
 
 const generateImage: ToolHandler = async (args, context): Promise<ToolResult> => {
   const prompt = args.prompt as string;
-  let provider = (args.provider as string) || "gemini";
+  const provider = (args.provider as string) || "gemini";
   const output = (args.output as string) || `generated-${getTimestamp()}.png`;
   const size = (args.size as string) || "1024x1024";
 
   try {
-    let apiKey: string | undefined;
     let providerKey: string;
 
     switch (provider) {
@@ -280,7 +315,7 @@ const generateImage: ToolHandler = async (args, context): Promise<ToolResult> =>
         providerKey = "openai";
     }
 
-    apiKey = await getApiKeyFromConfig(providerKey);
+    const apiKey = await getApiKeyFromConfig(providerKey);
     if (!apiKey) {
       return {
         toolCallId: "",
@@ -569,6 +604,100 @@ const generateKling: ToolHandler = async (args, context): Promise<ToolResult> =>
       success: false,
       output: "",
       error: `Failed to generate Kling video: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+};
+
+const generateVeo: ToolHandler = async (args, context): Promise<ToolResult> => {
+  const prompt = args.prompt as string;
+  const imagePath = args.image as string | undefined;
+  const output = (args.output as string) || `veo-${getTimestamp()}.mp4`;
+  const duration = (args.duration as number) || 6;
+  const negativePrompt = args.negativePrompt as string | undefined;
+  const resolution = args.resolution as "720p" | "1080p" | "4k" | undefined;
+
+  try {
+    const apiKey = await getApiKeyFromConfig("google");
+    if (!apiKey) {
+      return {
+        toolCallId: "",
+        success: false,
+        output: "",
+        error: "Google API key required. Configure via 'vibe setup'.",
+      };
+    }
+
+    const { GeminiProvider } = await import("@vibeframe/ai-providers");
+    const gemini = new GeminiProvider();
+    await gemini.initialize({ apiKey });
+
+    // Prepare reference image if provided
+    let referenceImage: string | undefined;
+    if (imagePath) {
+      const absImagePath = resolve(context.workingDirectory, imagePath);
+      const imageBuffer = await readFile(absImagePath);
+      const base64 = imageBuffer.toString("base64");
+      const ext = imagePath.split(".").pop()?.toLowerCase() || "png";
+      const mimeType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
+      referenceImage = `data:${mimeType};base64,${base64}`;
+    }
+
+    const veoDuration = duration <= 6 ? (duration <= 4 ? 4 : 6) : 8;
+
+    const result = await gemini.generateVideo(prompt, {
+      prompt,
+      duration: veoDuration as 4 | 6 | 8,
+      referenceImage,
+      model: "veo-3.1-fast-generate-preview",
+      negativePrompt,
+      resolution,
+    });
+
+    if (result.status === "failed") {
+      return {
+        toolCallId: "",
+        success: false,
+        output: "",
+        error: `Veo video generation failed: ${result.error}`,
+      };
+    }
+
+    // Poll for completion
+    if (result.status === "pending" || result.status === "processing") {
+      const finalResult = await gemini.waitForVideoCompletion(
+        result.id,
+        undefined,
+        300000
+      );
+
+      if (finalResult.status !== "completed") {
+        return {
+          toolCallId: "",
+          success: false,
+          output: "",
+          error: `Veo video generation timed out or failed: ${finalResult.error || finalResult.status}`,
+        };
+      }
+
+      if (finalResult.videoUrl) {
+        const outputPath = resolve(context.workingDirectory, output);
+        const response = await fetch(finalResult.videoUrl);
+        const buffer = Buffer.from(await response.arrayBuffer());
+        await writeFile(outputPath, buffer);
+      }
+    }
+
+    return {
+      toolCallId: "",
+      success: true,
+      output: `Veo video generated: ${output}\nPrompt: ${prompt}\nDuration: ${veoDuration}s`,
+    };
+  } catch (error) {
+    return {
+      toolCallId: "",
+      success: false,
+      output: "",
+      error: `Failed to generate Veo video: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 };
@@ -875,6 +1004,7 @@ export function registerGenerationTools(registry: ToolRegistry): void {
   registry.register(imageDef, generateImage);
   registry.register(videoDef, generateVideo);
   registry.register(klingDef, generateKling);
+  registry.register(veoDef, generateVeo);
   registry.register(ttsDef, generateTTS);
   registry.register(sfxDef, generateSFX);
   registry.register(musicDef, generateMusic);

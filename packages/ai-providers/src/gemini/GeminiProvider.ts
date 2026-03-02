@@ -20,12 +20,12 @@ import { analyzeContent as analyzeContentImpl } from "./gemini-storyboard.js";
 /**
  * Gemini model types for image generation
  */
-export type GeminiImageModel = "flash" | "pro" | "gemini-2.5-flash-image" | "gemini-3-pro-image-preview";
+export type GeminiImageModel = "flash" | "3.1-flash" | "pro" | "gemini-2.5-flash-image" | "gemini-3.1-flash-image-preview" | "gemini-3-pro-image-preview";
 
 /**
  * Image resolution (Pro model only)
  */
-export type GeminiImageResolution = "1K" | "2K" | "4K";
+export type GeminiImageResolution = "512px" | "1K" | "2K" | "4K";
 
 /**
  * Image generation options for Gemini (Nano Banana)
@@ -34,11 +34,15 @@ export interface GeminiImageOptions {
   /** Model to use: flash (fast) or pro (professional) */
   model?: GeminiImageModel;
   /** Aspect ratio */
-  aspectRatio?: "1:1" | "2:3" | "3:2" | "3:4" | "4:3" | "4:5" | "5:4" | "9:16" | "16:9" | "21:9";
-  /** Image resolution: 1K, 2K, 4K (Pro model only) */
+  aspectRatio?: "1:1" | "1:4" | "1:8" | "2:3" | "3:2" | "3:4" | "4:1" | "4:3" | "4:5" | "5:4" | "8:1" | "9:16" | "16:9" | "21:9";
+  /** Image resolution: 512px, 1K, 2K, 4K */
   resolution?: GeminiImageResolution;
-  /** Enable Google Search grounding (Pro model only) */
+  /** Enable Google Search grounding (Pro model only, or 3.1 Flash with imageSearch) */
   grounding?: boolean;
+  /** Thinking configuration (for models that support it) */
+  thinkingConfig?: { thinkingLevel: "minimal" | "High"; includeThoughts?: boolean };
+  /** Enable Image Search grounding (3.1 Flash only) */
+  imageSearchGrounding?: boolean;
   /** Safety filter level */
   safetyFilterLevel?: "block_low_and_above" | "block_medium_and_above" | "block_only_high";
   /** Person generation setting */
@@ -52,7 +56,7 @@ export interface GeminiEditOptions {
   /** Model to use: flash (max 3 images) or pro (max 14 images) */
   model?: GeminiImageModel;
   /** Output aspect ratio */
-  aspectRatio?: "1:1" | "2:3" | "3:2" | "3:4" | "4:3" | "4:5" | "5:4" | "9:16" | "16:9" | "21:9";
+  aspectRatio?: "1:1" | "1:4" | "1:8" | "2:3" | "3:2" | "3:4" | "4:1" | "4:3" | "4:5" | "5:4" | "8:1" | "9:16" | "16:9" | "21:9";
   /** Image resolution: 1K, 2K, 4K (Pro model only) */
   resolution?: GeminiImageResolution;
 }
@@ -94,6 +98,16 @@ export interface VeoVideoOptions {
   aspectRatio?: "16:9" | "9:16" | "1:1";
   /** Reference image URL or base64 for image-to-video */
   referenceImage?: string;
+  /** Negative prompt - what to avoid in the generated video */
+  negativePrompt?: string;
+  /** Video resolution */
+  resolution?: "720p" | "1080p" | "4k";
+  /** Last frame image for frame interpolation (base64 or URL) */
+  lastFrame?: string;
+  /** Reference images for character consistency (max 3, Veo 3.1 only) */
+  referenceImages?: Array<{ base64: string; mimeType: string }>;
+  /** Person generation setting */
+  personGeneration?: "allow_all" | "allow_adult";
 }
 
 /**
@@ -152,8 +166,10 @@ export interface GeminiImageAnalysisResult {
 
 const MODEL_MAP: Record<string, string> = {
   "flash": "gemini-2.5-flash-image",
+  "3.1-flash": "gemini-3.1-flash-image-preview",
   "pro": "gemini-3-pro-image-preview",
   "gemini-2.5-flash-image": "gemini-2.5-flash-image",
+  "gemini-3.1-flash-image-preview": "gemini-3.1-flash-image-preview",
   "gemini-3-pro-image-preview": "gemini-3-pro-image-preview",
 };
 
@@ -201,8 +217,11 @@ export class GeminiProvider implements AIProvider {
     }
 
     try {
+      // Cast to VeoVideoOptions for Veo-specific fields
+      const veoOpts = (options ?? {}) as VeoVideoOptions & GenerateOptions;
+
       // Default to Veo 3.1 Fast for better speed/cost ratio
-      const model = (options?.model as VeoModel) || "veo-3.1-fast-generate-preview";
+      const model = (veoOpts.model as VeoModel) || "veo-3.1-fast-generate-preview";
 
       // Map aspect ratio
       const aspectRatioMap: Record<string, string> = {
@@ -211,33 +230,60 @@ export class GeminiProvider implements AIProvider {
         "1:1": "1:1",
       };
 
-      const requestBody: Record<string, unknown> = {
-        instances: [{
-          prompt,
-        }],
-        parameters: {
-          aspectRatio: aspectRatioMap[options?.aspectRatio || "16:9"] || "16:9",
-          durationSeconds: Math.max(4, Math.min(8, options?.duration || 8)),
-        },
+      const parameters: Record<string, unknown> = {
+        aspectRatio: aspectRatioMap[veoOpts.aspectRatio || "16:9"] || "16:9",
+        durationSeconds: Math.max(4, Math.min(8, veoOpts.duration || 8)),
       };
 
+      // Add Veo-specific parameters
+      if (veoOpts.negativePrompt) {
+        parameters.negativePrompt = veoOpts.negativePrompt;
+      }
+      if (veoOpts.resolution) {
+        parameters.resolution = veoOpts.resolution;
+      }
+      if (veoOpts.personGeneration) {
+        parameters.personGeneration = veoOpts.personGeneration;
+      }
+
+      const instance: Record<string, unknown> = { prompt };
+
       // Add reference image for image-to-video
-      if (options?.referenceImage) {
-        const imageData = options.referenceImage as string;
+      if (veoOpts.referenceImage) {
+        const imageData = veoOpts.referenceImage as string;
         if (imageData.startsWith("data:")) {
-          // Extract base64 from data URI
           const base64 = imageData.split(",")[1];
           const mimeType = imageData.split(";")[0].split(":")[1];
-          (requestBody.instances as Array<Record<string, unknown>>)[0].image = {
-            bytesBase64Encoded: base64,
-            mimeType,
-          };
+          instance.image = { bytesBase64Encoded: base64, mimeType };
         } else if (imageData.startsWith("http")) {
-          (requestBody.instances as Array<Record<string, unknown>>)[0].image = {
-            gcsUri: imageData,
-          };
+          instance.image = { gcsUri: imageData };
         }
       }
+
+      // Add last frame for frame interpolation
+      if (veoOpts.lastFrame) {
+        const lastFrameData = veoOpts.lastFrame;
+        if (lastFrameData.startsWith("data:")) {
+          const base64 = lastFrameData.split(",")[1];
+          const mimeType = lastFrameData.split(";")[0].split(":")[1];
+          instance.lastFrame = { bytesBase64Encoded: base64, mimeType };
+        } else if (lastFrameData.startsWith("http")) {
+          instance.lastFrame = { gcsUri: lastFrameData };
+        }
+      }
+
+      // Add reference images for character consistency (Veo 3.1 only)
+      if (veoOpts.referenceImages && veoOpts.referenceImages.length > 0) {
+        instance.referenceImages = veoOpts.referenceImages.slice(0, 3).map((img: { base64: string; mimeType: string }) => ({
+          bytesBase64Encoded: img.base64,
+          mimeType: img.mimeType,
+        }));
+      }
+
+      const requestBody: Record<string, unknown> = {
+        instances: [instance],
+        parameters,
+      };
 
       const response = await fetch(
         `${this.baseUrl}/models/${model}:predictLongRunning`,
@@ -452,6 +498,88 @@ export class GeminiProvider implements AIProvider {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  /**
+   * Extend a previously generated Veo video
+   * Uses the operation name from a completed generation to create a continuation
+   */
+  async extendVideo(
+    previousOperationName: string,
+    prompt?: string,
+    options?: { duration?: 4 | 6 | 8; model?: VeoModel }
+  ): Promise<VideoResult> {
+    if (!this.apiKey) {
+      return {
+        id: "",
+        status: "failed",
+        error: "Gemini API key not configured",
+      };
+    }
+
+    try {
+      const model = options?.model || "veo-3.1-generate-preview";
+
+      const instance: Record<string, unknown> = {
+        video: { previousOperationName },
+      };
+      if (prompt) {
+        instance.prompt = prompt;
+      }
+
+      const requestBody: Record<string, unknown> = {
+        instances: [instance],
+        parameters: {
+          durationSeconds: Math.max(4, Math.min(8, options?.duration || 6)),
+        },
+      };
+
+      const response = await fetch(
+        `${this.baseUrl}/models/${model}:predictLongRunning`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": this.apiKey,
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return {
+          id: "",
+          status: "failed",
+          error: `Veo extend API error (${response.status}): ${errorText}`,
+        };
+      }
+
+      const data = await response.json() as {
+        name?: string;
+        error?: { message: string };
+      };
+
+      if (data.name) {
+        return {
+          id: data.name,
+          status: "pending",
+          progress: 0,
+        };
+      }
+
+      return {
+        id: "",
+        status: "failed",
+        error: data.error?.message || "Unknown Veo extend error",
+      };
+    } catch (error) {
+      return {
+        id: "",
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
   async cancelGeneration(_id: string): Promise<boolean> {
     // Veo operations cannot be cancelled
     return false;
@@ -499,9 +627,11 @@ export class GeminiProvider implements AIProvider {
         imageConfig.aspectRatio = "1:1";
       }
 
-      // Resolution is only for Pro model
-      if (options.resolution && isPro) {
-        imageConfig.imageSize = options.resolution;
+      // Resolution: 512px available for all models, 2K/4K for Pro only
+      if (options.resolution) {
+        if (options.resolution === "512px" || options.resolution === "1K" || isPro) {
+          imageConfig.imageSize = options.resolution;
+        }
       }
 
       // Build generation config
@@ -510,14 +640,23 @@ export class GeminiProvider implements AIProvider {
         imageConfig,
       };
 
+      // Add thinking config if specified
+      if (options.thinkingConfig) {
+        generationConfig.thinkingConfig = options.thinkingConfig;
+      }
+
       // Build payload
       const payload: Record<string, unknown> = {
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig,
       };
 
-      // Add Google Search grounding (Pro only)
-      if (options.grounding && isPro) {
+      // Add Google Search grounding
+      const is31Flash = modelId === "gemini-3.1-flash-image-preview";
+      if (options.imageSearchGrounding && is31Flash) {
+        // 3.1 Flash supports Image Search grounding
+        payload.tools = [{ googleSearch: { searchTypes: { webSearch: {}, imageSearch: {} } } }];
+      } else if (options.grounding && isPro) {
         payload.tools = [{ googleSearch: {} }];
       }
 
