@@ -388,14 +388,14 @@ aiCommand
         const videoPath = resolve(footageDir, videoFileName);
 
         spinner.text = "Downloading generated video...";
-        let currentVideoUrl = finalResult.videoUrl;
+        const currentVideoUrl = finalResult.videoUrl;
         const response = await fetch(currentVideoUrl);
         const videoBuffer = Buffer.from(await response.arrayBuffer());
         await writeFile(videoPath, videoBuffer);
 
         generatedDuration = finalResult.duration || parseInt(klingDuration);
         generatedVideos.push(videoPath);
-        let currentVideoId = finalResult.videoId;
+        // videoId available via finalResult.videoId for future extend API usage
 
         spinner.succeed(chalk.green(`Generated: ${videoFileName} (${generatedDuration}s)`));
 

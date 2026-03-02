@@ -17,7 +17,7 @@
  */
 
 import { resolve, dirname, basename, extname, join } from 'node:path';
-import { readFile, writeFile, mkdir, readdir, unlink } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import {
   GeminiProvider,

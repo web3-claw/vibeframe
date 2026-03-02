@@ -2,7 +2,7 @@
  * Batch Tools - Batch operations for processing multiple items
  */
 
-import { readFile, writeFile, readdir, stat } from "node:fs/promises";
+import { readFile, writeFile, readdir } from "node:fs/promises";
 import { resolve, basename, extname, join } from "node:path";
 import type { ToolRegistry, ToolHandler } from "./index.js";
 import type { ToolDefinition, ToolResult } from "../types.js";
@@ -267,7 +267,7 @@ const batchConcat: ToolHandler = async (args, context): Promise<ToolResult> => {
     const project = Project.fromJSON(data);
 
     // Get sources to concatenate
-    let sourcesToConcat = useAll
+    const sourcesToConcat = useAll
       ? project.getSources()
       : sourceIds.map((id) => project.getSource(id)).filter(Boolean);
 
@@ -364,7 +364,7 @@ const batchApplyEffect: ToolHandler = async (args, context): Promise<ToolResult>
     const project = Project.fromJSON(data);
 
     // Get clips to apply effect to
-    let targetClips = useAll
+    const targetClips = useAll
       ? project.getClips()
       : clipIds.map((id) => project.getClip(id)).filter(Boolean);
 

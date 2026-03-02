@@ -521,7 +521,8 @@ const concatDef: ToolDefinition = {
 const compress: ToolHandler = async (args, context): Promise<ToolResult> => {
   const inputPath = args.input as string;
   const quality = (args.quality as string) || "medium";
-  const maxSize = args.maxSize as string | undefined;
+  // maxSize is accepted as a parameter but not yet implemented
+  // const maxSize = args.maxSize as string | undefined;
 
   try {
     const absInput = resolve(context.workingDirectory, inputPath);

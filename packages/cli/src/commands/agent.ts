@@ -9,7 +9,7 @@ import { createRequire } from "node:module";
 import chalk from "chalk";
 import ora from "ora";
 import { AgentExecutor } from "../agent/index.js";
-import { loadConfig, getApiKeyFromConfig, type LLMProvider } from "../config/index.js";
+import { getApiKeyFromConfig, type LLMProvider } from "../config/index.js";
 import { hasTTY } from "../utils/tty.js";
 import { loadEnv } from "../utils/api-key.js";
 

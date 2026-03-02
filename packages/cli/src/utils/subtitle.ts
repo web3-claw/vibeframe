@@ -135,7 +135,7 @@ export function parseSRT(content: string): SubtitleSegment[] {
     // Line 1: timestamp line
     const timeLine = lines[1].trim();
     const timeMatch = timeLine.match(
-      /(\d{2}:\d{2}:\d{2}[,\.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,\.]\d{3})/,
+      /(\d{2}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}[,.]\d{3})/,
     );
     if (!timeMatch) continue;
 

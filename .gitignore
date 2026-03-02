@@ -23,6 +23,12 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# Security
+*.pem
+*.key
+credentials.json
+service-account*.json
+
 # Testing
 coverage
 
@@ -37,6 +43,7 @@ pnpm-debug.log*
 
 samples/
 # Generated outputs
+demo/
 demo-output/
 test-results/
 
@@ -60,3 +67,5 @@ docs/*.mp4
 # Internal docs
 ROADMAP-CLOUD.md
 scripts/DEV_GUIDE.md
+scripts/FUNC_TEST.md
+scripts/QUICK_TEST.md

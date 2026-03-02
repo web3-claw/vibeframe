@@ -6,7 +6,7 @@ import { readFile, writeFile, stat } from "node:fs/promises";
 import { resolve, basename, extname } from "node:path";
 import { Project, type ProjectFile } from "../../engine/index.js";
 import type { ToolRegistry, ToolHandler } from "./index.js";
-import type { ToolDefinition, ToolResult, AgentContext } from "../types.js";
+import type { ToolDefinition, ToolResult } from "../types.js";
 import type { MediaType, EffectType } from "@vibeframe/core/timeline";
 import { ffprobeDuration } from "../../utils/exec-safe.js";
 

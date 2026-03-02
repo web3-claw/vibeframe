@@ -22,7 +22,7 @@ import {
   ReplicateProvider,
 } from '@vibeframe/ai-providers';
 import { getApiKey } from '../utils/api-key.js';
-import { execSafe, commandExists, ffprobeDuration } from '../utils/exec-safe.js';
+import { execSafe, commandExists } from '../utils/exec-safe.js';
 import { formatTime } from './ai-helpers.js';
 import { applyTextOverlays, type TextOverlayStyle } from './ai-edit.js';
 

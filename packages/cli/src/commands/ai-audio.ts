@@ -14,7 +14,7 @@
 
 import { type Command } from 'commander';
 import { resolve, dirname, basename, extname } from 'node:path';
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import chalk from 'chalk';
 import ora from 'ora';
@@ -23,13 +23,10 @@ import {
   ElevenLabsProvider,
   ReplicateProvider,
   ClaudeProvider,
-  resolveVoiceId,
-  KNOWN_VOICES,
 } from '@vibeframe/ai-providers';
 import { getApiKey } from '../utils/api-key.js';
 import { execSafe, execSafeSync, commandExists } from '../utils/exec-safe.js';
 import { detectFormat, formatTranscript } from '../utils/subtitle.js';
-import { getAudioDuration } from '../utils/audio.js';
 import { formatTime } from './ai-helpers.js';
 
 function _registerAudioCommands(aiCommand: Command): void {

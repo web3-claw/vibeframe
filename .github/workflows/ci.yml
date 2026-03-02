@@ -36,6 +36,8 @@ jobs:
 
       - name: Test
         run: pnpm test
+        env:
+          CI: true
 
       - name: Lint
         run: pnpm lint
@@ -62,4 +64,4 @@ jobs:
         run: pnpm install
 
       - name: Type check
-        run: pnpm build
+        run: pnpm -r exec tsc --noEmit

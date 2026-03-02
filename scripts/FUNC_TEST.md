@@ -208,7 +208,7 @@ Pass: `ted-highlights.mp4` — Highlight segments concatenated (~60 seconds)
 > **Required API key**: `OPENAI_API_KEY` (default) or `GOOGLE_API_KEY` (with `--use-gemini`)
 
 ```bash
-vibe ai auto-shorts test-results/ted-talk.mp4 -d 60 -a 9:16 -o test-results/ted-short.mp4 --add-captions
+ 
 ```
 
 Pass: `ted-short.mp4` — Vertical (9:16) 60-second short-form video (most impactful segment auto-selected)

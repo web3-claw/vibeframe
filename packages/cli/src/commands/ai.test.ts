@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { execSync } from "child_process";
 import { resolve } from "path";
 import { detectFillerRanges, DEFAULT_FILLER_WORDS } from "./ai.js";
-import type { FillerWord } from "./ai.js";
 
 const CLI = `npx tsx ${resolve(__dirname, "../index.ts")}`;
 

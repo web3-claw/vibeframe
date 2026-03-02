@@ -37,7 +37,7 @@ export const resources = [
 ];
 
 // Current project path (set via environment or default)
-let currentProjectPath: string | null = process.env.VIBE_PROJECT_PATH || null;
+const currentProjectPath: string | null = process.env.VIBE_PROJECT_PATH || null;
 
 /**
  * Get the current project path

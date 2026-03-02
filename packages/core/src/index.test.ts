@@ -7,12 +7,7 @@ import { describe, it, expect } from "vitest";
 import {
   useTimelineStore,
   generateId,
-  type TimelineState,
-  type Clip,
   type Track,
-  type MediaSource,
-  type Effect,
-  type TimelineStore,
 } from "./index.js";
 
 describe("@vibeframe/core", () => {

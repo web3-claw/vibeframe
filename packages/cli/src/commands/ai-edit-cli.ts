@@ -13,7 +13,7 @@
 import { type Command } from 'commander';
 import { resolve, extname, basename } from 'node:path';
 import { existsSync } from 'node:fs';
-import { execSync } from 'node:child_process';
+import { commandExists } from '../utils/exec-safe.js';
 import chalk from 'chalk';
 import ora from 'ora';
 import { getApiKey } from '../utils/api-key.js';
@@ -54,9 +54,7 @@ aiCommand
       }
 
       // Check FFmpeg
-      try {
-        execSync("ffmpeg -version", { stdio: "ignore" });
-      } catch {
+      if (!commandExists("ffmpeg")) {
         console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
         process.exit(1);
       }
@@ -145,9 +143,7 @@ aiCommand
       }
 
       // Check FFmpeg
-      try {
-        execSync("ffmpeg -version", { stdio: "ignore" });
-      } catch {
+      if (!commandExists("ffmpeg")) {
         console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
         process.exit(1);
       }
@@ -219,9 +215,7 @@ aiCommand
         process.exit(1);
       }
 
-      try {
-        execSync("ffmpeg -version", { stdio: "ignore" });
-      } catch {
+      if (!commandExists("ffmpeg")) {
         console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
         process.exit(1);
       }
@@ -281,9 +275,7 @@ aiCommand
         process.exit(1);
       }
 
-      try {
-        execSync("ffmpeg -version", { stdio: "ignore" });
-      } catch {
+      if (!commandExists("ffmpeg")) {
         console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
         process.exit(1);
       }
@@ -422,9 +414,7 @@ aiCommand
       }
 
       // Check FFmpeg
-      try {
-        execSync("ffmpeg -version", { stdio: "ignore" });
-      } catch {
+      if (!commandExists("ffmpeg")) {
         console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
         process.exit(1);
       }

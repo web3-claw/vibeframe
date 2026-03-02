@@ -24,7 +24,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { execSync } from "node:child_process";
 import { ToolRegistry } from "./index.js";

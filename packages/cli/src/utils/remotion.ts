@@ -527,7 +527,7 @@ export function generateCaptionComponent(options: GenerateCaptionComponentOption
   code: string;
   name: string;
 } {
-  const { segments, style, fontSize, fontColor, position, width, height, videoFileName } = options;
+  const { segments, style, fontSize, fontColor, position, width, videoFileName } = options;
   const name = videoFileName ? "VideoCaptioned" : "CaptionOverlay";
 
   const segmentsJSON = JSON.stringify(

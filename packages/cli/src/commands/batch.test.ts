@@ -205,7 +205,7 @@ describe("batch commands", () => {
         { cwd: process.cwd(), encoding: "utf-8" }
       );
 
-      let content = JSON.parse(readFileSync(projectFile, "utf-8"));
+      const content = JSON.parse(readFileSync(projectFile, "utf-8"));
       content.state.sources.forEach((s: any) => {
         s.duration = 5;
       });
@@ -252,7 +252,7 @@ describe("batch commands", () => {
         { cwd: process.cwd(), encoding: "utf-8" }
       );
 
-      let content = JSON.parse(readFileSync(projectFile, "utf-8"));
+      const content = JSON.parse(readFileSync(projectFile, "utf-8"));
       content.state.sources.forEach((s: any) => {
         s.duration = 5;
       });

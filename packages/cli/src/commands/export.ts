@@ -374,7 +374,6 @@ function createGapFillPlans(
   const sortedClips = [...clips].sort((a, b) => a.startTime - b.startTime);
 
   return gaps.map((gap) => {
-    const gapDuration = gap.end - gap.start;
     const fills: GapFillPlan["fills"] = [];
     let remainingStart = gap.start;
     let remainingEnd = gap.end;

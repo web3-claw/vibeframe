@@ -4,7 +4,6 @@
  */
 
 import type {
-  AgentConfig,
   AgentMessage,
   AgentContext,
   ToolCall,
@@ -41,6 +40,20 @@ export interface ExecutionResult {
  * AgentExecutor class
  * Handles the agentic loop: reason → tool call → result → reason → ...
  */
+/** Mask sensitive values in tool arguments for verbose logging */
+function maskSensitiveArgs(args: Record<string, unknown>): Record<string, unknown> {
+  const sensitiveKeys = ["apiKey", "api_key", "token", "secret", "password", "key"];
+  const masked: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(args)) {
+    if (sensitiveKeys.some((sk) => k.toLowerCase().includes(sk.toLowerCase())) && typeof v === "string") {
+      masked[k] = v.slice(0, 4) + "****";
+    } else {
+      masked[k] = v;
+    }
+  }
+  return masked;
+}
+
 export class AgentExecutor {
   private adapter: LLMAdapter | null = null;
   private registry: ToolRegistry;
@@ -125,7 +138,8 @@ export class AgentExecutor {
         for (const toolCall of response.toolCalls) {
           if (this.config.verbose) {
             console.log(`[Agent] Calling tool: ${toolCall.name}`);
-            console.log(`[Agent] Args: ${JSON.stringify(toolCall.arguments)}`);
+            const maskedArgs = maskSensitiveArgs(toolCall.arguments);
+            console.log(`[Agent] Args: ${JSON.stringify(maskedArgs)}`);
           }
 
           const result = await this.executeTool(toolCall);

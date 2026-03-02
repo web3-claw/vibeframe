@@ -134,11 +134,7 @@ const exportVideo: ToolHandler = async (args, context): Promise<ToolResult> => {
   }
 };
 
-const exportAudio: ToolHandler = async (args, context): Promise<ToolResult> => {
-  const projectPath = args.project as string;
-  const format = (args.format as string) || "mp3";
-  const output = (args.output as string) ||
-    `${basename(projectPath, ".vibe.json")}.${format}`;
+const exportAudio: ToolHandler = async (_args, _context): Promise<ToolResult> => {
 
   try {
     // Audio export would be implemented similarly to video export
@@ -159,11 +155,7 @@ const exportAudio: ToolHandler = async (args, context): Promise<ToolResult> => {
   }
 };
 
-const exportSubtitles: ToolHandler = async (args, context): Promise<ToolResult> => {
-  const projectPath = args.project as string;
-  const format = (args.format as string) || "srt";
-  const output = (args.output as string) ||
-    `${basename(projectPath, ".vibe.json")}.${format}`;
+const exportSubtitles: ToolHandler = async (_args, _context): Promise<ToolResult> => {
 
   try {
     // Subtitle export would extract transcription data from project
