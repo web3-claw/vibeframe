@@ -82,15 +82,18 @@ All Gemini image models support 14 aspect ratios: `1:1`, `1:4`, `1:8`, `2:3`, `3
 
 ## Text-to-Video (4)
 
-| Provider | Model | Duration | Env Key | CLI Option | Notes |
-|----------|-------|----------|---------|------------|-------|
-| Kling | `kling-v2-5-turbo` | 5-10 sec | `KLING_API_KEY` | `-p kling` | Default, fast (~36s generation) |
-| Kling | `kling-v2-6` | 5-10 sec | `KLING_API_KEY` | `-p kling -m v2.6` | Higher quality |
-| Veo | `veo-3.1-fast-generate-preview` | 4-8 sec | `GOOGLE_API_KEY` | `-p veo` | Native audio, fast |
-| Veo | `veo-3.1-generate-preview` | 4-8 sec | `GOOGLE_API_KEY` | `-p veo --veo-model 3.1` | Native audio, higher quality |
-| Veo | `veo-3.0-generate-preview` | 5-8 sec | `GOOGLE_API_KEY` | `-p veo --veo-model 3.0` | Native audio |
-| Runway | `gen4_turbo` | 5-10 sec | `RUNWAY_API_SECRET` | `-p runway` | Top-ranked quality |
-| xAI Grok | `grok-imagine-video` | 1-15 sec | `XAI_API_KEY` | `-p grok` | Native audio, $4.20/min |
+> Models marked **Audio: Yes** generate synchronized sound (dialogue, SFX, ambient). Silent models need separate `vibe generate speech` / `vibe generate sound-effect`.
+
+| Provider | Model | Duration | Audio | Env Key | CLI Option | Notes |
+|----------|-------|----------|-------|---------|------------|-------|
+| xAI Grok | `grok-imagine-video` | 1-15 sec | Yes | `XAI_API_KEY` | `-p grok` | **Default**. #2 Elo, best lip-sync/native audio |
+| Kling | `kling-v2-5-turbo` | 5-10 sec | No | `KLING_API_KEY` | `-p kling` | Fast (~36s generation) |
+| Kling | `kling-v2-6` | 5-10 sec | No | `KLING_API_KEY` | `-p kling -m v2.6` | Higher quality |
+| Kling | `kling-3.0-omni` | 3-15 sec | Yes | `KLING_API_KEY` | `-p kling -m 3.0` | #1 Elo, multi-shot |
+| Veo | `veo-3.1-fast-generate-preview` | 4-8 sec | Yes | `GOOGLE_API_KEY` | `-p veo` | Native audio, fast |
+| Veo | `veo-3.1-generate-preview` | 4-8 sec | Yes | `GOOGLE_API_KEY` | `-p veo --veo-model 3.1` | Native audio, higher quality |
+| Veo | `veo-3.0-generate-preview` | 5-8 sec | Yes | `GOOGLE_API_KEY` | `-p veo --veo-model 3.0` | Native audio |
+| Runway | `gen4.5` | 5-10 sec | No | `RUNWAY_API_SECRET` | `-p runway` | Best physics |
 
 ### Veo Advanced Options
 
@@ -133,8 +136,8 @@ export XAI_API_KEY="xai-..."          # xAI Grok
 # Media Providers
 export ELEVENLABS_API_KEY="..."       # TTS, SFX
 export STABILITY_API_KEY="sk-..."     # Stability AI
-export RUNWAY_API_SECRET="..."        # Runway Gen-4
-export KLING_API_KEY="..."            # Kling v2.x
+export RUNWAY_API_SECRET="..."        # Runway Gen-4.5
+export KLING_API_KEY="..."            # Kling v2.x/3.0
 export REPLICATE_API_TOKEN="..."      # Replicate (music)
 ```
 
@@ -150,6 +153,6 @@ export REPLICATE_API_TOKEN="..."      # Replicate (music)
 | `vibe generate image -p openai` | `OPENAI_API_KEY` | GPT Image 1.5 |
 | `vibe edit image` | `GOOGLE_API_KEY` | Gemini Nano Banana |
 | `vibe generate speech` | `ELEVENLABS_API_KEY` | ElevenLabs |
-| `vibe generate video` | `KLING_API_KEY` | Kling v2.5-turbo |
+| `vibe generate video` | `XAI_API_KEY` | Grok Imagine (default) |
+| `vibe generate video -p kling` | `KLING_API_KEY` | Kling v2.5-turbo |
 | `vibe generate video -p veo` | `GOOGLE_API_KEY` | Veo 3.1 |
-| `vibe generate video -p grok` | `XAI_API_KEY` | Grok Imagine |

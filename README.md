@@ -139,7 +139,7 @@ Every command supports `--help`. Run `vibe --help` for a full list.
 | **`vibe detect`** | `scenes`, `silence`, `beats` | `vibe detect scenes video.mp4` |
 | **`vibe export`** | - | `vibe export project.vibe.json -o out.mp4` |
 
-**43 AI commands** across 5 groups and 11 providers. Every command supports `--help` and `--json`.
+**43 AI commands** across 5 groups and 11 providers. Every command supports `--help`, `--json`, and `--dry-run`.
 
 ---
 
@@ -167,7 +167,7 @@ vibe agent -p ollama           # Use local Ollama
 |----------|-----------|---------|
 | **Agent LLM** | OpenAI, Claude, Gemini, xAI, Ollama | GPT-4o |
 | **Image** | Gemini, OpenAI, Stability | Gemini Nano Banana |
-| **Video** | Kling, Runway, Veo, xAI Grok | Kling v2.5/v2.6 |
+| **Video** | xAI Grok, Kling, Runway, Veo | Grok Imagine |
 | **Audio** | ElevenLabs, Whisper | - |
 
 **Required API Keys:** `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `ELEVENLABS_API_KEY`, `RUNWAY_API_SECRET`, `KLING_API_KEY`, `XAI_API_KEY`, `STABILITY_API_KEY`
@@ -179,7 +179,7 @@ vibe agent -p ollama           # Use local Ollama
 ```
 vibeframe/
 ├── packages/
-│   ├── cli/               # CLI + Agent (57 tools, 262+ tests)
+│   ├── cli/               # CLI + Agent (57 tools, 248+ tests)
 │   ├── core/              # Timeline engine (Zustand + Immer + FFmpeg)
 │   ├── ai-providers/      # Pluggable AI providers
 │   ├── mcp-server/        # MCP server (npm: @vibeframe/mcp-server)
@@ -216,7 +216,7 @@ See [ROADMAP.md](ROADMAP.md) for details.
 
 ```bash
 pnpm build     # Build all packages
-pnpm test      # Run tests (262+ passing)
+pnpm test      # Run tests (248+ passing)
 pnpm lint      # Lint code
 ```
 

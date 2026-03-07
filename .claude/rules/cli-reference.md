@@ -46,11 +46,11 @@ vibe generate image "<prompt>" -o out.png -p openai        # Use GPT Image
 vibe generate image "<prompt>" -o out.png -p stability     # Use Stability
 vibe generate image "<prompt>" -o out.png -r 16:9          # Aspect ratio
 
-# Text-to-video (default: Kling)
-vibe generate video "<prompt>" -o out.mp4 -d 5             # Kling (default)
-vibe generate video "<prompt>" -o out.mp4 -p runway        # Runway Gen-4
+# Text-to-video (default: Grok Imagine — native audio)
+vibe generate video "<prompt>" -o out.mp4 -d 5             # Grok Imagine (default)
+vibe generate video "<prompt>" -o out.mp4 -p kling         # Kling
+vibe generate video "<prompt>" -o out.mp4 -p runway        # Runway Gen-4.5
 vibe generate video "<prompt>" -o out.mp4 -p veo           # Google Veo
-vibe generate video "<prompt>" -o out.mp4 -p grok          # xAI Grok Imagine
 
 # Image-to-video
 vibe generate video "<prompt>" -i image.png -o out.mp4 -p runway
@@ -249,10 +249,10 @@ vibe edit grade captioned.mp4 -o final.mp4 --preset cinematic-warm
 | `generate image` (default) | `GOOGLE_API_KEY` |
 | `generate image -p openai` | `OPENAI_API_KEY` |
 | `edit image` | `GOOGLE_API_KEY` |
-| `generate video` | `KLING_API_KEY` |
+| `generate video` | `XAI_API_KEY` |
+| `generate video -p kling` | `KLING_API_KEY` |
 | `generate video -p runway` | `RUNWAY_API_SECRET` |
 | `generate video -p veo` | `GOOGLE_API_KEY` |
-| `generate video -p grok` | `XAI_API_KEY` |
 | `generate speech` / `generate sound-effect` | `ELEVENLABS_API_KEY` |
 | `audio transcribe` / `edit caption` / `edit jump-cut` | `OPENAI_API_KEY` |
 | `edit grade` / `edit reframe` / `edit speed-ramp` | `ANTHROPIC_API_KEY` |

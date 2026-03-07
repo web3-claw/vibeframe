@@ -37,6 +37,7 @@ import {
   ElevenLabsProvider,
   ReplicateProvider,
   ClaudeProvider,
+  GrokProvider,
 } from "@vibeframe/ai-providers";
 import { getApiKey } from "../utils/api-key.js";
 import { getApiKeyFromConfig } from "../config/index.js";
@@ -446,7 +447,7 @@ generateCommand
   .command("video")
   .description("Generate video using AI (Kling, Runway, Veo, or Grok)")
   .argument("<prompt>", "Text prompt describing the video")
-  .option("-p, --provider <provider>", "Provider: kling, runway, veo, grok", "kling")
+  .option("-p, --provider <provider>", "Provider: grok (default), kling, runway, veo", "grok")
   .option("-k, --api-key <key>", "API key (or set RUNWAY_API_SECRET / KLING_API_KEY / GOOGLE_API_KEY env)")
   .option("-o, --output <path>", "Output file path (downloads video)")
   .option("-i, --image <path>", "Reference image for image-to-video")
@@ -729,10 +730,44 @@ generateCommand
           300000
         );
       } else if (provider === "grok") {
-        // Grok Imagine video — placeholder for xAI integration
-        console.error(chalk.red("Grok Imagine video provider is not yet implemented in the unified command."));
-        console.error(chalk.dim("Use: vibe ai video -p grok (legacy command)"));
-        process.exit(1);
+        const grok = new GrokProvider();
+        await grok.initialize({ apiKey });
+
+        result = await grok.generateVideo(prompt, {
+          prompt,
+          referenceImage,
+          duration: parseInt(options.duration),
+          aspectRatio: options.ratio as "16:9" | "9:16" | "1:1",
+        });
+
+        if (result.status === "failed") {
+          spinner.fail(chalk.red(result.error || "Failed to start generation"));
+          process.exit(1);
+        }
+
+        console.log();
+        console.log(chalk.bold.cyan("Video Generation Started"));
+        console.log(chalk.dim("─".repeat(60)));
+        console.log(`Provider: ${chalk.bold("xAI Grok Imagine")}`);
+        console.log(`Task ID: ${chalk.bold(result.id)}`);
+
+        if (!options.wait) {
+          spinner.succeed(chalk.green("Generation started"));
+          console.log();
+          console.log(chalk.dim("Check status with:"));
+          console.log(chalk.dim(`  vibe generate video-status ${result.id} -p grok`));
+          console.log();
+          return;
+        }
+
+        spinner.text = "Generating video (this may take 1-3 minutes)...";
+        finalResult = await grok.waitForCompletion(
+          result.id,
+          (status) => {
+            spinner.text = `Generating video... ${status.status}`;
+          },
+          300000
+        );
       }
 
       if (!finalResult || finalResult.status !== "completed") {

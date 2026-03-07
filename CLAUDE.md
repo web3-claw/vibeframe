@@ -11,7 +11,7 @@ VibeFrame is an AI-native video editing tool. CLI-first, MCP-ready. It uses natu
 ```bash
 pnpm install          # Install dependencies
 pnpm build            # Build all packages
-pnpm test             # Run all tests (240+ passing)
+pnpm test             # Run all tests (248+ passing)
 pnpm lint             # Lint all packages
 pnpm format           # Format code with Prettier
 
@@ -52,7 +52,7 @@ Copy `.env.example` to `.env`. Each AI provider has its own API key:
 - `GOOGLE_API_KEY` - Gemini (image, Veo video)
 - `ELEVENLABS_API_KEY` - TTS, SFX
 - `RUNWAY_API_SECRET` - Runway Gen-4.5 video
-- `KLING_API_KEY` - Kling v2.5/v2.6 video
+- `KLING_API_KEY` - Kling v2.5/v2.6/3.0 video
 - `XAI_API_KEY` - xAI Grok (Agent LLM + Grok Imagine video)
 - `STABILITY_API_KEY` - Stability AI image editing
 
@@ -63,7 +63,7 @@ See **[MODELS.md](MODELS.md)** for the complete SSOT (Single Source of Truth) on
 Quick summary:
 - **Agent LLM**: OpenAI GPT-4.5, Claude Sonnet 4.6, Gemini 2.5 Flash, xAI Grok-4, Ollama
 - **Text-to-Image**: OpenAI GPT Image 1.5, Gemini Nano Banana (Flash/Pro), Stability SDXL
-- **Text-to-Video**: Kling v2.5/v2.6, Veo 3.0/3.1, Runway Gen-4, xAI Grok Imagine
+- **Text-to-Video**: xAI Grok Imagine (default), Kling v2.5/v2.6/3.0, Veo 3.0/3.1, Runway Gen-4.5
 - **Audio**: ElevenLabs (TTS, SFX), Whisper (transcription), Replicate (music)
 
 @.claude/rules/architecture.md

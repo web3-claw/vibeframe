@@ -60,7 +60,7 @@ export default function LandingPage() {
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-4 py-1.5 text-sm text-primary mb-8 animate-fade-in">
             <Sparkles className="w-4 h-4" />
             <span>AI-native video editing</span>
-            <span className="px-2 py-0.5 rounded-full bg-primary/20 text-xs font-medium">v0.20.0</span>
+            <span className="px-2 py-0.5 rounded-full bg-primary/20 text-xs font-medium">v0.23.0</span>
           </div>
 
           <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 animate-fade-in-up">
@@ -117,7 +117,7 @@ export default function LandingPage() {
               Every edit is a command
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              56+ AI commands for video editing, generation, and post-production.
+              43 AI commands for video editing, generation, and post-production.
               No GUI required — just your terminal.
             </p>
           </div>
@@ -131,15 +131,15 @@ export default function LandingPage() {
             </div>
             <pre className="p-4 sm:p-6 text-xs sm:text-sm overflow-x-auto">
               <code className="text-muted-foreground"># Remove silence from an interview{"\n"}</code>
-              <code className="text-foreground">vibe ai silence-cut interview.mp4 -o clean.mp4{"\n"}</code>
+              <code className="text-foreground">vibe edit silence-cut interview.mp4 -o clean.mp4{"\n"}</code>
               <code className="text-green-400">{"✓ Removed 12 silent segments (saved 47s)\n\n"}</code>
 
               <code className="text-muted-foreground"># Add captions with auto-transcription{"\n"}</code>
-              <code className="text-foreground">vibe ai caption video.mp4 -o captioned.mp4{"\n"}</code>
+              <code className="text-foreground">vibe edit caption video.mp4 -o captioned.mp4{"\n"}</code>
               <code className="text-green-400">{"✓ Transcribed 3:24, burned 156 caption segments\n\n"}</code>
 
               <code className="text-muted-foreground"># Generate a thumbnail{"\n"}</code>
-              <code className="text-foreground">vibe ai thumbnail video.mp4 -o thumb.png{"\n"}</code>
+              <code className="text-foreground">vibe generate thumbnail video.mp4 -o thumb.png{"\n"}</code>
               <code className="text-green-400">{"✓ Generated thumbnail (1280x720)\n\n"}</code>
 
               <code className="text-muted-foreground"># Export final video{"\n"}</code>
@@ -169,15 +169,15 @@ export default function LandingPage() {
           <div className="space-y-4 max-w-3xl mx-auto">
             <ClaudeCodeExample
               input="Remove silence from interview.mp4"
-              command="vibe ai silence-cut interview.mp4 -o clean.mp4"
+              command="vibe edit silence-cut interview.mp4 -o clean.mp4"
             />
             <ClaudeCodeExample
               input="Add Korean subtitles to video.mp4"
-              command="vibe ai caption video.mp4 -o captioned.mp4 && vibe ai translate-srt captions.srt --language ko"
+              command="vibe edit caption video.mp4 -o captioned.mp4 && vibe edit translate-srt captions.srt -t ko"
             />
             <ClaudeCodeExample
               input="Create a TikTok from this script"
-              command={`vibe ai script-to-video "A day in the life..." -a 9:16 -o ./tiktok/`}
+              command={`vibe pipeline script-to-video "A day in the life..." -a 9:16 -o ./tiktok/`}
             />
           </div>
 
@@ -244,7 +244,7 @@ export default function LandingPage() {
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
               No Claude Code or MCP? Type <code className="text-primary bg-primary/10 px-2 py-0.5 rounded">vibe</code> for a built-in natural language session.
-              5 LLM providers, 58 tools, fully autonomous.
+              5 LLM providers, 57 tools, fully autonomous.
             </p>
           </div>
 
@@ -276,7 +276,7 @@ export default function LandingPage() {
               />
               <FeatureItem
                 icon={<Sparkles className="w-5 h-5" />}
-                title="58 Tools"
+                title="57 Tools"
                 description="Project, timeline, AI generation, media, export, batch, filesystem"
                 gradient="from-purple-500 to-pink-500"
               />
@@ -307,42 +307,42 @@ export default function LandingPage() {
             <PipelineCard
               icon={<Film className="w-6 h-6" />}
               title="Script to Video"
-              command="vibe ai script-to-video"
+              command="vibe pipeline script-to-video"
               description="Text → Storyboard → TTS → Images → Video"
               gradient="from-blue-500 to-purple-500"
             />
             <PipelineCard
               icon={<Sparkles className="w-6 h-6" />}
               title="Auto Highlights"
-              command="vibe ai highlights"
+              command="vibe pipeline highlights"
               description="Long video → AI analysis → Best moments"
               gradient="from-purple-500 to-pink-500"
             />
             <PipelineCard
               icon={<Image className="w-6 h-6" />}
               title="B-Roll Matcher"
-              command="vibe ai b-roll"
+              command="vibe pipeline b-roll"
               description="Narration → Vision analysis → Auto-cut"
               gradient="from-pink-500 to-red-500"
             />
             <PipelineCard
               icon={<Zap className="w-6 h-6" />}
               title="Viral Optimizer"
-              command="vibe ai viral"
+              command="vibe pipeline viral"
               description="One video → TikTok, Shorts, Reels"
               gradient="from-orange-500 to-yellow-500"
             />
             <PipelineCard
               icon={<MessageSquare className="w-6 h-6" />}
               title="Auto Narrate"
-              command="vibe ai narrate"
+              command="vibe pipeline narrate"
               description="Video → Claude Vision → ElevenLabs TTS"
               gradient="from-cyan-500 to-blue-500"
             />
             <PipelineCard
               icon={<Wand2 className="w-6 h-6" />}
               title="Auto Dub"
-              command="vibe ai dub"
+              command="vibe audio dub"
               description="Transcribe → Translate → TTS in any language"
               gradient="from-green-500 to-emerald-500"
             />
@@ -367,7 +367,7 @@ export default function LandingPage() {
             <FeatureCard
               icon={<Terminal className="w-6 h-6" />}
               title="CLI-First"
-              description="Full video editing from the command line. 56+ AI commands. Zero GUI required."
+              description="Full video editing from the command line. 43 AI commands. Zero GUI required."
               gradient="from-blue-500 to-cyan-500"
             />
             <FeatureCard
@@ -536,7 +536,7 @@ function TerminalAnimation() {
         VibeFrame
       </div>
       <div className="text-muted-foreground text-xs mb-4">
-        58 tools · openai<br/>
+        57 tools · openai<br/>
         Commands: exit · reset · tools · context
       </div>
 

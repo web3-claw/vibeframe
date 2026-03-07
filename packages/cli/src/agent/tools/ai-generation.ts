@@ -57,7 +57,7 @@ const imageDef: ToolDefinition = {
 
 const videoDef: ToolDefinition = {
   name: "generate_video",
-  description: "Generate video using AI. Supports Runway (image-to-video), Kling (text/image-to-video), and Veo (text/image-to-video) via provider selection.",
+  description: "Generate video using AI. Supports Grok Imagine (default, native audio), Runway (image-to-video), Kling (text/image-to-video), and Veo (text/image-to-video) via provider selection.",
   parameters: {
     type: "object",
     properties: {
@@ -67,8 +67,8 @@ const videoDef: ToolDefinition = {
       },
       provider: {
         type: "string",
-        description: "Video provider to use (default: kling)",
-        enum: ["runway", "kling", "veo"],
+        description: "Video provider to use (default: grok)",
+        enum: ["grok", "runway", "kling", "veo"],
       },
       image: {
         type: "string",
@@ -377,7 +377,7 @@ const generateImage: ToolHandler = async (args, context): Promise<ToolResult> =>
 
 const generateVideo: ToolHandler = async (args, context): Promise<ToolResult> => {
   const prompt = args.prompt as string;
-  const provider = (args.provider as string) || "kling";
+  const provider = (args.provider as string) || "grok";
   const imagePath = args.image as string | undefined;
   const output = (args.output as string) || `${provider}-${getTimestamp()}.mp4`;
   const duration = (args.duration as number) || (provider === "veo" ? 6 : 5);
@@ -533,8 +533,69 @@ const generateVideo: ToolHandler = async (args, context): Promise<ToolResult> =>
         success: true,
         output: `Video generated: ${output}\nProvider: veo\nPrompt: ${prompt}\nDuration: ${duration}s`,
       };
+    } else if (provider === "grok") {
+      const apiKey = await getApiKeyFromConfig("xai");
+      if (!apiKey) {
+        return {
+          toolCallId: "",
+          success: false,
+          output: "",
+          error: "xAI API key required. Configure via 'vibe setup'.",
+        };
+      }
+
+      const { GrokProvider } = await import("@vibeframe/ai-providers");
+      const grok = new GrokProvider();
+      await grok.initialize({ apiKey });
+
+      const referenceImage = imagePath ? await prepareReferenceImage(imagePath) : undefined;
+
+      const result = await grok.generateVideo(prompt, {
+        prompt,
+        duration,
+        referenceImage,
+        aspectRatio: "16:9",
+      });
+
+      if (result.status === "failed") {
+        return {
+          toolCallId: "",
+          success: false,
+          output: "",
+          error: `Grok video generation failed: ${result.error}`,
+        };
+      }
+
+      if (result.status === "pending" || result.status === "processing") {
+        const finalResult = await grok.waitForCompletion(
+          result.id,
+          undefined,
+          300000
+        );
+
+        if (finalResult.status !== "completed") {
+          return {
+            toolCallId: "",
+            success: false,
+            output: "",
+            error: `Grok video generation timed out or failed: ${finalResult.error || finalResult.status}`,
+          };
+        }
+
+        if (finalResult.videoUrl) {
+          const outputPath = resolve(context.workingDirectory, output);
+          const buffer = await downloadVideo(finalResult.videoUrl, apiKey);
+          await writeFile(outputPath, buffer);
+        }
+      }
+
+      return {
+        toolCallId: "",
+        success: true,
+        output: `Video generated: ${output}\nProvider: grok (native audio)\nPrompt: ${prompt}\nDuration: ${duration}s`,
+      };
     } else {
-      // Default: kling
+      // kling
       const apiKey = await getApiKeyFromConfig("kling");
       if (!apiKey) {
         return {
