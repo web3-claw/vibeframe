@@ -675,7 +675,7 @@ export function registerHighlightsCommands(aiCommand: Command): void {
     .description("Extract highlights from long-form video/audio content")
     .argument("<media>", "Video or audio file path")
     .option("-o, --output <path>", "Output JSON file with highlights")
-    .option("-p, --project <path>", "Create project with highlight clips")
+    .option("--project <path>", "Create project with highlight clips")
     .option("-d, --duration <seconds>", "Target highlight reel duration", "60")
     .option("-n, --count <number>", "Maximum number of highlights")
     .option("-t, --threshold <value>", "Confidence threshold (0-1)", "0.7")

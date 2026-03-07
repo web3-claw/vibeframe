@@ -61,18 +61,18 @@ describe("@vibeframe/mcp-server", () => {
 
     it("should have AI analysis tools", () => {
       const toolNames = tools.map((t) => t.name);
-      expect(toolNames).toContain("ai_analyze");
-      expect(toolNames).toContain("ai_gemini_video");
-      expect(toolNames).toContain("ai_review");
-      expect(toolNames).toContain("ai_thumbnail");
+      expect(toolNames).toContain("analyze_media");
+      expect(toolNames).toContain("analyze_video");
+      expect(toolNames).toContain("analyze_review");
+      expect(toolNames).toContain("generate_thumbnail");
     });
 
     it("should have AI pipeline tools", () => {
       const toolNames = tools.map((t) => t.name);
-      expect(toolNames).toContain("ai_script_to_video");
-      expect(toolNames).toContain("ai_highlights");
-      expect(toolNames).toContain("ai_auto_shorts");
-      expect(toolNames).toContain("ai_narrate");
+      expect(toolNames).toContain("pipeline_script_to_video");
+      expect(toolNames).toContain("pipeline_highlights");
+      expect(toolNames).toContain("pipeline_auto_shorts");
+      expect(toolNames).toContain("pipeline_narrate");
     });
 
     it("should have unique tool names", () => {

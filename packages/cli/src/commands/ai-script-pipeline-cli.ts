@@ -37,17 +37,7 @@ import {
   generateVideoWithRetryKling,
   generateVideoWithRetryRunway,
 } from "./ai-script-pipeline.js";
-
-async function downloadVideo(url: string): Promise<Buffer> {
-  const headers: Record<string, string> = {};
-  if (url.includes("generativelanguage.googleapis.com")) {
-    const apiKey = process.env.GOOGLE_API_KEY;
-    if (apiKey) { headers["x-goog-api-key"] = apiKey; }
-  }
-  const response = await fetch(url, { headers, redirect: "follow" });
-  if (!response.ok) throw new Error(`Download failed (${response.status}): ${response.statusText}`);
-  return Buffer.from(await response.arrayBuffer());
-}
+import { downloadVideo } from "./ai-helpers.js";
 
 export function registerScriptPipelineCommands(aiCommand: Command): void {
 // Script-to-Video command
@@ -608,7 +598,7 @@ aiCommand
 
                   if (waitResult.status === "completed" && waitResult.videoUrl) {
                     const videoPath = resolve(outputDir, `scene-${i + 1}.mp4`);
-                    const buffer = await downloadVideo(waitResult.videoUrl);
+                    const buffer = await downloadVideo(waitResult.videoUrl, videoApiKey);
                     await writeFile(videoPath, buffer);
 
                     // Extend video to match narration duration if needed
@@ -708,7 +698,7 @@ aiCommand
 
                     if (result.status === "completed" && result.videoUrl) {
                       const videoPath = resolve(outputDir, `scene-${task.index + 1}.mp4`);
-                      const buffer = await downloadVideo(result.videoUrl);
+                      const buffer = await downloadVideo(result.videoUrl, videoApiKey);
                       await writeFile(videoPath, buffer);
 
                       // Extend video to match narration duration if needed
@@ -836,7 +826,7 @@ aiCommand
 
                 if (result.status === "completed" && result.videoUrl) {
                   const videoPath = resolve(outputDir, `scene-${task.index + 1}.mp4`);
-                  const buffer = await downloadVideo(result.videoUrl);
+                  const buffer = await downloadVideo(result.videoUrl, videoApiKey);
                   await writeFile(videoPath, buffer);
 
                   // Extend video to match narration duration if needed
@@ -1559,7 +1549,7 @@ Generate the single-person scene image now.`;
                 );
 
                 if (waitResult.status === "completed" && waitResult.videoUrl) {
-                  const buffer = await downloadVideo(waitResult.videoUrl);
+                  const buffer = await downloadVideo(waitResult.videoUrl, videoApiKey);
                   await writeFile(videoPath, buffer);
 
                   // Extend video to match narration duration if needed
@@ -1617,7 +1607,7 @@ Generate the single-person scene image now.`;
                 );
 
                 if (waitResult.status === "completed" && waitResult.videoUrl) {
-                  const buffer = await downloadVideo(waitResult.videoUrl);
+                  const buffer = await downloadVideo(waitResult.videoUrl, videoApiKey);
                   await writeFile(videoPath, buffer);
 
                   // Extend video to match narration duration if needed (Runway - no Kling extend)

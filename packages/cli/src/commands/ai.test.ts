@@ -1,43 +1,15 @@
 import { describe, it, expect } from "vitest";
 import { execSync } from "child_process";
 import { resolve } from "path";
-import { detectFillerRanges, DEFAULT_FILLER_WORDS } from "./ai.js";
+import { detectFillerRanges, DEFAULT_FILLER_WORDS } from "./ai-edit.js";
 
 const CLI = `npx tsx ${resolve(__dirname, "../index.ts")}`;
 
-describe("ai commands", () => {
-  describe("ai providers", () => {
-    it("lists all available providers", () => {
-      const output = execSync(`${CLI} ai providers`, {
-        cwd: process.cwd(),
-        encoding: "utf-8",
-      });
-
-      expect(output).toContain("Available AI Providers");
-      expect(output).toContain("OpenAI Whisper");
-      expect(output).toContain("Google Gemini");
-      expect(output).toContain("Gen-4.5");
-      expect(output).toContain("Kling AI");
-    });
-
-    it("shows provider capabilities", () => {
-      const output = execSync(`${CLI} ai providers`, {
-        cwd: process.cwd(),
-        encoding: "utf-8",
-      });
-
-      expect(output).toContain("speech-to-text");
-      expect(output).toContain("text-to-video");
-      expect(output).toContain("auto-edit");
-    });
-  });
-
-  // Note: ai transcribe and ai suggest commands require API keys
-  // These would need mocking or environment variables to test
-  describe("ai transcribe", () => {
+describe("CLI command groups", () => {
+  describe("audio transcribe", () => {
     it("fails without API key", () => {
       expect(() => {
-        execSync(`${CLI} ai transcribe /tmp/nonexistent.mp3`, {
+        execSync(`${CLI} audio transcribe /tmp/nonexistent.mp3`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, OPENAI_API_KEY: undefined },
@@ -46,10 +18,10 @@ describe("ai commands", () => {
     });
   });
 
-  describe("ai suggest", () => {
+  describe("analyze suggest", () => {
     it("fails without API key", () => {
       expect(() => {
-        execSync(`${CLI} ai suggest /tmp/nonexistent.json "trim clip"`, {
+        execSync(`${CLI} analyze suggest /tmp/nonexistent.json "trim clip"`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, GOOGLE_API_KEY: undefined },
@@ -58,9 +30,9 @@ describe("ai commands", () => {
     });
   });
 
-  describe("ai highlights", () => {
+  describe("pipeline highlights", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} ai highlights --help`, {
+      const output = execSync(`${CLI} pipeline highlights --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -76,7 +48,7 @@ describe("ai commands", () => {
 
     it("fails without API keys", () => {
       expect(() => {
-        execSync(`${CLI} ai highlights /tmp/nonexistent.mp4`, {
+        execSync(`${CLI} pipeline highlights /tmp/nonexistent.mp4`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, OPENAI_API_KEY: undefined, ANTHROPIC_API_KEY: undefined },
@@ -86,7 +58,7 @@ describe("ai commands", () => {
 
     it("fails with nonexistent file", () => {
       expect(() => {
-        execSync(`${CLI} ai highlights /tmp/nonexistent_video_12345.mp4`, {
+        execSync(`${CLI} pipeline highlights /tmp/nonexistent_video_12345.mp4`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, OPENAI_API_KEY: "test", ANTHROPIC_API_KEY: "test" },
@@ -95,9 +67,9 @@ describe("ai commands", () => {
     });
   });
 
-  describe("ai b-roll", () => {
+  describe("pipeline b-roll", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} ai b-roll --help`, {
+      const output = execSync(`${CLI} pipeline b-roll --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -113,7 +85,7 @@ describe("ai commands", () => {
 
     it("fails without B-roll files", () => {
       expect(() => {
-        execSync(`${CLI} ai b-roll "test narration"`, {
+        execSync(`${CLI} pipeline b-roll "test narration"`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, OPENAI_API_KEY: "test", ANTHROPIC_API_KEY: "test" },
@@ -123,7 +95,7 @@ describe("ai commands", () => {
 
     it("fails without API keys", () => {
       expect(() => {
-        execSync(`${CLI} ai b-roll test.mp3 -b clip.mp4`, {
+        execSync(`${CLI} pipeline b-roll test.mp3 -b clip.mp4`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, OPENAI_API_KEY: undefined, ANTHROPIC_API_KEY: undefined },
@@ -132,9 +104,9 @@ describe("ai commands", () => {
     });
   });
 
-  describe("ai viral", () => {
+  describe("pipeline viral", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} ai viral --help`, {
+      const output = execSync(`${CLI} pipeline viral --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -150,7 +122,7 @@ describe("ai commands", () => {
 
     it("validates platform names", () => {
       expect(() => {
-        execSync(`${CLI} ai viral /tmp/test.vibe.json -p invalid-platform`, {
+        execSync(`${CLI} pipeline viral /tmp/test.vibe.json --platforms invalid-platform`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, OPENAI_API_KEY: "test", ANTHROPIC_API_KEY: "test" },
@@ -160,7 +132,7 @@ describe("ai commands", () => {
 
     it("fails without API keys", () => {
       expect(() => {
-        execSync(`${CLI} ai viral /tmp/test.vibe.json`, {
+        execSync(`${CLI} pipeline viral /tmp/test.vibe.json`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, OPENAI_API_KEY: undefined, ANTHROPIC_API_KEY: undefined },
@@ -170,7 +142,7 @@ describe("ai commands", () => {
 
     it("fails with nonexistent project", () => {
       expect(() => {
-        execSync(`${CLI} ai viral /tmp/nonexistent_project_12345.vibe.json`, {
+        execSync(`${CLI} pipeline viral /tmp/nonexistent_project_12345.vibe.json`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, OPENAI_API_KEY: "test", ANTHROPIC_API_KEY: "test" },
@@ -179,9 +151,9 @@ describe("ai commands", () => {
     });
   });
 
-  describe("ai video-extend", () => {
+  describe("generate video-extend", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} ai video-extend --help`, {
+      const output = execSync(`${CLI} generate video-extend --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -195,7 +167,7 @@ describe("ai commands", () => {
 
     it("fails without API key", () => {
       expect(() => {
-        execSync(`${CLI} ai video-extend /tmp/video.mp4`, {
+        execSync(`${CLI} generate video-extend /tmp/video.mp4`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, KLING_API_KEY: undefined },
@@ -204,9 +176,9 @@ describe("ai commands", () => {
     });
   });
 
-  describe("ai video-upscale", () => {
+  describe("edit upscale-video", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} ai video-upscale --help`, {
+      const output = execSync(`${CLI} edit upscale-video --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -220,7 +192,7 @@ describe("ai commands", () => {
 
     it("validates scale option", () => {
       expect(() => {
-        execSync(`${CLI} ai video-upscale /tmp/video.mp4 --scale 3 --ffmpeg`, {
+        execSync(`${CLI} edit upscale-video /tmp/video.mp4 --scale 3 --ffmpeg`, {
           cwd: process.cwd(),
           encoding: "utf-8",
         });
@@ -228,9 +200,9 @@ describe("ai commands", () => {
     });
   });
 
-  describe("ai video-interpolate", () => {
+  describe("edit interpolate", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} ai video-interpolate --help`, {
+      const output = execSync(`${CLI} edit interpolate --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -244,53 +216,18 @@ describe("ai commands", () => {
 
     it("validates factor option", () => {
       expect(() => {
-        execSync(`${CLI} ai video-interpolate /tmp/video.mp4 --factor 3`, {
+        execSync(`${CLI} edit interpolate /tmp/video.mp4 --factor 3`, {
           cwd: process.cwd(),
           encoding: "utf-8",
-        });
-      }).toThrow();
-    });
-  });
-
-  describe("ai video-inpaint", () => {
-    it("shows help", () => {
-      const output = execSync(`${CLI} ai video-inpaint --help`, {
-        cwd: process.cwd(),
-        encoding: "utf-8",
-      });
-
-      expect(output).toContain("Remove objects from video");
-      expect(output).toContain("--output");
-      expect(output).toContain("--target");
-      expect(output).toContain("--mask");
-      expect(output).toContain("--provider");
-    });
-
-    it("fails without target or mask", () => {
-      expect(() => {
-        execSync(`${CLI} ai video-inpaint https://example.com/video.mp4`, {
-          cwd: process.cwd(),
-          encoding: "utf-8",
-          env: { ...process.env, REPLICATE_API_TOKEN: "test" },
-        });
-      }).toThrow();
-    });
-
-    it("fails without API key", () => {
-      expect(() => {
-        execSync(`${CLI} ai video-inpaint https://example.com/video.mp4 --target "watermark"`, {
-          cwd: process.cwd(),
-          encoding: "utf-8",
-          env: { ...process.env, REPLICATE_API_TOKEN: undefined },
         });
       }).toThrow();
     });
   });
 
   // Voice & Audio Features
-  describe("ai voice-clone", () => {
+  describe("audio voice-clone", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} ai voice-clone --help`, {
+      const output = execSync(`${CLI} audio voice-clone --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -305,7 +242,7 @@ describe("ai commands", () => {
 
     it("requires name option when cloning", () => {
       expect(() => {
-        execSync(`${CLI} ai voice-clone sample.mp3`, {
+        execSync(`${CLI} audio voice-clone sample.mp3`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, ELEVENLABS_API_KEY: "test" },
@@ -315,7 +252,7 @@ describe("ai commands", () => {
 
     it("fails without API key", () => {
       expect(() => {
-        execSync(`${CLI} ai voice-clone sample.mp3 --name "TestVoice"`, {
+        execSync(`${CLI} audio voice-clone sample.mp3 --name "TestVoice"`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, ELEVENLABS_API_KEY: undefined },
@@ -324,9 +261,9 @@ describe("ai commands", () => {
     });
   });
 
-  describe("ai music", () => {
+  describe("generate music", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} ai music --help`, {
+      const output = execSync(`${CLI} generate music --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -340,19 +277,15 @@ describe("ai commands", () => {
     });
 
     it("requires API key or shows error", () => {
-      // Note: This test may pass if API key is in config file (~/.vibeframe/config.yaml)
-      // We test that it either succeeds (key in config) or fails (no key anywhere)
       try {
-        const output = execSync(`${CLI} ai music "upbeat electronic" --no-wait`, {
+        const output = execSync(`${CLI} generate music "upbeat electronic" --no-wait`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, REPLICATE_API_TOKEN: undefined },
           timeout: 10000,
         });
-        // If it succeeds, the API key was found in config
         expect(output).toBeTruthy();
       } catch (error: unknown) {
-        // If it fails, it should mention API key
         const execError = error as { stderr?: string; stdout?: string };
         const errorOutput = execError.stderr || execError.stdout || "";
         expect(errorOutput.toLowerCase()).toMatch(/api|key|token|replicate/i);
@@ -360,9 +293,9 @@ describe("ai commands", () => {
     });
   });
 
-  describe("ai music-status", () => {
+  describe("generate music-status", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} ai music-status --help`, {
+      const output = execSync(`${CLI} generate music-status --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -372,18 +305,15 @@ describe("ai commands", () => {
     });
 
     it("requires API key or shows error", () => {
-      // Note: This test may pass if API key is in config file (~/.vibeframe/config.yaml)
       try {
-        const output = execSync(`${CLI} ai music-status test-task-id`, {
+        const output = execSync(`${CLI} generate music-status test-task-id`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, REPLICATE_API_TOKEN: undefined },
           timeout: 10000,
         });
-        // If it succeeds, the API key was found in config
         expect(output).toBeTruthy();
       } catch (error: unknown) {
-        // If it fails, it should mention API key or invalid task
         const execError = error as { stderr?: string; stdout?: string };
         const errorOutput = execError.stderr || execError.stdout || "";
         expect(errorOutput.toLowerCase()).toMatch(/api|key|token|replicate|task|invalid/i);
@@ -391,34 +321,9 @@ describe("ai commands", () => {
     });
   });
 
-  describe("ai audio-restore", () => {
+  describe("audio dub", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} ai audio-restore --help`, {
-        cwd: process.cwd(),
-        encoding: "utf-8",
-      });
-
-      expect(output).toContain("Restore audio quality");
-      expect(output).toContain("--output");
-      expect(output).toContain("--ffmpeg");
-      expect(output).toContain("--denoise");
-      expect(output).toContain("--enhance");
-      expect(output).toContain("--noise-floor");
-    });
-
-    it("fails with nonexistent file", () => {
-      expect(() => {
-        execSync(`${CLI} ai audio-restore /tmp/nonexistent_audio_12345.mp3 --ffmpeg`, {
-          cwd: process.cwd(),
-          encoding: "utf-8",
-        });
-      }).toThrow();
-    });
-  });
-
-  describe("ai dub", () => {
-    it("shows help", () => {
-      const output = execSync(`${CLI} ai dub --help`, {
+      const output = execSync(`${CLI} audio dub --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -433,7 +338,7 @@ describe("ai commands", () => {
 
     it("requires language option", () => {
       expect(() => {
-        execSync(`${CLI} ai dub /tmp/video.mp4`, {
+        execSync(`${CLI} audio dub /tmp/video.mp4`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, OPENAI_API_KEY: "test", ANTHROPIC_API_KEY: "test" },
@@ -443,7 +348,7 @@ describe("ai commands", () => {
 
     it("fails without API keys", () => {
       expect(() => {
-        execSync(`${CLI} ai dub /tmp/video.mp4 -l es`, {
+        execSync(`${CLI} audio dub /tmp/video.mp4 -l es`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, OPENAI_API_KEY: undefined, ANTHROPIC_API_KEY: undefined },
@@ -453,7 +358,7 @@ describe("ai commands", () => {
 
     it("fails with nonexistent file", () => {
       expect(() => {
-        execSync(`${CLI} ai dub /tmp/nonexistent_video_12345.mp4 -l es`, {
+        execSync(`${CLI} audio dub /tmp/nonexistent_video_12345.mp4 -l es`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, OPENAI_API_KEY: "test", ANTHROPIC_API_KEY: "test", ELEVENLABS_API_KEY: "test" },
@@ -462,9 +367,9 @@ describe("ai commands", () => {
     });
   });
 
-  describe("ai jump-cut", () => {
+  describe("edit jump-cut", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} ai jump-cut --help`, {
+      const output = execSync(`${CLI} edit jump-cut --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -480,7 +385,7 @@ describe("ai commands", () => {
 
     it("fails with nonexistent file", () => {
       expect(() => {
-        execSync(`${CLI} ai jump-cut /tmp/nonexistent_video_12345.mp4`, {
+        execSync(`${CLI} edit jump-cut /tmp/nonexistent_video_12345.mp4`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, OPENAI_API_KEY: "test" },
@@ -490,7 +395,7 @@ describe("ai commands", () => {
 
     it("fails without API key", () => {
       expect(() => {
-        execSync(`${CLI} ai jump-cut /tmp/nonexistent.mp4`, {
+        execSync(`${CLI} edit jump-cut /tmp/nonexistent.mp4`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, OPENAI_API_KEY: undefined },
@@ -547,7 +452,6 @@ describe("ai commands", () => {
         { word: "um", start: 1.0, end: 1.3 },
         { word: "uh", start: 1.35, end: 1.6 },
       ];
-      // padding=0.05 => merge threshold = 0.1, gap = 0.05 < 0.1
       const result = detectFillerRanges(adjacent, DEFAULT_FILLER_WORDS, 0.05);
 
       expect(result.length).toBe(1);
@@ -613,9 +517,9 @@ describe("ai commands", () => {
     });
   });
 
-  describe("ai noise-reduce", () => {
+  describe("edit noise-reduce", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} ai noise-reduce --help`, {
+      const output = execSync(`${CLI} edit noise-reduce --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -628,7 +532,7 @@ describe("ai commands", () => {
 
     it("fails with nonexistent file", () => {
       expect(() => {
-        execSync(`${CLI} ai noise-reduce /tmp/nonexistent_audio_12345.mp4`, {
+        execSync(`${CLI} edit noise-reduce /tmp/nonexistent_audio_12345.mp4`, {
           cwd: process.cwd(),
           encoding: "utf-8",
         });
@@ -636,9 +540,9 @@ describe("ai commands", () => {
     });
   });
 
-  describe("ai fade", () => {
+  describe("edit fade", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} ai fade --help`, {
+      const output = execSync(`${CLI} edit fade --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -653,7 +557,7 @@ describe("ai commands", () => {
 
     it("fails with nonexistent file", () => {
       expect(() => {
-        execSync(`${CLI} ai fade /tmp/nonexistent_video_12345.mp4`, {
+        execSync(`${CLI} edit fade /tmp/nonexistent_video_12345.mp4`, {
           cwd: process.cwd(),
           encoding: "utf-8",
         });
@@ -661,9 +565,9 @@ describe("ai commands", () => {
     });
   });
 
-  describe("ai thumbnail --best-frame", () => {
+  describe("generate thumbnail --best-frame", () => {
     it("shows help with best-frame option", () => {
-      const output = execSync(`${CLI} ai thumbnail --help`, {
+      const output = execSync(`${CLI} generate thumbnail --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -676,7 +580,7 @@ describe("ai commands", () => {
 
     it("fails with nonexistent video for best-frame", () => {
       expect(() => {
-        execSync(`${CLI} ai thumbnail --best-frame /tmp/nonexistent_video_12345.mp4`, {
+        execSync(`${CLI} generate thumbnail --best-frame /tmp/nonexistent_video_12345.mp4`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, GOOGLE_API_KEY: "test" },
@@ -685,9 +589,9 @@ describe("ai commands", () => {
     });
   });
 
-  describe("ai translate-srt", () => {
+  describe("edit translate-srt", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} ai translate-srt --help`, {
+      const output = execSync(`${CLI} edit translate-srt --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -702,7 +606,7 @@ describe("ai commands", () => {
 
     it("fails without target language", () => {
       expect(() => {
-        execSync(`${CLI} ai translate-srt /tmp/test.srt`, {
+        execSync(`${CLI} edit translate-srt /tmp/test.srt`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, ANTHROPIC_API_KEY: "test" },
@@ -712,7 +616,7 @@ describe("ai commands", () => {
 
     it("fails with nonexistent file", () => {
       expect(() => {
-        execSync(`${CLI} ai translate-srt /tmp/nonexistent_12345.srt -t ko`, {
+        execSync(`${CLI} edit translate-srt /tmp/nonexistent_12345.srt -t ko`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, ANTHROPIC_API_KEY: "test" },

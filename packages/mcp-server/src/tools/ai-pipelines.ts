@@ -4,7 +4,7 @@ import { autoNarrate } from "@vibeframe/cli/commands/ai-narrate";
 
 export const aiPipelineTools = [
   {
-    name: "ai_script_to_video",
+    name: "pipeline_script_to_video",
     description: "Full script-to-video pipeline: script -> storyboard -> images -> voiceover -> video. Requires multiple API keys depending on providers chosen.",
     inputSchema: {
       type: "object" as const,
@@ -53,7 +53,7 @@ export const aiPipelineTools = [
     },
   },
   {
-    name: "ai_highlights",
+    name: "pipeline_highlights",
     description: "Extract highlight clips from a longer video using AI analysis. Requires OPENAI_API_KEY+ANTHROPIC_API_KEY or GOOGLE_API_KEY (with --use-gemini).",
     inputSchema: {
       type: "object" as const,
@@ -77,8 +77,8 @@ export const aiPipelineTools = [
     },
   },
   {
-    name: "ai_auto_shorts",
-    description: "Automatically generate short-form content (Reels/TikTok/Shorts) from a longer video. Same API key requirements as ai_highlights.",
+    name: "pipeline_auto_shorts",
+    description: "Automatically generate short-form content (Reels/TikTok/Shorts) from a longer video. Same API key requirements as pipeline_highlights.",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -106,7 +106,7 @@ export const aiPipelineTools = [
     },
   },
   {
-    name: "ai_narrate",
+    name: "pipeline_narrate",
     description: "Auto-generate narration for a video: analyze content with Gemini, generate script, produce voiceover with ElevenLabs. Requires GOOGLE_API_KEY + ELEVENLABS_API_KEY.",
     inputSchema: {
       type: "object" as const,
@@ -132,7 +132,7 @@ export async function handleAiPipelineToolCall(
   args: Record<string, unknown>
 ): Promise<string> {
   switch (name) {
-    case "ai_script_to_video": {
+    case "pipeline_script_to_video": {
       const result = await executeScriptToVideo({
         script: args.script as string,
         outputDir: args.outputDir as string | undefined,
@@ -163,7 +163,7 @@ export async function handleAiPipelineToolCall(
       });
     }
 
-    case "ai_highlights": {
+    case "pipeline_highlights": {
       const result = await executeHighlights({
         media: args.media as string,
         output: args.output as string | undefined,
@@ -186,7 +186,7 @@ export async function handleAiPipelineToolCall(
       });
     }
 
-    case "ai_auto_shorts": {
+    case "pipeline_auto_shorts": {
       const result = await executeAutoShorts({
         video: args.video as string,
         outputDir: args.outputDir as string | undefined,
@@ -213,7 +213,7 @@ export async function handleAiPipelineToolCall(
       });
     }
 
-    case "ai_narrate": {
+    case "pipeline_narrate": {
       const result = await autoNarrate({
         videoPath: args.videoPath as string,
         duration: args.duration as number,

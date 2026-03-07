@@ -110,7 +110,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
     console.log("\n");
   });
 
-  describe("ai_gemini_video", () => {
+  describe("analyze_video", () => {
     const hasKey = checkApiKey("GOOGLE_API_KEY");
 
     it.skipIf(!hasKey)(
@@ -134,7 +134,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
           }
         }
 
-        const handler = registry.getHandler("ai_gemini_video");
+        const handler = registry.getHandler("analyze_video");
         expect(handler).toBeDefined();
 
         const result = await handler!(
@@ -164,7 +164,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
       async () => {
         console.log("\n🎬 Testing ai_gemini_video with YouTube URL...");
 
-        const handler = registry.getHandler("ai_gemini_video");
+        const handler = registry.getHandler("analyze_video");
 
         // Use a short, public domain video
         const result = await handler!(
@@ -190,7 +190,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
     );
   });
 
-  describe("ai_storyboard", () => {
+  describe("generate_storyboard", () => {
     const hasKey = checkApiKey("ANTHROPIC_API_KEY");
 
     it.skipIf(!hasKey)(
@@ -198,7 +198,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
       async () => {
         console.log("\n📝 Testing ai_storyboard...");
 
-        const handler = registry.getHandler("ai_storyboard");
+        const handler = registry.getHandler("generate_storyboard");
         expect(handler).toBeDefined();
 
         const result = await handler!(
@@ -223,7 +223,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
     );
   });
 
-  describe("ai_image", () => {
+  describe("generate_image", () => {
     const hasGeminiKey = checkApiKey("GOOGLE_API_KEY");
 
     it.skipIf(!hasGeminiKey)(
@@ -231,7 +231,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
       async () => {
         console.log("\n🖼️  Testing ai_image (Gemini)...");
 
-        const handler = registry.getHandler("ai_image");
+        const handler = registry.getHandler("generate_image");
         expect(handler).toBeDefined();
 
         const result = await handler!(
@@ -258,7 +258,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
     );
   });
 
-  describe("ai_tts", () => {
+  describe("generate_speech", () => {
     const hasKey = checkApiKey("ELEVENLABS_API_KEY");
 
     it.skipIf(!hasKey)(
@@ -266,7 +266,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
       async () => {
         console.log("\n🎙️  Testing ai_tts...");
 
-        const handler = registry.getHandler("ai_tts");
+        const handler = registry.getHandler("generate_speech");
         expect(handler).toBeDefined();
 
         const result = await handler!(
@@ -292,7 +292,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
     );
   });
 
-  describe("ai_sfx", () => {
+  describe("generate_sound_effect", () => {
     const hasKey = checkApiKey("ELEVENLABS_API_KEY");
 
     it.skipIf(!hasKey)(
@@ -300,7 +300,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
       async () => {
         console.log("\n🔊 Testing ai_sfx...");
 
-        const handler = registry.getHandler("ai_sfx");
+        const handler = registry.getHandler("generate_sound_effect");
         expect(handler).toBeDefined();
 
         const result = await handler!(
@@ -325,7 +325,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
     );
   });
 
-  describe("ai_script_to_video (images-only)", () => {
+  describe("pipeline_script_to_video (images-only)", () => {
     const hasClaudeKey = checkApiKey("ANTHROPIC_API_KEY");
     const hasGeminiKey = checkApiKey("GOOGLE_API_KEY");
     const hasTTSKey = checkApiKey("ELEVENLABS_API_KEY");
@@ -342,7 +342,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
           mkdirSync(outputDir, { recursive: true });
         }
 
-        const handler = registry.getHandler("ai_script_to_video");
+        const handler = registry.getHandler("pipeline_script_to_video");
         expect(handler).toBeDefined();
 
         const result = await handler!(
@@ -383,7 +383,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
           mkdirSync(outputDir, { recursive: true });
         }
 
-        const handler = registry.getHandler("ai_script_to_video");
+        const handler = registry.getHandler("pipeline_script_to_video");
 
         const result = await handler!(
           {
@@ -409,7 +409,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
     );
   });
 
-  describe("ai_highlights (with Gemini)", () => {
+  describe("pipeline_highlights (with Gemini)", () => {
     const hasGeminiKey = checkApiKey("GOOGLE_API_KEY");
 
     it.skipIf(!hasGeminiKey)(
@@ -439,7 +439,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
           }
         }
 
-        const handler = registry.getHandler("ai_highlights");
+        const handler = registry.getHandler("pipeline_highlights");
         expect(handler).toBeDefined();
 
         const result = await handler!(
@@ -466,7 +466,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
     );
   });
 
-  describe("ai_auto_shorts (analyze-only)", () => {
+  describe("pipeline_auto_shorts (analyze-only)", () => {
     const hasGeminiKey = checkApiKey("GOOGLE_API_KEY");
 
     it.skipIf(!hasGeminiKey)(
@@ -490,7 +490,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
           }
         }
 
-        const handler = registry.getHandler("ai_auto_shorts");
+        const handler = registry.getHandler("pipeline_auto_shorts");
         expect(handler).toBeDefined();
 
         const result = await handler!(

@@ -23,19 +23,8 @@ import {
 } from '@vibeframe/ai-providers';
 import { getApiKey } from '../utils/api-key.js';
 import { execSafe, commandExists } from '../utils/exec-safe.js';
-import { formatTime } from './ai-helpers.js';
+import { formatTime, downloadVideo } from './ai-helpers.js';
 import { applyTextOverlays, type TextOverlayStyle } from './ai-edit.js';
-
-async function downloadVideo(url: string): Promise<Buffer> {
-  const headers: Record<string, string> = {};
-  if (url.includes("generativelanguage.googleapis.com")) {
-    const apiKey = process.env.GOOGLE_API_KEY;
-    if (apiKey) { headers["x-goog-api-key"] = apiKey; }
-  }
-  const response = await fetch(url, { headers, redirect: "follow" });
-  if (!response.ok) throw new Error(`Download failed (${response.status}): ${response.statusText}`);
-  return Buffer.from(await response.arrayBuffer());
-}
 
 export function registerVisualFxCommands(ai: Command): void {
 
@@ -47,7 +36,7 @@ ai
   .description("Apply AI-generated color grading (Claude + FFmpeg)")
   .argument("<video>", "Video file path")
   .option("-s, --style <prompt>", "Style description (e.g., 'cinematic warm')")
-  .option("-p, --preset <name>", "Built-in preset: film-noir, vintage, cinematic-warm, cool-tones, high-contrast, pastel, cyberpunk, horror")
+  .option("--preset <name>", "Built-in preset: film-noir, vintage, cinematic-warm, cool-tones, high-contrast, pastel, cyberpunk, horror")
   .option("-o, --output <path>", "Output video file path")
   .option("--analyze-only", "Show filter without applying")
   .option("-k, --api-key <key>", "Anthropic API key (or set ANTHROPIC_API_KEY env)")

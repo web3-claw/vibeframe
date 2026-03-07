@@ -142,10 +142,24 @@ aiCommand
             await writeFile(outputPath, buffer);
             saveSpinner.succeed(chalk.green(`Saved to: ${outputPath}`));
           } catch (err) {
-            saveSpinner.fail(chalk.red("Failed to save image"));
+            saveSpinner.fail(chalk.red(`Failed to save image: ${err instanceof Error ? err.message : err}`));
           }
         }
       } else if (provider === "gemini") {
+        // Validate model name
+        const validGeminiModels = ["flash", "3.1-flash", "latest", "pro"];
+        if (options.model && !validGeminiModels.includes(options.model)) {
+          console.warn(chalk.yellow(`Unknown model "${options.model}", using flash. Valid: ${validGeminiModels.join(", ")}`));
+          options.model = "flash";
+        }
+
+        // Validate aspect ratio
+        const validRatios = ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9"];
+        if (options.ratio && !validRatios.includes(options.ratio)) {
+          console.error(chalk.red(`Invalid ratio "${options.ratio}". Valid: ${validRatios.join(", ")}`));
+          process.exit(1);
+        }
+
         const gemini = new GeminiProvider();
         await gemini.initialize({ apiKey });
 
@@ -159,17 +173,17 @@ aiCommand
 
         let result = await gemini.generateImage(prompt, {
           model: options.model,
-          aspectRatio: options.ratio as "1:1" | "2:3" | "3:2" | "3:4" | "4:3" | "4:5" | "5:4" | "9:16" | "16:9" | "21:9",
+          aspectRatio: options.ratio as "1:1" | "1:4" | "1:8" | "2:3" | "3:2" | "3:4" | "4:1" | "4:3" | "4:5" | "5:4" | "8:1" | "9:16" | "16:9" | "21:9",
         });
 
         // Auto-fallback: if latest/3.1-flash fails, retry with flash
         let usedLabel = modelLabel;
         const fallbackModels = ["latest", "3.1-flash"];
         if (!result.success && options.model && fallbackModels.includes(options.model)) {
-          spinner.text = "Retrying with Nano Banana (flash)...";
+          spinner.text = `${chalk.dim(result.error || "Failed")} — retrying with Nano Banana (flash)...`;
           result = await gemini.generateImage(prompt, {
             model: "flash",
-            aspectRatio: options.ratio as "1:1" | "2:3" | "3:2" | "3:4" | "4:3" | "4:5" | "5:4" | "9:16" | "16:9" | "21:9",
+            aspectRatio: options.ratio as "1:1" | "1:4" | "1:8" | "2:3" | "3:2" | "3:4" | "4:1" | "4:3" | "4:5" | "5:4" | "8:1" | "9:16" | "16:9" | "21:9",
           });
           usedLabel = "Nano Banana (fallback)";
         }
@@ -204,7 +218,7 @@ aiCommand
             await writeFile(outputPath, buffer);
             saveSpinner.succeed(chalk.green(`Saved to: ${outputPath}`));
           } catch (err) {
-            saveSpinner.fail(chalk.red("Failed to save image"));
+            saveSpinner.fail(chalk.red(`Failed to save image: ${err instanceof Error ? err.message : err}`));
           }
         } else {
           console.log(chalk.yellow("Use -o to save the generated image to a file"));
@@ -257,7 +271,7 @@ aiCommand
             await writeFile(outputPath, buffer);
             saveSpinner.succeed(chalk.green(`Saved to: ${outputPath}`));
           } catch (err) {
-            saveSpinner.fail(chalk.red("Failed to save image"));
+            saveSpinner.fail(chalk.red(`Failed to save image: ${err instanceof Error ? err.message : err}`));
           }
         } else {
           console.log(chalk.yellow("Use -o to save the generated image to a file"));
@@ -330,7 +344,7 @@ aiCommand
   .option("-s, --style <style>", "Platform style: youtube, instagram, tiktok, twitter")
   .option("--best-frame <video>", "Extract best thumbnail frame from video using Gemini AI")
   .option("--prompt <prompt>", "Custom prompt for best-frame analysis")
-  .option("--model <model>", "Gemini model: flash, flash-2.5, pro (default: flash)", "flash")
+  .option("--model <model>", "Gemini model: flash, latest, pro (default: flash)", "flash")
   .action(async (description: string | undefined, options) => {
     try {
       // Best-frame mode: analyze video with Gemini and extract frame
@@ -920,7 +934,7 @@ aiCommand
       // Auto-fallback: if latest/3.1-flash fails, retry with flash
       const fallbackModels = ["latest", "3.1-flash"];
       if (!result.success && fallbackModels.includes(options.model)) {
-        spinner.text = `${modelName} failed, retrying with flash...`;
+        spinner.text = `${chalk.dim(result.error || `${modelName} failed`)} — retrying with flash...`;
         result = await gemini.generateImage(prompt, {
           model: "flash",
           aspectRatio: options.ratio,
@@ -1011,7 +1025,7 @@ aiCommand
       // Auto-fallback: if latest/3.1-flash fails, retry with flash
       const fallbackModels = ["latest", "3.1-flash"];
       if (!result.success && fallbackModels.includes(options.model)) {
-        spinner.text = `${editModelName} failed, retrying with flash...`;
+        spinner.text = `${chalk.dim(result.error || `${editModelName} failed`)} — retrying with flash...`;
         result = await gemini.editImage(imageBuffers, prompt, {
           model: "flash",
           aspectRatio: options.ratio,
@@ -1106,7 +1120,8 @@ export async function executeThumbnailBestFrame(options: ThumbnailBestFrameOptio
 
     const modelMap: Record<string, string> = {
       flash: "gemini-3-flash-preview",
-      "flash-2.5": "gemini-2.5-flash",
+      latest: "gemini-2.5-flash",
+      "flash-2.5": "gemini-2.5-flash", // backward compat
       pro: "gemini-2.5-pro",
     };
     const modelId = modelMap[model] || "gemini-3-flash-preview";

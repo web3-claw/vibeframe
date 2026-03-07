@@ -27,12 +27,12 @@ Unified interface for AI services.
 ### Text / Language
 - [x] Provider interface design
 - [x] Provider registry system
-- [x] **OpenAI GPT** - Natural language timeline commands (`vibe ai edit`)
+- [x] **OpenAI GPT** - Natural language timeline commands (replaced by Agent mode)
 - [x] **Gemini** - Multimodal understanding, auto-edit suggestions
 - [x] **Claude** - AI-powered content creation
-  - Natural language → Remotion motion graphics with auto-render & composite (`vibe ai motion --render --video`)
+  - Natural language → Remotion motion graphics with auto-render & composite (`vibe generate motion --render --video`)
   - Gemini video-aware motion: analyzes base video for style/layout context before code generation
-  - Long-form content analysis & storyboarding (`vibe ai storyboard`)
+  - Long-form content analysis & storyboarding (`vibe generate storyboard`)
   - Timeline planning with AI suggestions
 - [x] **Ollama** - Local LLM for natural language commands (no API key required)
   - Default: llama3.2 (2GB), also supports mistral (4GB), phi (1.6GB), tinyllama (0.6GB)
@@ -40,26 +40,26 @@ Unified interface for AI services.
 
 ### Audio
 - [x] **Whisper** - Speech-to-text, auto-subtitles (SRT/VTT export)
-- [x] **ElevenLabs** - Text-to-speech (`vibe ai tts`)
-- [x] **ElevenLabs** - Sound effects generation (`vibe ai sfx`)
-- [x] **ElevenLabs** - Audio isolation / vocal extraction (`vibe ai isolate`)
-- [x] **ElevenLabs** - Voice cloning (`vibe ai voice-clone`)
-- [x] **Replicate MusicGen** - Music generation (`vibe ai music`)
+- [x] **ElevenLabs** - Text-to-speech (`vibe generate speech`)
+- [x] **ElevenLabs** - Sound effects generation (`vibe generate sound-effect`)
+- [x] **ElevenLabs** - Audio isolation / vocal extraction (`vibe audio isolate`)
+- [x] **ElevenLabs** - Voice cloning (`vibe audio voice-clone`)
+- [x] **Replicate MusicGen** - Music generation (`vibe generate music`)
 - [x] Beat detection & silence detection (`vibe detect beats/silence`)
 
 ### Image
-- [x] **OpenAI GPT Image 1.5** - Image generation (`vibe ai image --provider openai`)
-- [x] **Gemini Nano Banana** - Image generation (`vibe ai image`, default provider)
-- [x] **Stability AI** - Stable Diffusion SD3.5 (`vibe ai sd/sd-upscale/sd-img2img`)
-- [x] Background removal (`vibe ai sd-remove-bg`)
-- [x] Search & replace (`vibe ai sd-replace`) - AI-powered object replacement
-- [x] Outpainting (`vibe ai sd-outpaint`) - Extend image canvas
+- [x] **OpenAI GPT Image 1.5** - Image generation (`vibe generate image --provider openai`)
+- [x] **Gemini Nano Banana** - Image generation (`vibe generate image`, default provider)
+- [x] **Stability AI** - Stable Diffusion SD3.5 (`vibe edit upscale/image/remove-bg`)
+- [x] Background removal (`vibe edit remove-bg`)
+- [x] Search & replace (`vibe edit replace`) - AI-powered object replacement
+- [x] Outpainting (`vibe edit outpaint`) - Extend image canvas
 
 ### Video
 - [x] Scene detection & auto-cutting (`vibe detect scenes`)
-- [x] **Runway Gen-4** - Video generation (`vibe ai video`, default provider)
-- [x] **Kling v2.5** - Video generation (`vibe ai video --provider kling`)
-- [x] **Veo 3.1** - Video generation (`vibe ai video --provider veo`)
+- [x] **Runway Gen-4** - Video generation (`vibe generate video`, default provider)
+- [x] **Kling v2.5** - Video generation (`vibe generate video --provider kling`)
+- [x] **Veo 3.1** - Video generation (`vibe generate video --provider veo`)
 
 ---
 
@@ -104,55 +104,55 @@ Intelligence built into every interaction.
 ### Content-Aware Automation
 - [x] **Script-to-Video** - Generate complete videos from text scripts
   - Claude storyboard analysis → ElevenLabs TTS → DALL-E visuals → Runway/Kling video
-  - Full pipeline: `vibe ai script-to-video <script> -o project.vibe.json`
+  - Full pipeline: `vibe pipeline script-to-video <script> -o project.vibe.json`
   - Automatic retry on video generation failures (`--retries`)
-  - Individual scene regeneration: `vibe ai regenerate-scene <dir> --scene <n>`
+  - Individual scene regeneration: `vibe pipeline regenerate-scene <dir> --scene <n>`
 - [x] **Auto Highlights** - Extract highlights from long-form content
   - FFmpeg audio extraction → Whisper transcription → Claude highlight analysis
-  - Full pipeline: `vibe ai highlights <media> -o highlights.json -p project.vibe.json`
+  - Full pipeline: `vibe pipeline highlights <media> -o highlights.json -p project.vibe.json`
 - [x] **B-Roll Matcher** - Auto-match B-roll to narration
   - Whisper transcription → Claude Vision B-roll analysis → Claude semantic matching
-  - Full pipeline: `vibe ai b-roll <narration> --broll-dir ./broll -o project.vibe.json`
+  - Full pipeline: `vibe pipeline b-roll <narration> --broll-dir ./broll -o project.vibe.json`
 - [x] **Viral Optimizer** - Platform-specific optimization (YouTube, TikTok, Instagram)
   - Whisper transcription → Claude viral analysis → Platform cuts generation
-  - Full pipeline: `vibe ai viral <project> -p youtube-shorts,tiktok -o ./viral-output`
+  - Full pipeline: `vibe pipeline viral <project> -p youtube-shorts,tiktok -o ./viral-output`
 
 ### Video Understanding & Generation
-- [x] **Gemini Video Analysis** - Summarize, Q&A, extract info (`vibe ai gemini-video`)
-- [x] **Unified Analyze** - Image/video/YouTube analysis in one command (`vibe ai analyze`)
-- [x] **Gemini Image Edit** - Multi-image editing (`vibe ai gemini-edit`)
-- [x] **Auto Narrate** - AI narration for videos (`vibe ai narrate`)
-- [x] Video Extend - AI-powered clip extension (`vibe ai video-extend`)
+- [x] **Gemini Video Analysis** - Summarize, Q&A, extract info (`vibe analyze video`)
+- [x] **Unified Analyze** - Image/video/YouTube analysis in one command (`vibe analyze media`)
+- [x] **Gemini Image Edit** - Multi-image editing (`vibe edit image`)
+- [x] **Auto Narrate** - AI narration for videos (`vibe pipeline narrate`)
+- [x] Video Extend - AI-powered clip extension (`vibe generate video-extend`)
 - [x] ~~Video Inpainting~~ - Deprecated (requires public URL, not local files)
-- [x] Video Upscale - Low-res → 4K AI upscaling (`vibe ai video-upscale`)
-- [x] Frame Interpolation - AI slow motion (`vibe ai video-interpolate`)
-- [x] Fill Gaps - AI video generation to fill timeline gaps (`vibe ai fill-gaps`)
+- [x] Video Upscale - Low-res → 4K AI upscaling (`vibe edit upscale-video`)
+- [x] Frame Interpolation - AI slow motion (`vibe edit interpolate`)
+- [x] Fill Gaps - AI video generation to fill timeline gaps (`vibe edit fill-gaps`)
 
 ### Voice & Audio
-- [x] Voice Clone - Custom AI voice from samples (`vibe ai voice-clone`)
-- [x] AI Dubbing - Automatic multilingual dubbing (`vibe ai dub`)
-- [x] Music Generation - Generate background music from prompts (`vibe ai music`)
-- [x] ~~Audio Restoration~~ - Deprecated (use `vibe ai noise-reduce` instead)
+- [x] Voice Clone - Custom AI voice from samples (`vibe audio voice-clone`)
+- [x] AI Dubbing - Automatic multilingual dubbing (`vibe audio dub`)
+- [x] Music Generation - Generate background music from prompts (`vibe generate music`)
+- [x] ~~Audio Restoration~~ - Deprecated (use `vibe edit noise-reduce` instead)
 
 ### Smart Editing
-- [x] Audio Ducking - Auto-duck music when voice is present (`vibe ai duck`)
-- [x] AI Color Grading - Style-based color grading (`vibe ai grade`)
-- [x] Speed Ramping - Content-aware speed ramping (`vibe ai speed-ramp`)
+- [x] Audio Ducking - Auto-duck music when voice is present (`vibe audio duck`)
+- [x] AI Color Grading - Style-based color grading (`vibe edit grade`)
+- [x] Speed Ramping - Content-aware speed ramping (`vibe edit speed-ramp`)
 - [x] Natural Language Timeline - Extended with speed/reverse/crop/position actions
-- [x] Auto Reframe - Smart 16:9 → 9:16 conversion (`vibe ai reframe`)
-- [x] Auto-generate Shorts - From long-form with captions (`vibe ai auto-shorts`)
+- [x] Auto Reframe - Smart 16:9 → 9:16 conversion (`vibe edit reframe`)
+- [x] Auto-generate Shorts - From long-form with captions (`vibe pipeline auto-shorts`)
 - [x] ~~Video Style Transfer~~ - Deprecated (requires public URL, not local files)
 - [x] ~~Object Tracking~~ - Deprecated (requires public URL, not local files)
-- [x] Text Overlay - Auto-compose text overlays on video (`vibe ai text-overlay`)
-- [x] AI Video Review - Gemini-powered quality review & auto-fix (`vibe ai review`)
-- [x] Silence Cut - Remove silent segments from video (`vibe ai silence-cut`, `--use-gemini` for smart detection)
-- [x] Jump Cut - Remove filler words using Whisper word-level timestamps (`vibe ai jump-cut`)
-- [x] Auto Caption - Transcribe + burn styled captions (`vibe ai caption`)
+- [x] Text Overlay - Auto-compose text overlays on video (`vibe edit text-overlay`)
+- [x] AI Video Review - Gemini-powered quality review & auto-fix (`vibe analyze review`)
+- [x] Silence Cut - Remove silent segments from video (`vibe edit silence-cut`, `--use-gemini` for smart detection)
+- [x] Jump Cut - Remove filler words using Whisper word-level timestamps (`vibe edit jump-cut`)
+- [x] Auto Caption - Transcribe + burn styled captions (`vibe edit caption`)
   - FFmpeg subtitles (fast path) or Remotion overlay fallback (no libass/freetype required)
-- [x] Noise Reduce - FFmpeg audio/video noise removal (`vibe ai noise-reduce`)
-- [x] Fade Effects - FFmpeg fade in/out for audio and video (`vibe ai fade`)
-- [x] Best-Frame Thumbnail - Gemini video analysis + FFmpeg frame extract (`vibe ai thumbnail --best-frame`)
-- [x] SRT Translation - Translate subtitle files via Claude/OpenAI (`vibe ai translate-srt`)
+- [x] Noise Reduce - FFmpeg audio/video noise removal (`vibe edit noise-reduce`)
+- [x] Fade Effects - FFmpeg fade in/out for audio and video (`vibe edit fade`)
+- [x] Best-Frame Thumbnail - Gemini video analysis + FFmpeg frame extract (`vibe generate thumbnail --best-frame`)
+- [x] SRT Translation - Translate subtitle files via Claude/OpenAI (`vibe edit translate-srt`)
 
 ### Installation & Interactive Mode
 - [x] **Install Script** - One-line installation: `curl -fsSL https://vibeframe.ai/install.sh | bash`
@@ -168,18 +168,18 @@ Intelligence built into every interaction.
 - [x] **Agent Mode (Default)** - Claude Code-like autonomous agent (`vibe` or `vibe agent`)
   - Default entry point: `vibe` starts Agent mode
   - Multi-turn agentic loop: LLM reasoning → tool call → result → repeat
-  - **58 tools** across 7 categories (project, timeline, filesystem, media, AI, export, batch)
+  - **57 tools** across 7 categories (project, timeline, filesystem, media, AI, export, batch)
   - Multi-provider support: OpenAI, Claude, Gemini, xAI, Ollama
   - Verbose mode for tool call visibility (`-v`)
   - Confirm mode: `--confirm` prompts before each tool execution
   - Non-interactive mode: `-i "query"` for single query execution
   - Conversation memory with context management
   - **Advanced Pipeline Tools:**
-    - `ai_script_to_video` - Full script→video pipeline via natural language
-    - `ai_highlights` - Extract highlights from long-form content
-    - `ai_auto_shorts` - Auto-generate vertical shorts
-    - `ai_gemini_video` - Analyze video with Gemini
-    - `ai_analyze` - Unified media analysis (image/video/YouTube)
+    - `pipeline_script_to_video` - Full script→video pipeline via natural language
+    - `pipeline_highlights` - Extract highlights from long-form content
+    - `pipeline_auto_shorts` - Auto-generate vertical shorts
+    - `analyze_video` - Analyze video with Gemini
+    - `analyze_media` - Unified media analysis (image/video/YouTube)
 - [x] **Config System** - YAML config at `~/.vibeframe/config.yaml`
 - [x] **CLI Guide** - CLI reference in README.md + per-command `--help`
 
@@ -241,18 +241,17 @@ vibe batch      import | concat | apply-effect | remove-clips | info
 vibe media      info | duration
 vibe export     <project> -o <output> -p <preset>
 vibe detect     scenes | silence | beats
-vibe ai         providers | transcribe | suggest | edit | tts | voices | sfx | isolate
-                motion | storyboard | image | thumbnail | background
-                gemini | gemini-edit | gemini-video | analyze | narrate
-                video | video-status | video-cancel
-                kling | kling-status
-                video-extend | video-upscale | video-interpolate | fill-gaps
-                sd | sd-upscale | sd-remove-bg | sd-img2img | sd-replace | sd-outpaint
-                script-to-video | regenerate-scene | highlights | b-roll | viral
-                voice-clone | music | music-status | dub
-                duck | grade | speed-ramp | reframe | auto-shorts
+vibe generate   image | video | video-extend | speech | sound-effect | music
+                storyboard | motion | thumbnail
+vibe edit       image | upscale | remove-bg | outpaint | replace
+                upscale-video | interpolate | fill-gaps
                 silence-cut | jump-cut | caption
-                noise-reduce | fade | translate-srt
+                noise-reduce | fade | grade | text-overlay
+                speed-ramp | reframe | translate-srt
+vibe analyze    media | video | review | suggest
+vibe audio      transcribe | voices | isolate | voice-clone | dub | duck
+vibe pipeline   script-to-video | regenerate-scene | highlights
+                auto-shorts | viral | b-roll | narrate
 ```
 
 ### Agent Mode (Default)
@@ -277,7 +276,7 @@ you> trim the clip to 5 seconds and add a fade in
 [Tool: timeline_add_effect] Added fadeIn effect
 
 you> generate a thumbnail image for the video
-[Tool: ai_image] Generated: thumbnail.png
+[Tool: generate_image] Generated: thumbnail.png
 ```
 
 ---

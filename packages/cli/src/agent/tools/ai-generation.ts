@@ -4,7 +4,7 @@
  * storyboard, motion). Wraps providers for agent use. Some features require
  * async polling -- tool returns immediately with task status.
  *
- * ## Tools: ai_image, ai_video, ai_kling, ai_veo, ai_tts, ai_sfx, ai_music, ai_storyboard, ai_motion
+ * ## Tools: generate_image, generate_video, generate_speech, generate_sound_effect, generate_music, generate_storyboard, generate_motion
  * ## Dependencies: OpenAI, Gemini, Stability, Runway, Kling, ElevenLabs, Replicate, Claude, Remotion
  * @see MODELS.md for the Single Source of Truth (SSOT) on supported providers/models
  */
@@ -14,26 +14,11 @@ import { resolve } from "node:path";
 import type { ToolRegistry, ToolHandler } from "./index.js";
 import type { ToolDefinition, ToolResult } from "../types.js";
 import { getApiKeyFromConfig } from "../../config/index.js";
+import { downloadVideo } from "../../commands/ai-helpers.js";
 
 // Helper to get timestamp for filenames
 function getTimestamp(): string {
   return Date.now().toString();
-}
-
-// Download video with auth headers for Veo (Google) URIs
-async function downloadVideo(url: string): Promise<Buffer> {
-  const headers: Record<string, string> = {};
-  if (url.includes("generativelanguage.googleapis.com")) {
-    const apiKey = process.env.GOOGLE_API_KEY;
-    if (apiKey) {
-      headers["x-goog-api-key"] = apiKey;
-    }
-  }
-  const response = await fetch(url, { headers, redirect: "follow" });
-  if (!response.ok) {
-    throw new Error(`Download failed (${response.status}): ${response.statusText}`);
-  }
-  return Buffer.from(await response.arrayBuffer());
 }
 
 // ============================================================================
@@ -41,7 +26,7 @@ async function downloadVideo(url: string): Promise<Buffer> {
 // ============================================================================
 
 const imageDef: ToolDefinition = {
-  name: "ai_image",
+  name: "generate_image",
   description: "Generate an image using AI (OpenAI GPT Image 1.5, Gemini, or Stability)",
   parameters: {
     type: "object",
@@ -70,8 +55,8 @@ const imageDef: ToolDefinition = {
 };
 
 const videoDef: ToolDefinition = {
-  name: "ai_video",
-  description: "Generate video from an image using Runway Gen-4 (image-to-video). REQUIRES an input image. For text-to-video without an image, use ai_kling instead.",
+  name: "generate_video",
+  description: "Generate video using AI. Supports Runway (image-to-video), Kling (text/image-to-video), and Veo (text/image-to-video) via provider selection.",
   parameters: {
     type: "object",
     properties: {
@@ -79,9 +64,14 @@ const videoDef: ToolDefinition = {
         type: "string",
         description: "Video generation prompt describing the motion/animation",
       },
+      provider: {
+        type: "string",
+        description: "Video provider to use (default: kling)",
+        enum: ["runway", "kling", "veo"],
+      },
       image: {
         type: "string",
-        description: "Input image path (REQUIRED - Runway only supports image-to-video)",
+        description: "Input image path. REQUIRED for runway, optional for kling and veo.",
       },
       output: {
         type: "string",
@@ -89,74 +79,20 @@ const videoDef: ToolDefinition = {
       },
       duration: {
         type: "number",
-        description: "Video duration in seconds (5 or 10)",
-      },
-    },
-    required: ["prompt", "image"],
-  },
-};
-
-const klingDef: ToolDefinition = {
-  name: "ai_kling",
-  description: "Generate video using Kling AI. Supports both text-to-video (no image required) and image-to-video. Recommended for text-only video generation when you don't have an input image.",
-  parameters: {
-    type: "object",
-    properties: {
-      prompt: {
-        type: "string",
-        description: "Video generation prompt",
-      },
-      image: {
-        type: "string",
-        description: "Optional input image path for image-to-video (not required for text-to-video)",
-      },
-      output: {
-        type: "string",
-        description: "Output file path",
-      },
-      duration: {
-        type: "number",
-        description: "Video duration (5 or 10 seconds)",
+        description: "Video duration in seconds",
       },
       mode: {
         type: "string",
-        description: "Quality mode (std or pro)",
+        description: "Quality mode for Kling (std or pro)",
         enum: ["std", "pro"],
-      },
-    },
-    required: ["prompt"],
-  },
-};
-
-const veoDef: ToolDefinition = {
-  name: "ai_veo",
-  description: "Generate video using Google Veo 3.1. Supports text-to-video and image-to-video. Native audio support. Good for high-quality video generation.",
-  parameters: {
-    type: "object",
-    properties: {
-      prompt: {
-        type: "string",
-        description: "Video generation prompt",
-      },
-      image: {
-        type: "string",
-        description: "Optional input image path for image-to-video",
-      },
-      output: {
-        type: "string",
-        description: "Output file path",
-      },
-      duration: {
-        type: "number",
-        description: "Video duration in seconds (4, 6, or 8)",
       },
       negativePrompt: {
         type: "string",
-        description: "What to avoid in the generated video",
+        description: "What to avoid in the generated video (Veo only)",
       },
       resolution: {
         type: "string",
-        description: "Video resolution",
+        description: "Video resolution (Veo only)",
         enum: ["720p", "1080p", "4k"],
       },
     },
@@ -165,7 +101,7 @@ const veoDef: ToolDefinition = {
 };
 
 const ttsDef: ToolDefinition = {
-  name: "ai_tts",
+  name: "generate_speech",
   description: "Generate speech from text using ElevenLabs",
   parameters: {
     type: "object",
@@ -188,7 +124,7 @@ const ttsDef: ToolDefinition = {
 };
 
 const sfxDef: ToolDefinition = {
-  name: "ai_sfx",
+  name: "generate_sound_effect",
   description: "Generate sound effects using ElevenLabs",
   parameters: {
     type: "object",
@@ -211,7 +147,7 @@ const sfxDef: ToolDefinition = {
 };
 
 const musicDef: ToolDefinition = {
-  name: "ai_music",
+  name: "generate_music",
   description: "Generate music using AI (Replicate/MusicGen). Note: Music generation is async.",
   parameters: {
     type: "object",
@@ -234,7 +170,7 @@ const musicDef: ToolDefinition = {
 };
 
 const storyboardDef: ToolDefinition = {
-  name: "ai_storyboard",
+  name: "generate_storyboard",
   description: "Generate a storyboard from a script using Claude",
   parameters: {
     type: "object",
@@ -262,7 +198,7 @@ const storyboardDef: ToolDefinition = {
 };
 
 const motionDef: ToolDefinition = {
-  name: "ai_motion",
+  name: "generate_motion",
   description:
     "Generate motion graphics using Claude + Remotion. Can render to video and composite onto existing footage. " +
     "Without --video: generates and renders a standalone motion graphic. With --video: renders and composites onto the base video.",
@@ -440,277 +376,236 @@ const generateImage: ToolHandler = async (args, context): Promise<ToolResult> =>
 
 const generateVideo: ToolHandler = async (args, context): Promise<ToolResult> => {
   const prompt = args.prompt as string;
+  const provider = (args.provider as string) || "kling";
   const imagePath = args.image as string | undefined;
-  const output = (args.output as string) || `generated-${getTimestamp()}.mp4`;
-  const duration = (args.duration as number) || 5;
+  const output = (args.output as string) || `${provider}-${getTimestamp()}.mp4`;
+  const duration = (args.duration as number) || (provider === "veo" ? 6 : 5);
+
+  // Validate: Runway requires an image
+  if (provider === "runway" && !imagePath) {
+    return {
+      toolCallId: "",
+      success: false,
+      output: "",
+      error: "Runway requires an input image. Provide 'image' parameter or use provider 'kling' or 'veo' for text-to-video.",
+    };
+  }
+
+  // Helper to prepare reference image
+  async function prepareReferenceImage(imgPath: string): Promise<string> {
+    const absImagePath = resolve(context.workingDirectory, imgPath);
+    const imageBuffer = await readFile(absImagePath);
+    const base64 = imageBuffer.toString("base64");
+    const ext = imgPath.split(".").pop()?.toLowerCase() || "png";
+    const mimeType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
+    return `data:${mimeType};base64,${base64}`;
+  }
 
   try {
-    const apiKey = await getApiKeyFromConfig("runway");
-    if (!apiKey) {
-      return {
-        toolCallId: "",
-        success: false,
-        output: "",
-        error: "Runway API key required. Configure via 'vibe setup'.",
-      };
-    }
-
-    const { RunwayProvider } = await import("@vibeframe/ai-providers");
-    const runway = new RunwayProvider();
-    await runway.initialize({ apiKey });
-
-    // Prepare reference image if provided
-    let referenceImage: string | undefined;
-    if (imagePath) {
-      const absImagePath = resolve(context.workingDirectory, imagePath);
-      const imageBuffer = await readFile(absImagePath);
-      const base64 = imageBuffer.toString("base64");
-      const ext = imagePath.split(".").pop()?.toLowerCase() || "png";
-      const mimeType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
-      referenceImage = `data:${mimeType};base64,${base64}`;
-    }
-
-    const result = await runway.generateVideo(prompt, {
-      prompt,
-      duration: duration as 5 | 10,
-      referenceImage,
-    });
-
-    if (result.status === "failed") {
-      return {
-        toolCallId: "",
-        success: false,
-        output: "",
-        error: `Video generation failed: ${result.error}`,
-      };
-    }
-
-    // Video generation is async - need to poll
-    if (result.status === "pending" || result.status === "processing") {
-      // Poll for completion
-      let finalResult = result;
-      const maxAttempts = 60; // 5 minutes max
-      for (let i = 0; i < maxAttempts; i++) {
-        await new Promise((r) => setTimeout(r, 5000));
-        finalResult = await runway.getGenerationStatus(result.id);
-        if (finalResult.status === "completed" || finalResult.status === "failed") {
-          break;
-        }
-      }
-
-      if (finalResult.status !== "completed") {
+    if (provider === "runway") {
+      const apiKey = await getApiKeyFromConfig("runway");
+      if (!apiKey) {
         return {
           toolCallId: "",
           success: false,
           output: "",
-          error: `Video generation timed out or failed: ${finalResult.error || finalResult.status}`,
+          error: "Runway API key required. Configure via 'vibe setup'.",
         };
       }
 
-      // Download and save video
-      if (finalResult.videoUrl) {
-        const outputPath = resolve(context.workingDirectory, output);
-        const buffer = await downloadVideo(finalResult.videoUrl);
-        await writeFile(outputPath, buffer);
-      }
-    }
+      const { RunwayProvider } = await import("@vibeframe/ai-providers");
+      const runway = new RunwayProvider();
+      await runway.initialize({ apiKey });
 
-    return {
-      toolCallId: "",
-      success: true,
-      output: `Video generated: ${output}\nPrompt: ${prompt}\nDuration: ${duration}s`,
-    };
+      const referenceImage = imagePath ? await prepareReferenceImage(imagePath) : undefined;
+
+      const result = await runway.generateVideo(prompt, {
+        prompt,
+        duration: duration as 5 | 10,
+        referenceImage,
+      });
+
+      if (result.status === "failed") {
+        return {
+          toolCallId: "",
+          success: false,
+          output: "",
+          error: `Video generation failed: ${result.error}`,
+        };
+      }
+
+      if (result.status === "pending" || result.status === "processing") {
+        let finalResult = result;
+        const maxAttempts = 60;
+        for (let i = 0; i < maxAttempts; i++) {
+          await new Promise((r) => setTimeout(r, 5000));
+          finalResult = await runway.getGenerationStatus(result.id);
+          if (finalResult.status === "completed" || finalResult.status === "failed") {
+            break;
+          }
+        }
+
+        if (finalResult.status !== "completed") {
+          return {
+            toolCallId: "",
+            success: false,
+            output: "",
+            error: `Video generation timed out or failed: ${finalResult.error || finalResult.status}`,
+          };
+        }
+
+        if (finalResult.videoUrl) {
+          const outputPath = resolve(context.workingDirectory, output);
+          const buffer = await downloadVideo(finalResult.videoUrl, apiKey);
+          await writeFile(outputPath, buffer);
+        }
+      }
+
+      return {
+        toolCallId: "",
+        success: true,
+        output: `Video generated: ${output}\nProvider: runway\nPrompt: ${prompt}\nDuration: ${duration}s`,
+      };
+    } else if (provider === "veo") {
+      const apiKey = await getApiKeyFromConfig("google");
+      if (!apiKey) {
+        return {
+          toolCallId: "",
+          success: false,
+          output: "",
+          error: "Google API key required. Configure via 'vibe setup'.",
+        };
+      }
+
+      const { GeminiProvider } = await import("@vibeframe/ai-providers");
+      const gemini = new GeminiProvider();
+      await gemini.initialize({ apiKey });
+
+      const referenceImage = imagePath ? await prepareReferenceImage(imagePath) : undefined;
+      const negativePrompt = args.negativePrompt as string | undefined;
+      const resolution = args.resolution as "720p" | "1080p" | "4k" | undefined;
+      const veoDuration = duration <= 6 ? (duration <= 4 ? 4 : 6) : 8;
+
+      const result = await gemini.generateVideo(prompt, {
+        prompt,
+        duration: veoDuration as 4 | 6 | 8,
+        referenceImage,
+        model: "veo-3.1-fast-generate-preview",
+        negativePrompt,
+        resolution,
+      });
+
+      if (result.status === "failed") {
+        return {
+          toolCallId: "",
+          success: false,
+          output: "",
+          error: `Veo video generation failed: ${result.error}`,
+        };
+      }
+
+      if (result.status === "pending" || result.status === "processing") {
+        const finalResult = await gemini.waitForVideoCompletion(
+          result.id,
+          undefined,
+          300000
+        );
+
+        if (finalResult.status !== "completed") {
+          return {
+            toolCallId: "",
+            success: false,
+            output: "",
+            error: `Veo video generation timed out or failed: ${finalResult.error || finalResult.status}`,
+          };
+        }
+
+        if (finalResult.videoUrl) {
+          const outputPath = resolve(context.workingDirectory, output);
+          const buffer = await downloadVideo(finalResult.videoUrl, apiKey);
+          await writeFile(outputPath, buffer);
+        }
+      }
+
+      return {
+        toolCallId: "",
+        success: true,
+        output: `Video generated: ${output}\nProvider: veo\nPrompt: ${prompt}\nDuration: ${duration}s`,
+      };
+    } else {
+      // Default: kling
+      const apiKey = await getApiKeyFromConfig("kling");
+      if (!apiKey) {
+        return {
+          toolCallId: "",
+          success: false,
+          output: "",
+          error: "Kling API key required. Configure via 'vibe setup'.",
+        };
+      }
+
+      const { KlingProvider } = await import("@vibeframe/ai-providers");
+      const kling = new KlingProvider();
+      await kling.initialize({ apiKey });
+
+      const referenceImage = imagePath ? await prepareReferenceImage(imagePath) : undefined;
+      const mode = (args.mode as "std" | "pro") || "std";
+
+      const result = await kling.generateVideo(prompt, {
+        prompt,
+        duration: duration as 5 | 10,
+        mode,
+        referenceImage,
+      });
+
+      if (result.status === "failed") {
+        return {
+          toolCallId: "",
+          success: false,
+          output: "",
+          error: `Kling video generation failed: ${result.error}`,
+        };
+      }
+
+      if (result.status === "pending" || result.status === "processing") {
+        let finalResult = result;
+        const maxAttempts = 60;
+        for (let i = 0; i < maxAttempts; i++) {
+          await new Promise((r) => setTimeout(r, 5000));
+          finalResult = await kling.getGenerationStatus(result.id);
+          if (finalResult.status === "completed" || finalResult.status === "failed") {
+            break;
+          }
+        }
+
+        if (finalResult.status !== "completed") {
+          return {
+            toolCallId: "",
+            success: false,
+            output: "",
+            error: `Kling video generation timed out or failed: ${finalResult.error || finalResult.status}`,
+          };
+        }
+
+        if (finalResult.videoUrl) {
+          const outputPath = resolve(context.workingDirectory, output);
+          const buffer = await downloadVideo(finalResult.videoUrl, apiKey);
+          await writeFile(outputPath, buffer);
+        }
+      }
+
+      return {
+        toolCallId: "",
+        success: true,
+        output: `Video generated: ${output}\nProvider: kling\nPrompt: ${prompt}\nDuration: ${duration}s\nMode: ${mode}`,
+      };
+    }
   } catch (error) {
     return {
       toolCallId: "",
       success: false,
       output: "",
       error: `Failed to generate video: ${error instanceof Error ? error.message : String(error)}`,
-    };
-  }
-};
-
-const generateKling: ToolHandler = async (args, context): Promise<ToolResult> => {
-  const prompt = args.prompt as string;
-  const imagePath = args.image as string | undefined;
-  const output = (args.output as string) || `kling-${getTimestamp()}.mp4`;
-  const duration = (args.duration as number) || 5;
-  const mode = (args.mode as "std" | "pro") || "std";
-
-  try {
-    const apiKey = await getApiKeyFromConfig("kling");
-    if (!apiKey) {
-      return {
-        toolCallId: "",
-        success: false,
-        output: "",
-        error: "Kling API key required. Configure via 'vibe setup'.",
-      };
-    }
-
-    const { KlingProvider } = await import("@vibeframe/ai-providers");
-    const kling = new KlingProvider();
-    await kling.initialize({ apiKey });
-
-    // Prepare reference image if provided
-    let referenceImage: string | undefined;
-    if (imagePath) {
-      const absImagePath = resolve(context.workingDirectory, imagePath);
-      const imageBuffer = await readFile(absImagePath);
-      const base64 = imageBuffer.toString("base64");
-      const ext = imagePath.split(".").pop()?.toLowerCase() || "png";
-      const mimeType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
-      referenceImage = `data:${mimeType};base64,${base64}`;
-    }
-
-    const result = await kling.generateVideo(prompt, {
-      prompt,
-      duration: duration as 5 | 10,
-      mode,
-      referenceImage,
-    });
-
-    if (result.status === "failed") {
-      return {
-        toolCallId: "",
-        success: false,
-        output: "",
-        error: `Kling video generation failed: ${result.error}`,
-      };
-    }
-
-    // Video generation is async - need to poll
-    if (result.status === "pending" || result.status === "processing") {
-      let finalResult = result;
-      const maxAttempts = 60;
-      for (let i = 0; i < maxAttempts; i++) {
-        await new Promise((r) => setTimeout(r, 5000));
-        finalResult = await kling.getGenerationStatus(result.id);
-        if (finalResult.status === "completed" || finalResult.status === "failed") {
-          break;
-        }
-      }
-
-      if (finalResult.status !== "completed") {
-        return {
-          toolCallId: "",
-          success: false,
-          output: "",
-          error: `Kling video generation timed out or failed: ${finalResult.error || finalResult.status}`,
-        };
-      }
-
-      if (finalResult.videoUrl) {
-        const outputPath = resolve(context.workingDirectory, output);
-        const buffer = await downloadVideo(finalResult.videoUrl);
-        await writeFile(outputPath, buffer);
-      }
-    }
-
-    return {
-      toolCallId: "",
-      success: true,
-      output: `Kling video generated: ${output}\nPrompt: ${prompt}\nDuration: ${duration}s\nMode: ${mode}`,
-    };
-  } catch (error) {
-    return {
-      toolCallId: "",
-      success: false,
-      output: "",
-      error: `Failed to generate Kling video: ${error instanceof Error ? error.message : String(error)}`,
-    };
-  }
-};
-
-const generateVeo: ToolHandler = async (args, context): Promise<ToolResult> => {
-  const prompt = args.prompt as string;
-  const imagePath = args.image as string | undefined;
-  const output = (args.output as string) || `veo-${getTimestamp()}.mp4`;
-  const duration = (args.duration as number) || 6;
-  const negativePrompt = args.negativePrompt as string | undefined;
-  const resolution = args.resolution as "720p" | "1080p" | "4k" | undefined;
-
-  try {
-    const apiKey = await getApiKeyFromConfig("google");
-    if (!apiKey) {
-      return {
-        toolCallId: "",
-        success: false,
-        output: "",
-        error: "Google API key required. Configure via 'vibe setup'.",
-      };
-    }
-
-    const { GeminiProvider } = await import("@vibeframe/ai-providers");
-    const gemini = new GeminiProvider();
-    await gemini.initialize({ apiKey });
-
-    // Prepare reference image if provided
-    let referenceImage: string | undefined;
-    if (imagePath) {
-      const absImagePath = resolve(context.workingDirectory, imagePath);
-      const imageBuffer = await readFile(absImagePath);
-      const base64 = imageBuffer.toString("base64");
-      const ext = imagePath.split(".").pop()?.toLowerCase() || "png";
-      const mimeType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : `image/${ext}`;
-      referenceImage = `data:${mimeType};base64,${base64}`;
-    }
-
-    const veoDuration = duration <= 6 ? (duration <= 4 ? 4 : 6) : 8;
-
-    const result = await gemini.generateVideo(prompt, {
-      prompt,
-      duration: veoDuration as 4 | 6 | 8,
-      referenceImage,
-      model: "veo-3.1-fast-generate-preview",
-      negativePrompt,
-      resolution,
-    });
-
-    if (result.status === "failed") {
-      return {
-        toolCallId: "",
-        success: false,
-        output: "",
-        error: `Veo video generation failed: ${result.error}`,
-      };
-    }
-
-    // Poll for completion
-    if (result.status === "pending" || result.status === "processing") {
-      const finalResult = await gemini.waitForVideoCompletion(
-        result.id,
-        undefined,
-        300000
-      );
-
-      if (finalResult.status !== "completed") {
-        return {
-          toolCallId: "",
-          success: false,
-          output: "",
-          error: `Veo video generation timed out or failed: ${finalResult.error || finalResult.status}`,
-        };
-      }
-
-      if (finalResult.videoUrl) {
-        const outputPath = resolve(context.workingDirectory, output);
-        const buffer = await downloadVideo(finalResult.videoUrl);
-        await writeFile(outputPath, buffer);
-      }
-    }
-
-    return {
-      toolCallId: "",
-      success: true,
-      output: `Veo video generated: ${output}\nPrompt: ${prompt}\nDuration: ${veoDuration}s`,
-    };
-  } catch (error) {
-    return {
-      toolCallId: "",
-      success: false,
-      output: "",
-      error: `Failed to generate Veo video: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 };
@@ -960,7 +855,7 @@ const generateStoryboard: ToolHandler = async (args, context): Promise<ToolResul
 
 const generateMotion: ToolHandler = async (args, context): Promise<ToolResult> => {
   try {
-    const { executeMotion } = await import("../../commands/ai.js");
+    const { executeMotion } = await import("../../commands/ai-motion.js");
 
     const video = args.video
       ? resolve(context.workingDirectory, args.video as string)
@@ -1016,8 +911,6 @@ const generateMotion: ToolHandler = async (args, context): Promise<ToolResult> =
 export function registerGenerationTools(registry: ToolRegistry): void {
   registry.register(imageDef, generateImage);
   registry.register(videoDef, generateVideo);
-  registry.register(klingDef, generateKling);
-  registry.register(veoDef, generateVeo);
   registry.register(ttsDef, generateTTS);
   registry.register(sfxDef, generateSFX);
   registry.register(musicDef, generateMusic);

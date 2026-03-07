@@ -39,13 +39,13 @@ Agent mode runs an agentic loop — the LLM is called repeatedly (potentially do
 - **Cost**: Flash is significantly cheaper per token — important when a single agent task may trigger 20+ LLM calls
 - **Preview models in production**: Preview models can change response format or have stricter rate limits unsuitable for agentic loops
 
-`gemini-3.1-pro-preview` is available for **motion graphics code generation** (`vibe ai motion -m gemini-3.1-pro`) where its superior creative reasoning matters for a single, expensive generation call.
+`gemini-3.1-pro-preview` is available for **motion graphics code generation** (`vibe generate motion -m gemini-3.1-pro`) where its superior creative reasoning matters for a single, expensive generation call.
 
 ---
 
-## Motion Graphics LLM (vibe ai motion)
+## Motion Graphics LLM (vibe generate motion)
 
-Used for Remotion component code generation (`vibe ai motion`).
+Used for Remotion component code generation (`vibe generate motion`).
 
 | Alias | Model | Provider | Env Key | CLI Option | Notes |
 |-------|-------|----------|---------|------------|-------|
@@ -146,11 +146,10 @@ export REPLICATE_API_TOKEN="..."      # Replicate (music)
 | `vibe -p claude` | `ANTHROPIC_API_KEY` | Claude Sonnet 4.6 (Agent LLM) |
 | `vibe -p gemini` | `GOOGLE_API_KEY` | Gemini 2.5 Flash (Agent LLM) |
 | `vibe -p xai` | `XAI_API_KEY` | Grok-4 (Agent LLM) |
-| `vibe ai image` | `GOOGLE_API_KEY` | Gemini Nano Banana |
-| `vibe ai image -p openai` | `OPENAI_API_KEY` | GPT Image 1.5 |
-| `vibe ai gemini-edit` | `GOOGLE_API_KEY` | Gemini Nano Banana |
-| `vibe ai tts` | `ELEVENLABS_API_KEY` | ElevenLabs |
-| `vibe ai video` | `KLING_API_KEY` | Kling v2.5-turbo |
-| `vibe ai video -p veo` | `GOOGLE_API_KEY` | Veo 3.1 |
-| `vibe ai video -p grok` | `XAI_API_KEY` | Grok Imagine |
-| `vibe ai kling` | `KLING_API_KEY` | Kling v2.5-turbo |
+| `vibe generate image` | `GOOGLE_API_KEY` | Gemini Nano Banana |
+| `vibe generate image -p openai` | `OPENAI_API_KEY` | GPT Image 1.5 |
+| `vibe edit image` | `GOOGLE_API_KEY` | Gemini Nano Banana |
+| `vibe generate speech` | `ELEVENLABS_API_KEY` | ElevenLabs |
+| `vibe generate video` | `KLING_API_KEY` | Kling v2.5-turbo |
+| `vibe generate video -p veo` | `GOOGLE_API_KEY` | Veo 3.1 |
+| `vibe generate video -p grok` | `XAI_API_KEY` | Grok Imagine |

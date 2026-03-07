@@ -15,7 +15,12 @@ const pkg = require("../package.json");
 export { Project, generateId, type ProjectFile } from "./engine/index.js";
 import { projectCommand } from "./commands/project.js";
 import { timelineCommand } from "./commands/timeline.js";
-import { aiCommand } from "./commands/ai.js";
+import { generateCommand } from "./commands/generate.js";
+import { editCommand } from "./commands/edit-cmd.js";
+import { analyzeCommand } from "./commands/analyze.js";
+import { audioCommand } from "./commands/audio.js";
+import { pipelineCommand } from "./commands/pipeline.js";
+import { schemaCommand } from "./commands/schema.js";
 import { mediaCommand } from "./commands/media.js";
 import { exportCommand } from "./commands/export.js";
 import { batchCommand } from "./commands/batch.js";
@@ -33,11 +38,24 @@ const program = new Command();
 program
   .name("vibe")
   .description("VibeFrame CLI - AI-First Video Editor")
-  .version(pkg.version);
+  .version(pkg.version)
+  .option("--json", "Output in JSON format");
+
+// Set JSON mode env var before subcommand parsing
+program.hook("preAction", () => {
+  if (program.opts().json) {
+    process.env.VIBE_JSON_OUTPUT = "1";
+  }
+});
 
 program.addCommand(projectCommand);
 program.addCommand(timelineCommand);
-program.addCommand(aiCommand);
+program.addCommand(generateCommand);
+program.addCommand(editCommand);
+program.addCommand(analyzeCommand);
+program.addCommand(audioCommand);
+program.addCommand(pipelineCommand);
+program.addCommand(schemaCommand);
 program.addCommand(mediaCommand);
 program.addCommand(exportCommand);
 program.addCommand(batchCommand);

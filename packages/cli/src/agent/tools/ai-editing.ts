@@ -5,8 +5,8 @@
  * SRT translation). FFmpeg-based and AI-assisted editing tools for agent use.
  * Most tools work without API keys (FFmpeg-only), some use Gemini or OpenAI.
  *
- * ## Tools: ai_text_overlay, ai_silence_cut, ai_jump_cut, ai_caption,
- *          ai_noise_reduce, ai_fade, ai_thumbnail, ai_translate_srt
+ * ## Tools: edit_text_overlay, analyze_review, edit_silence_cut, edit_jump_cut, edit_caption,
+ *          edit_noise_reduce, edit_fade, generate_thumbnail, edit_translate_srt
  * ## Dependencies: FFmpeg, Gemini (optional), OpenAI/Whisper (optional)
  * @see MODELS.md for the Single Source of Truth (SSOT) on supported providers/models
  */
@@ -16,24 +16,24 @@ import type { ToolRegistry, ToolHandler } from "./index.js";
 import type { ToolDefinition, ToolResult } from "../types.js";
 import {
   executeTextOverlay,
-  executeReview,
   executeSilenceCut,
   executeJumpCut,
   executeCaption,
   executeNoiseReduce,
   executeFade,
-  executeThumbnailBestFrame,
   executeTranslateSrt,
   type TextOverlayStyle,
   type CaptionStyle,
-} from "../../commands/ai.js";
+} from "../../commands/ai-edit.js";
+import { executeReview } from "../../commands/ai-review.js";
+import { executeThumbnailBestFrame } from "../../commands/ai-image.js";
 
 // ============================================================================
 // Tool Definitions
 // ============================================================================
 
 const textOverlayDef: ToolDefinition = {
-  name: "ai_text_overlay",
+  name: "edit_text_overlay",
   description: "Apply text overlays to a video using FFmpeg drawtext. Supports 4 style presets: lower-third, center-bold, subtitle, minimal. Auto-detects font and scales based on video resolution.",
   parameters: {
     type: "object",
@@ -82,7 +82,7 @@ const textOverlayDef: ToolDefinition = {
 };
 
 const reviewDef: ToolDefinition = {
-  name: "ai_review",
+  name: "analyze_review",
   description: "Review video quality using Gemini AI. Analyzes pacing, color, text readability, audio-visual sync, and composition. Can auto-apply fixable corrections (color grading). Returns structured feedback with scores and recommendations.",
   parameters: {
     type: "object",
@@ -118,7 +118,7 @@ const reviewDef: ToolDefinition = {
 };
 
 const silenceCutDef: ToolDefinition = {
-  name: "ai_silence_cut",
+  name: "edit_silence_cut",
   description: "Remove silent segments from a video. Default uses FFmpeg silencedetect (free, no API key). Use useGemini=true for smart context-aware detection via Gemini Video Understanding — distinguishes dead air from intentional pauses using visual+audio analysis.",
   parameters: {
     type: "object",
@@ -165,7 +165,7 @@ const silenceCutDef: ToolDefinition = {
 };
 
 const jumpCutDef: ToolDefinition = {
-  name: "ai_jump_cut",
+  name: "edit_jump_cut",
   description: "Remove filler words (um, uh, like, etc.) from video using Whisper word-level timestamps + FFmpeg concat. Requires OpenAI API key. Detects filler words, cuts them out, and stitches remaining segments with stream copy (fast, no re-encode).",
   parameters: {
     type: "object",
@@ -201,7 +201,7 @@ const jumpCutDef: ToolDefinition = {
 };
 
 const captionDef: ToolDefinition = {
-  name: "ai_caption",
+  name: "edit_caption",
   description: "Transcribe video with Whisper and burn styled captions using FFmpeg. Requires OpenAI API key. 4 style presets: minimal, bold (default), outline, karaoke. Auto-sizes font based on video resolution.",
   parameters: {
     type: "object",
@@ -242,7 +242,7 @@ const captionDef: ToolDefinition = {
 };
 
 const noiseReduceDef: ToolDefinition = {
-  name: "ai_noise_reduce",
+  name: "edit_noise_reduce",
   description: "Remove background noise from audio/video using FFmpeg afftdn filter. No API key needed. Three strength presets: low, medium (default), high. High adds bandpass filtering.",
   parameters: {
     type: "object",
@@ -270,7 +270,7 @@ const noiseReduceDef: ToolDefinition = {
 };
 
 const fadeDef: ToolDefinition = {
-  name: "ai_fade",
+  name: "edit_fade",
   description: "Apply fade in/out effects to video using FFmpeg. No API key needed. Supports video-only, audio-only, or both. Configurable fade durations.",
   parameters: {
     type: "object",
@@ -305,7 +305,7 @@ const fadeDef: ToolDefinition = {
 };
 
 const thumbnailBestFrameDef: ToolDefinition = {
-  name: "ai_thumbnail",
+  name: "generate_thumbnail",
   description: "Extract the best thumbnail frame from a video using Gemini AI analysis + FFmpeg frame extraction. Requires GOOGLE_API_KEY. Finds visually striking, well-composed frames.",
   parameters: {
     type: "object",
@@ -333,7 +333,7 @@ const thumbnailBestFrameDef: ToolDefinition = {
 };
 
 const translateSrtDef: ToolDefinition = {
-  name: "ai_translate_srt",
+  name: "edit_translate_srt",
   description: "Translate SRT subtitle file to another language using Claude or OpenAI. Preserves timestamps. Batches segments for efficiency.",
   parameters: {
     type: "object",

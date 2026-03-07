@@ -23,9 +23,9 @@ Traditional video editors are built for **clicking buttons**. VibeFrame is built
 
 | Traditional Editor | VibeFrame |
 |-------------------|----------|
-| Import → Drag → Trim → Export | `vibe ai silence-cut interview.mp4 -o clean.mp4` |
+| Import → Drag → Trim → Export | `vibe edit silence-cut interview.mp4 -o clean.mp4` |
 | Manual scene detection | `vibe detect scenes video.mp4` |
-| Export for each platform | `vibe ai viral project.vibe.json` |
+| Export for each platform | `vibe pipeline viral project.vibe.json` |
 | Click through menus | Natural language → CLI → done |
 
 **Design Principles:** Headless First — AI-Native — MCP Compatible — Provider Agnostic
@@ -43,13 +43,13 @@ CLI-first. Every video edit is a command.
 curl -fsSL https://vibeframe.ai/install.sh | bash
 
 # Remove silence from an interview
-vibe ai silence-cut interview.mp4 -o clean.mp4
+vibe edit silence-cut interview.mp4 -o clean.mp4
 
 # Add captions with auto-transcription
-vibe ai caption video.mp4 -o captioned.mp4
+vibe edit caption video.mp4 -o captioned.mp4
 
 # Create a TikTok from a script
-vibe ai script-to-video "A day in the life of a developer..." -a 9:16 -o ./tiktok/
+vibe pipeline script-to-video "A day in the life of a developer..." -a 9:16 -o ./tiktok/
 
 # Export to MP4
 vibe export project.vibe.json -o output.mp4
@@ -71,12 +71,12 @@ Already have the CLI installed? Claude Code runs `vibe` commands for you — jus
 
 | You say | Claude Code runs |
 |---------|-----------------|
-| "Remove silence from interview.mp4" | `vibe ai silence-cut interview.mp4 -o clean.mp4` |
-| "Extract 3 best moments from podcast.mp4" | `vibe ai highlights podcast.mp4 -c 3` |
-| "Add Korean subtitles to video.mp4" | `vibe ai caption video.mp4 -o captioned.mp4` |
-| "Create a TikTok from this script" | `vibe ai script-to-video "..." -a 9:16` |
-| "Remove background noise" | `vibe ai noise-reduce noisy.mp4 -o clean.mp4` |
-| "Make a 60-second highlight reel" | `vibe ai highlights long-video.mp4 -d 60` |
+| "Remove silence from interview.mp4" | `vibe edit silence-cut interview.mp4 -o clean.mp4` |
+| "Extract 3 best moments from podcast.mp4" | `vibe pipeline highlights podcast.mp4 -c 3` |
+| "Add Korean subtitles to video.mp4" | `vibe edit caption video.mp4 -o captioned.mp4` |
+| "Create a TikTok from this script" | `vibe pipeline script-to-video "..." -a 9:16` |
+| "Remove background noise" | `vibe edit noise-reduce noisy.mp4 -o clean.mp4` |
+| "Make a 60-second highlight reel" | `vibe pipeline highlights long-video.mp4 -d 60` |
 
 No setup needed beyond installing the CLI. Claude Code discovers and runs `vibe` commands directly.
 
@@ -111,37 +111,35 @@ Config file locations:
 End-to-end workflows powered by multiple AI providers (Claude + ElevenLabs + Gemini + Kling/Runway):
 
 ```bash
-vibe ai script-to-video "A morning routine of a startup founder..." \
+vibe pipeline script-to-video "A morning routine of a startup founder..." \
   -d 60 -a 9:16 -g kling -o startup.vibe.json
 
-vibe ai highlights interview.mp4 -d 90 --criteria emotional
-vibe ai auto-shorts podcast.mp4
-vibe ai b-roll podcast.mp3 --broll-dir ./footage
-vibe ai viral project.vibe.json -p tiktok,youtube-shorts,instagram-reels
+vibe pipeline highlights interview.mp4 -d 90 --criteria emotional
+vibe pipeline auto-shorts podcast.mp4
+vibe pipeline b-roll podcast.mp3 --broll-dir ./footage
+vibe pipeline viral project.vibe.json --platforms tiktok,youtube-shorts,instagram-reels
 ```
 
 ---
 
 ## CLI Reference
 
-Every command supports `--help`. Run `vibe ai --help` for a full list.
+Every command supports `--help`. Run `vibe --help` for a full list.
 
-| Category | Commands | Examples |
-|----------|----------|---------|
-| **Pipelines** | `script-to-video`, `highlights`, `auto-shorts`, `b-roll`, `viral` | `vibe ai script-to-video "..." -a 9:16` |
-| **Generation** | `image`, `video`, `kling`, `tts`, `sfx`, `music`, `motion`, `storyboard`, `thumbnail`, `background` | `vibe ai image "prompt" -o img.png` |
-| **Image Editing** | `gemini-edit`, `sd-upscale`, `sd-remove-bg`, `sd-img2img`, `sd-replace`, `sd-outpaint` | `vibe ai gemini-edit img.png "make it blue"` |
-| **Video Tools** | `video-extend`, `video-upscale`, `video-interpolate`, `fill-gaps` | `vibe ai video-upscale input.mp4` |
-| **Audio Tools** | `voices`, `voice-clone`, `isolate`, `noise-reduce`, `duck`, `dub` | `vibe ai noise-reduce input.mp4` |
-| **Post-Production** | `edit`, `suggest`, `grade`, `text-overlay`, `fade`, `silence-cut`, `jump-cut`, `caption`, `reframe`, `speed-ramp`, `narrate`, `review`, `regenerate-scene` | `vibe ai caption video.mp4` |
-| **Analysis** | `analyze`, `gemini-video`, `transcribe`, `translate-srt`, `providers` | `vibe ai analyze video.mp4 "summarize"` |
-| **Project** | `project create/info/set`, `timeline add-source/add-clip/split/trim/move/delete/list` | `vibe project create "name"` |
-| **Batch** | `batch import/concat/apply-effect/remove-clips/info` | `vibe batch import project dir/` |
-| **Detection** | `detect scenes/silence/beats` | `vibe detect scenes video.mp4` |
-| **Export** | `export` | `vibe export project.vibe.json -o out.mp4` |
-| **Agent** | `agent`, `setup` | `vibe agent -p claude` |
+| Group | Commands | Example |
+|-------|----------|---------|
+| **`vibe generate`** | `image`, `video`, `speech`, `sound-effect`, `music`, `motion`, `storyboard`, `thumbnail`, `background` | `vibe generate image "prompt" -o img.png` |
+| **`vibe edit`** | `silence-cut`, `jump-cut`, `caption`, `grade`, `reframe`, `speed-ramp`, `text-overlay`, `fade`, `noise-reduce`, `image`, `upscale`, `remove-bg`, `outpaint`, `replace`, `fill-gaps` | `vibe edit caption video.mp4 -o out.mp4` |
+| **`vibe analyze`** | `media`, `video`, `review`, `suggest` | `vibe analyze media video.mp4 "summarize"` |
+| **`vibe audio`** | `transcribe`, `voices`, `isolate`, `voice-clone`, `dub`, `duck` | `vibe audio transcribe audio.mp3` |
+| **`vibe pipeline`** | `script-to-video`, `highlights`, `auto-shorts`, `viral`, `b-roll`, `narrate`, `regenerate-scene` | `vibe pipeline script-to-video "..." -a 9:16` |
+| **`vibe project`** | `create`, `info`, `set` | `vibe project create "name"` |
+| **`vibe timeline`** | `add-source`, `add-clip`, `split`, `trim`, `move`, `delete`, `list` | `vibe timeline add-source project file` |
+| **`vibe batch`** | `import`, `concat`, `apply-effect` | `vibe batch import project dir/` |
+| **`vibe detect`** | `scenes`, `silence`, `beats` | `vibe detect scenes video.mp4` |
+| **`vibe export`** | - | `vibe export project.vibe.json -o out.mp4` |
 
-**59+ AI commands** across 11 providers. Every command supports `--help`.
+**43 AI commands** across 5 groups and 11 providers. Every command supports `--help` and `--json`.
 
 ---
 
@@ -157,7 +155,7 @@ vibe agent -p xai              # Use xAI Grok
 vibe agent -p ollama           # Use local Ollama
 ```
 
-59 tools across project, timeline, AI generation, media, export, batch, and filesystem. The LLM reasons, calls tools, and executes autonomously.
+57 tools across project, timeline, AI generation, media, export, batch, and filesystem. The LLM reasons, calls tools, and executes autonomously.
 
 ---
 
@@ -181,7 +179,7 @@ vibe agent -p ollama           # Use local Ollama
 ```
 vibeframe/
 ├── packages/
-│   ├── cli/               # CLI + Agent (59 tools, 262+ tests)
+│   ├── cli/               # CLI + Agent (57 tools, 262+ tests)
 │   ├── core/              # Timeline engine (Zustand + Immer + FFmpeg)
 │   ├── ai-providers/      # Pluggable AI providers
 │   ├── mcp-server/        # MCP server (npm: @vibeframe/mcp-server)

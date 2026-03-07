@@ -4,8 +4,8 @@
  * highlights, auto-shorts, analysis, editing, regeneration). Orchestrates
  * multiple AI providers via execute functions from CLI commands.
  *
- * ## Tools: ai_script_to_video, ai_highlights, ai_auto_shorts, ai_gemini_video,
- *          ai_analyze, ai_gemini_edit, ai_regenerate_scene, ai_review
+ * ## Tools: pipeline_script_to_video, pipeline_highlights, pipeline_auto_shorts, analyze_video,
+ *          analyze_media, edit_image, pipeline_regenerate_scene
  * ## Dependencies: Claude, Gemini, OpenAI, Whisper, ElevenLabs, Kling
  * @see MODELS.md for the Single Source of Truth (SSOT) on supported providers/models
  */
@@ -17,12 +17,16 @@ import type { ToolDefinition, ToolResult } from "../types.js";
 import { getApiKeyFromConfig } from "../../config/index.js";
 import {
   executeScriptToVideo,
+  executeRegenerateScene,
+} from "../../commands/ai-script-pipeline.js";
+import {
   executeHighlights,
   executeAutoShorts,
+} from "../../commands/ai-highlights.js";
+import {
   executeGeminiVideo,
   executeAnalyze,
-  executeRegenerateScene,
-} from "../../commands/ai.js";
+} from "../../commands/ai-analyze.js";
 
 // Helper to get timestamp for filenames
 function getTimestamp(): string {
@@ -34,7 +38,7 @@ function getTimestamp(): string {
 // ============================================================================
 
 const scriptToVideoDef: ToolDefinition = {
-  name: "ai_script_to_video",
+  name: "pipeline_script_to_video",
   description:
     "Generate complete video from text script. Full pipeline: storyboard (Claude/OpenAI/Gemini) → ElevenLabs TTS → Image gen (DALL-E/Stability/Gemini) → Video gen (Runway/Kling). Creates project file with all assets.",
   parameters: {
@@ -99,7 +103,7 @@ const scriptToVideoDef: ToolDefinition = {
 };
 
 const highlightsDef: ToolDefinition = {
-  name: "ai_highlights",
+  name: "pipeline_highlights",
   description:
     "Extract highlights from long-form video/audio content. Uses Whisper+Claude or Gemini Video Understanding to find engaging moments. Returns timestamps and can create highlight reel project.",
   parameters: {
@@ -152,7 +156,7 @@ const highlightsDef: ToolDefinition = {
 };
 
 const autoShortsDef: ToolDefinition = {
-  name: "ai_auto_shorts",
+  name: "pipeline_auto_shorts",
   description:
     "Auto-generate vertical shorts from long-form video. Finds viral-worthy moments, crops to vertical format, and exports as separate short videos. Perfect for TikTok, YouTube Shorts, Instagram Reels.",
   parameters: {
@@ -210,7 +214,7 @@ const autoShortsDef: ToolDefinition = {
 };
 
 const geminiVideoDef: ToolDefinition = {
-  name: "ai_gemini_video",
+  name: "analyze_video",
   description:
     "Analyze video using Gemini Video Understanding. Supports video summarization, Q&A, content extraction, and timestamp analysis. Works with local files and YouTube URLs.",
   parameters: {
@@ -251,7 +255,7 @@ const geminiVideoDef: ToolDefinition = {
 };
 
 const analyzeDef: ToolDefinition = {
-  name: "ai_analyze",
+  name: "analyze_media",
   description:
     "Analyze any media using Gemini: images, videos, or YouTube URLs. Auto-detects source type. Use for image description, video summarization, Q&A, content extraction, and comparison analysis.",
   parameters: {
@@ -292,7 +296,7 @@ const analyzeDef: ToolDefinition = {
 };
 
 const geminiEditDef: ToolDefinition = {
-  name: "ai_gemini_edit",
+  name: "edit_image",
   description:
     "Edit or compose multiple images using Gemini. Flash model supports up to 3 images, Pro model supports up to 14 images. Use for image editing, style transfer, or multi-image composition.",
   parameters: {
@@ -332,7 +336,7 @@ const geminiEditDef: ToolDefinition = {
 };
 
 const regenerateSceneDef: ToolDefinition = {
-  name: "ai_regenerate_scene",
+  name: "pipeline_regenerate_scene",
   description: `Regenerate specific scene(s) in a script-to-video project.
 
 RECOMMENDED WORKFLOW:

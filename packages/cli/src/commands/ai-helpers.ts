@@ -5,29 +5,25 @@
  * ai.ts imports and re-uses these internally.
  */
 
-import { writeFile } from "node:fs/promises";
 import { Project } from "../engine/index.js";
 
 /**
  * Download a video from URL, handling Veo/Google API authentication.
+ * Uses x-goog-api-key header (not query param) for Google API URLs.
+ *
+ * @param url - Video URL to download
+ * @param apiKey - Google API key (caller should resolve from env/config)
  */
-export async function downloadVideoFile(
-  videoUrl: string,
-  outputPath: string,
-  apiKey?: string,
-): Promise<void> {
-  let downloadUrl = videoUrl;
-  // Veo/Google API URLs require API key authentication
-  if (downloadUrl.includes("generativelanguage.googleapis.com") && apiKey) {
-    const separator = downloadUrl.includes("?") ? "&" : "?";
-    downloadUrl = `${downloadUrl}${separator}key=${apiKey}`;
+export async function downloadVideo(url: string, apiKey?: string): Promise<Buffer> {
+  const headers: Record<string, string> = {};
+  if (url.includes("generativelanguage.googleapis.com") && apiKey) {
+    headers["x-goog-api-key"] = apiKey;
   }
-  const response = await fetch(downloadUrl);
+  const response = await fetch(url, { headers, redirect: "follow" });
   if (!response.ok) {
-    throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+    throw new Error(`Download failed (${response.status}): ${response.statusText}`);
   }
-  const buffer = Buffer.from(await response.arrayBuffer());
-  await writeFile(outputPath, buffer);
+  return Buffer.from(await response.arrayBuffer());
 }
 
 /** Format a duration in seconds to m:ss.s display format */

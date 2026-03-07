@@ -18,7 +18,7 @@ import { registerAITools } from "./ai.js";
 import { registerExportTools } from "./export.js";
 import { registerBatchTools } from "./batch.js";
 // Mock the imported CLI functions to avoid actual API calls
-vi.mock("../../commands/ai.js", () => ({
+vi.mock("../../commands/ai-script-pipeline.js", () => ({
   executeScriptToVideo: vi.fn().mockResolvedValue({
     success: true,
     outputDir: "/test/output",
@@ -31,6 +31,10 @@ vi.mock("../../commands/ai.js", () => ({
     totalDuration: 30,
     failedScenes: [],
   }),
+  executeRegenerateScene: vi.fn().mockResolvedValue({ success: true }),
+}));
+
+vi.mock("../../commands/ai-highlights.js", () => ({
   executeHighlights: vi.fn().mockResolvedValue({
     success: true,
     highlights: [
@@ -62,12 +66,22 @@ vi.mock("../../commands/ai.js", () => ({
       },
     ],
   }),
+}));
+
+vi.mock("../../commands/ai-analyze.js", () => ({
   executeGeminiVideo: vi.fn().mockResolvedValue({
     success: true,
     response: "This is a test video summary.",
     model: "gemini-3-flash-preview",
     totalTokens: 1000,
   }),
+  executeAnalyze: vi.fn().mockResolvedValue({
+    success: true,
+    response: "Test analysis",
+  }),
+}));
+
+vi.mock("../../commands/ai-edit.js", () => ({
   executeSilenceCut: vi.fn().mockResolvedValue({
     success: true,
     outputPath: "/test/video-cut.mp4",
@@ -107,18 +121,38 @@ vi.mock("../../commands/ai.js", () => ({
     fadeInApplied: true,
     fadeOutApplied: true,
   }),
-  executeThumbnailBestFrame: vi.fn().mockResolvedValue({
-    success: true,
-    outputPath: "/test/video-thumbnail.png",
-    timestamp: 15.5,
-    reason: "Best composed frame",
-  }),
   executeTranslateSrt: vi.fn().mockResolvedValue({
     success: true,
     outputPath: "/test/subtitles-ko.srt",
     segmentCount: 20,
     sourceLanguage: "en",
     targetLanguage: "ko",
+  }),
+  executeTextOverlay: vi.fn().mockResolvedValue({
+    success: true,
+    outputPath: "/test/video-overlay.mp4",
+  }),
+  DEFAULT_FILLER_WORDS: ["um", "uh", "like", "you know"],
+  detectFillerRanges: vi.fn(),
+}));
+
+vi.mock("../../commands/ai-review.js", () => ({
+  executeReview: vi.fn().mockResolvedValue({
+    success: true,
+    issues: [],
+  }),
+}));
+
+vi.mock("../../commands/ai-image.js", () => ({
+  executeThumbnailBestFrame: vi.fn().mockResolvedValue({
+    success: true,
+    outputPath: "/test/video-thumbnail.png",
+    timestamp: 15.5,
+    reason: "Best composed frame",
+  }),
+  executeGeminiEdit: vi.fn().mockResolvedValue({
+    success: true,
+    outputPath: "/test/edited.png",
   }),
 }));
 
@@ -137,9 +171,9 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
   });
 
   describe("Tool Registration", () => {
-    it("should register all 59 tools", () => {
+    it("should register all 57 tools", () => {
       const tools = registry.getAll();
-      expect(tools.length).toBe(59);
+      expect(tools.length).toBe(57);
     });
 
     it("should register all project tools (5)", () => {
@@ -187,7 +221,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
         "detect_scenes",
         "detect_silence",
         "detect_beats",
-        "ai_transcribe",
+        "audio_transcribe",
         "media_compress",
         "media_convert",
         "media_concat",
@@ -208,29 +242,35 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       }
     });
 
-    it("should register all AI tools (18)", () => {
+    it("should register all AI tools (23)", () => {
       const aiTools = [
-        // Basic AI tools (8)
-        "ai_image",
-        "ai_video",
-        "ai_kling",
-        "ai_tts",
-        "ai_sfx",
-        "ai_music",
-        "ai_storyboard",
-        "ai_motion",
-        // Pipeline tools (10)
-        "ai_script_to_video",
-        "ai_highlights",
-        "ai_auto_shorts",
-        "ai_gemini_video",
-        "ai_silence_cut",
-        "ai_jump_cut",
-        "ai_caption",
-        "ai_noise_reduce",
-        "ai_fade",
-        "ai_thumbnail",
-        "ai_translate_srt",
+        // Generation tools (8)
+        "generate_image",
+        "generate_video",
+        "generate_speech",
+        "generate_sound_effect",
+        "generate_music",
+        "generate_storyboard",
+        "generate_motion",
+        "generate_thumbnail",
+        // Edit tools (8)
+        "edit_text_overlay",
+        "edit_silence_cut",
+        "edit_jump_cut",
+        "edit_caption",
+        "edit_noise_reduce",
+        "edit_fade",
+        "edit_translate_srt",
+        "edit_image",
+        // Analyze tools (3)
+        "analyze_review",
+        "analyze_video",
+        "analyze_media",
+        // Pipeline tools (4)
+        "pipeline_script_to_video",
+        "pipeline_highlights",
+        "pipeline_auto_shorts",
+        "pipeline_regenerate_scene",
       ];
       for (const name of aiTools) {
         expect(registry.get(name)).toBeDefined();
@@ -283,9 +323,9 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
   });
 
   describe("AI Pipeline Tools - Parameter Mapping", () => {
-    describe("ai_script_to_video", () => {
+    describe("pipeline_script_to_video", () => {
       it("should have all CLI options as parameters", () => {
-        const tool = registry.get("ai_script_to_video");
+        const tool = registry.get("pipeline_script_to_video");
         expect(tool).toBeDefined();
 
         const params = tool!.parameters.properties;
@@ -304,7 +344,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
 
       it("should have correct enum values for generator", () => {
-        const tool = registry.get("ai_script_to_video");
+        const tool = registry.get("pipeline_script_to_video");
         const generator = tool!.parameters.properties.generator as {
           enum?: string[];
         };
@@ -313,7 +353,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
 
       it("should have correct enum values for imageProvider", () => {
-        const tool = registry.get("ai_script_to_video");
+        const tool = registry.get("pipeline_script_to_video");
         const imageProvider = tool!.parameters.properties.imageProvider as {
           enum?: string[];
         };
@@ -323,7 +363,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
 
       it("should have correct enum values for aspectRatio", () => {
-        const tool = registry.get("ai_script_to_video");
+        const tool = registry.get("pipeline_script_to_video");
         const aspectRatio = tool!.parameters.properties.aspectRatio as {
           enum?: string[];
         };
@@ -333,9 +373,9 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
     });
 
-    describe("ai_highlights", () => {
+    describe("pipeline_highlights", () => {
       it("should have all CLI options as parameters", () => {
-        const tool = registry.get("ai_highlights");
+        const tool = registry.get("pipeline_highlights");
         expect(tool).toBeDefined();
 
         const params = tool!.parameters.properties;
@@ -354,7 +394,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
 
       it("should have correct enum values for criteria", () => {
-        const tool = registry.get("ai_highlights");
+        const tool = registry.get("pipeline_highlights");
         const criteria = tool!.parameters.properties.criteria as {
           enum?: string[];
         };
@@ -365,9 +405,9 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
     });
 
-    describe("ai_auto_shorts", () => {
+    describe("pipeline_auto_shorts", () => {
       it("should have all CLI options as parameters", () => {
-        const tool = registry.get("ai_auto_shorts");
+        const tool = registry.get("pipeline_auto_shorts");
         expect(tool).toBeDefined();
 
         const params = tool!.parameters.properties;
@@ -387,14 +427,14 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
 
       it("should have correct enum values for aspect", () => {
-        const tool = registry.get("ai_auto_shorts");
+        const tool = registry.get("pipeline_auto_shorts");
         const aspect = tool!.parameters.properties.aspect as { enum?: string[] };
         expect(aspect.enum).toContain("9:16");
         expect(aspect.enum).toContain("1:1");
       });
 
       it("should have correct enum values for captionStyle", () => {
-        const tool = registry.get("ai_auto_shorts");
+        const tool = registry.get("pipeline_auto_shorts");
         const captionStyle = tool!.parameters.properties.captionStyle as {
           enum?: string[];
         };
@@ -404,9 +444,9 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
     });
 
-    describe("ai_gemini_video", () => {
+    describe("analyze_video", () => {
       it("should have all CLI options as parameters", () => {
-        const tool = registry.get("ai_gemini_video");
+        const tool = registry.get("analyze_video");
         expect(tool).toBeDefined();
 
         const params = tool!.parameters.properties;
@@ -422,7 +462,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
 
       it("should have correct enum values for model", () => {
-        const tool = registry.get("ai_gemini_video");
+        const tool = registry.get("analyze_video");
         const model = tool!.parameters.properties.model as { enum?: string[] };
         expect(model.enum).toContain("flash");
         expect(model.enum).toContain("flash-2.5");
@@ -437,10 +477,10 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       projectPath: "/test/project.vibe.json",
     };
 
-    describe("ai_script_to_video handler", () => {
+    describe("pipeline_script_to_video handler", () => {
       it("should call executeScriptToVideo with correct parameters", async () => {
-        const { executeScriptToVideo } = await import("../../commands/ai.js");
-        const handler = registry.getHandler("ai_script_to_video");
+        const { executeScriptToVideo } = await import("../../commands/ai-script-pipeline.js");
+        const handler = registry.getHandler("pipeline_script_to_video");
         expect(handler).toBeDefined();
 
         const result = await handler!(
@@ -467,7 +507,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
 
       it("should handle failure gracefully", async () => {
-        const { executeScriptToVideo } = await import("../../commands/ai.js");
+        const { executeScriptToVideo } = await import("../../commands/ai-script-pipeline.js");
         vi.mocked(executeScriptToVideo).mockResolvedValueOnce({
           success: false,
           outputDir: "/test/output",
@@ -475,7 +515,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
           error: "API key missing",
         });
 
-        const handler = registry.getHandler("ai_script_to_video");
+        const handler = registry.getHandler("pipeline_script_to_video");
         const result = await handler!({ script: "Test" }, mockContext);
 
         expect(result.success).toBe(false);
@@ -483,10 +523,10 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
     });
 
-    describe("ai_highlights handler", () => {
+    describe("pipeline_highlights handler", () => {
       it("should call executeHighlights with correct parameters", async () => {
-        const { executeHighlights } = await import("../../commands/ai.js");
-        const handler = registry.getHandler("ai_highlights");
+        const { executeHighlights } = await import("../../commands/ai-highlights.js");
+        const handler = registry.getHandler("pipeline_highlights");
         expect(handler).toBeDefined();
 
         const result = await handler!(
@@ -512,10 +552,10 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
     });
 
-    describe("ai_auto_shorts handler", () => {
+    describe("pipeline_auto_shorts handler", () => {
       it("should call executeAutoShorts with correct parameters", async () => {
-        const { executeAutoShorts } = await import("../../commands/ai.js");
-        const handler = registry.getHandler("ai_auto_shorts");
+        const { executeAutoShorts } = await import("../../commands/ai-highlights.js");
+        const handler = registry.getHandler("pipeline_auto_shorts");
         expect(handler).toBeDefined();
 
         const result = await handler!(
@@ -541,7 +581,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
 
       it("should handle analyzeOnly mode", async () => {
-        const handler = registry.getHandler("ai_auto_shorts");
+        const handler = registry.getHandler("pipeline_auto_shorts");
         const result = await handler!(
           {
             video: "video.mp4",
@@ -554,10 +594,10 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
     });
 
-    describe("ai_gemini_video handler", () => {
+    describe("analyze_video handler", () => {
       it("should call executeGeminiVideo with correct parameters", async () => {
-        const { executeGeminiVideo } = await import("../../commands/ai.js");
-        const handler = registry.getHandler("ai_gemini_video");
+        const { executeGeminiVideo } = await import("../../commands/ai-analyze.js");
+        const handler = registry.getHandler("analyze_video");
         expect(handler).toBeDefined();
 
         const result = await handler!(
@@ -581,8 +621,8 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
 
       it("should handle YouTube URLs without modification", async () => {
-        const { executeGeminiVideo } = await import("../../commands/ai.js");
-        const handler = registry.getHandler("ai_gemini_video");
+        const { executeGeminiVideo } = await import("../../commands/ai-analyze.js");
+        const handler = registry.getHandler("analyze_video");
 
         await handler!(
           {
@@ -614,13 +654,12 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
         (t) =>
           t.name.startsWith("media_") ||
           t.name.startsWith("detect_") ||
-          t.name === "ai_transcribe"
+          t.name.startsWith("audio_")
       );
-      const aiTools = allTools.filter(
-        (t) =>
-          t.name.startsWith("ai_") &&
-          t.name !== "ai_transcribe" // ai_transcribe is media tool
-      );
+      const generateTools = allTools.filter((t) => t.name.startsWith("generate_"));
+      const editTools = allTools.filter((t) => t.name.startsWith("edit_"));
+      const analyzeTools = allTools.filter((t) => t.name.startsWith("analyze_"));
+      const pipelineTools = allTools.filter((t) => t.name.startsWith("pipeline_"));
       const exportTools = allTools.filter((t) => t.name.startsWith("export_"));
       const batchTools = allTools.filter((t) => t.name.startsWith("batch_"));
 
@@ -628,20 +667,25 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       expect(timelineTools.length).toBe(11);  // Added timeline_clear
       expect(fsTools.length).toBe(4);
       expect(mediaTools.length).toBe(8);  // Added media_compress, media_convert, media_concat
-      expect(aiTools.length).toBe(25);  // +5: noise_reduce, fade, thumbnail, translate_srt, veo
+      expect(generateTools.length).toBe(8);  // image, video, speech, sound_effect, music, storyboard, motion, thumbnail
+      expect(editTools.length).toBe(8);  // text_overlay, silence_cut, jump_cut, caption, noise_reduce, fade, translate_srt, image
+      expect(analyzeTools.length).toBe(3);  // video, media, review
+      expect(pipelineTools.length).toBe(4);  // script_to_video, highlights, auto_shorts, regenerate_scene
       expect(exportTools.length).toBe(3);
-      expect(batchTools.length).toBe(3);  // New batch tools
+      expect(batchTools.length).toBe(3);
 
-      // Total should be 59
-      expect(
-        projectTools.length +
+      // Total: 5+11+4+8+8+8+3+4+3+3 = 57
+      const totalTools = projectTools.length +
           timelineTools.length +
           fsTools.length +
           mediaTools.length +
-          aiTools.length +
+          generateTools.length +
+          editTools.length +
+          analyzeTools.length +
+          pipelineTools.length +
           exportTools.length +
-          batchTools.length
-      ).toBe(59);
+          batchTools.length;
+      expect(totalTools).toBe(57);
     });
   });
 });
@@ -650,22 +694,22 @@ describe("Exported CLI Functions", () => {
   describe("Function signatures match Agent tool parameters", () => {
     it("executeScriptToVideo accepts ScriptToVideoOptions", async () => {
       // Type check - this will fail at compile time if signatures don't match
-      const { executeScriptToVideo } = await import("../../commands/ai.js");
+      const { executeScriptToVideo } = await import("../../commands/ai-script-pipeline.js");
       expect(typeof executeScriptToVideo).toBe("function");
     });
 
     it("executeHighlights accepts HighlightsOptions", async () => {
-      const { executeHighlights } = await import("../../commands/ai.js");
+      const { executeHighlights } = await import("../../commands/ai-highlights.js");
       expect(typeof executeHighlights).toBe("function");
     });
 
     it("executeAutoShorts accepts AutoShortsOptions", async () => {
-      const { executeAutoShorts } = await import("../../commands/ai.js");
+      const { executeAutoShorts } = await import("../../commands/ai-highlights.js");
       expect(typeof executeAutoShorts).toBe("function");
     });
 
     it("executeGeminiVideo accepts GeminiVideoOptions", async () => {
-      const { executeGeminiVideo } = await import("../../commands/ai.js");
+      const { executeGeminiVideo } = await import("../../commands/ai-analyze.js");
       expect(typeof executeGeminiVideo).toBe("function");
     });
   });
@@ -693,7 +737,11 @@ describe("Tool Name Consistency", () => {
       "fs_",
       "media_",
       "detect_",
-      "ai_",
+      "audio_",
+      "generate_",
+      "edit_",
+      "analyze_",
+      "pipeline_",
       "export_",
       "batch_",
     ];

@@ -95,7 +95,7 @@ const detectBeatsDef: ToolDefinition = {
 };
 
 const transcribeDef: ToolDefinition = {
-  name: "ai_transcribe",
+  name: "audio_transcribe",
   description: "Transcribe audio using Whisper AI",
   parameters: {
     type: "object",

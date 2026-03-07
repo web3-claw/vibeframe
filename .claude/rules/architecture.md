@@ -35,7 +35,7 @@ Agent (vibe)              Natural language → LLM tool calling → autonomous e
 - In Claude Code or Cursor+MCP environments, prefer running CLI commands directly
 - Multi-turn: LLM reasoning → tool call → result → repeat until complete
 - 5 LLM providers: OpenAI, Claude, Gemini, Ollama, xAI Grok
-- 59 tools across 7 categories (project, timeline, filesystem, media, AI, export, batch)
+- 57 tools across 7 categories (project, timeline, filesystem, media, AI, export, batch)
 - `--confirm` flag: prompts before each tool execution
 - Example: "create project and add video" → multiple tool calls autonomously
 
@@ -64,7 +64,10 @@ packages/cli/src/agent/
 │   ├── timeline.ts          # 11 timeline tools
 │   ├── filesystem.ts        # 4 filesystem tools
 │   ├── media.ts             # 8 media tools
-│   ├── ai.ts                # 24 AI generation tools (basic + pipeline)
+│   ├── ai.ts                # AI tools barrel (imports ai-generation, ai-editing, ai-pipeline)
+│   ├── ai-generation.ts     # 8 generate_* tools
+│   ├── ai-editing.ts        # 8 edit_* + 1 analyze_review + 1 generate_thumbnail tools
+│   ├── ai-pipeline.ts       # 4 pipeline_* + 2 analyze_* + 1 edit_image tools
 │   ├── export.ts            # 3 export tools
 │   └── batch.ts             # 3 batch tools
 ├── memory/

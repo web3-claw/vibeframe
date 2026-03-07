@@ -20,20 +20,7 @@ import { KlingProvider } from '@vibeframe/ai-providers';
 import { Project, type ProjectFile } from '../engine/index.js';
 import { getApiKey } from '../utils/api-key.js';
 import { execSafe, ffprobeDuration } from '../utils/exec-safe.js';
-import { formatTime } from './ai-helpers.js';
-
-
-// Download video with auth headers for Veo (Google) URIs
-async function downloadVideo(url: string): Promise<Buffer> {
-  const headers: Record<string, string> = {};
-  if (url.includes("generativelanguage.googleapis.com")) {
-    const apiKey = process.env.GOOGLE_API_KEY;
-    if (apiKey) { headers["x-goog-api-key"] = apiKey; }
-  }
-  const response = await fetch(url, { headers, redirect: "follow" });
-  if (!response.ok) throw new Error(`Download failed (${response.status}): ${response.statusText}`);
-  return Buffer.from(await response.arrayBuffer());
-}
+import { formatTime, downloadVideo } from './ai-helpers.js';
 
 // ── Helper functions (module-private) ────────────────────────────────────────
 

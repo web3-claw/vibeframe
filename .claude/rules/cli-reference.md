@@ -20,186 +20,213 @@ vibe detect silence <media>                         # Detect silent segments
 vibe detect beats <audio>                           # Detect beats
 vibe setup --show                                   # Show API key status
 vibe agent -p claude                                # Interactive agent mode
+vibe schema generate.image                          # Show JSON schema for a command
 ```
 
-## Image Generation & Editing
+## Command Groups
+
+Commands are organized into 5 semantic groups:
+
+```
+vibe generate <action>    # Asset generation (image, video, speech, music, motion)
+vibe edit <action>        # Post-production editing (silence-cut, caption, grade, reframe...)
+vibe analyze <action>     # Analysis & review (media, video, review, suggest)
+vibe audio <action>       # Audio tools (transcribe, voices, isolate, clone, dub, duck)
+vibe pipeline <action>    # Multi-step workflows (script-to-video, highlights, shorts...)
+```
+
+## Generate — Asset Generation
 
 ```bash
 # Generate image (default: Gemini Nano Banana)
-vibe ai image "<prompt>" -o out.png
-vibe ai image "<prompt>" -o out.png -m latest        # Gemini latest (Nano Banana 2)
-vibe ai image "<prompt>" -o out.png -m pro           # Gemini Pro (4K)
-vibe ai image "<prompt>" -o out.png -p openai        # Use DALL-E
-vibe ai image "<prompt>" -o out.png -p stability     # Use Stability
-vibe ai image "<prompt>" -o out.png -r 16:9          # Aspect ratio
+vibe generate image "<prompt>" -o out.png
+vibe generate image "<prompt>" -o out.png -m latest        # Gemini latest (Nano Banana 2)
+vibe generate image "<prompt>" -o out.png -m pro           # Gemini Pro (4K)
+vibe generate image "<prompt>" -o out.png -p openai        # Use GPT Image
+vibe generate image "<prompt>" -o out.png -p stability     # Use Stability
+vibe generate image "<prompt>" -o out.png -r 16:9          # Aspect ratio
 
-# Gemini model selection: flash (default), latest/3.1-flash (Nano Banana 2), pro (4K)
-# When user says "latest" or "newest", always use -m latest
-
-# Gemini image editing (up to 3 input images with flash, 14 with pro)
-vibe ai gemini-edit <image> "<instruction>" -o out.png
-vibe ai gemini-edit <img1> <img2> "<instruction>" -o out.png -m pro
-vibe ai gemini-edit <image> "<instruction>" -o out.png -m latest
-
-# Stability AI image tools
-vibe ai sd-upscale <image> -o out.png
-vibe ai sd-remove-bg <image> -o out.png
-vibe ai sd-img2img <image> "<prompt>" -o out.png
-vibe ai sd-replace <image> "<search>" "<replace>" -o out.png
-vibe ai sd-outpaint <image> -o out.png
-```
-
-## Video Generation
-
-```bash
 # Text-to-video (default: Kling)
-vibe ai video "<prompt>" -o out.mp4 -d 5            # Kling (default)
-vibe ai video "<prompt>" -o out.mp4 -p runway       # Runway Gen-4
-vibe ai video "<prompt>" -o out.mp4 -p veo          # Google Veo
+vibe generate video "<prompt>" -o out.mp4 -d 5             # Kling (default)
+vibe generate video "<prompt>" -o out.mp4 -p runway        # Runway Gen-4
+vibe generate video "<prompt>" -o out.mp4 -p veo           # Google Veo
+vibe generate video "<prompt>" -o out.mp4 -p grok          # xAI Grok Imagine
 
 # Image-to-video
-vibe ai video "<prompt>" -i image.png -o out.mp4 -p runway
+vibe generate video "<prompt>" -i image.png -o out.mp4 -p runway
 
 # Veo options
-vibe ai video "<prompt>" -p veo --resolution 1080p -o out.mp4
-vibe ai video "<prompt>" -p veo --veo-model 3.1 --last-frame end.png -o out.mp4
-vibe ai video "<prompt>" -p veo --ref-images ref1.png ref2.png -o out.mp4
-vibe ai veo-extend <operation-name> -o extended.mp4 -d 6    # Extend Veo video
+vibe generate video "<prompt>" -p veo --resolution 1080p -o out.mp4
+vibe generate video "<prompt>" -p veo --veo-model 3.1 --last-frame end.png -o out.mp4
+vibe generate video "<prompt>" -p veo --ref-images ref1.png ref2.png -o out.mp4
 
-# Kling specific
-vibe ai kling "<prompt>" -o out.mp4 -d 5 -m pro     # Pro mode
-vibe ai kling "<prompt>" -o out.mp4 -r 9:16          # Vertical
-vibe ai video-extend <video-id>                      # Extend Kling video
-```
+# Video management
+vibe generate video-status <task-id>                       # Check generation status
+vibe generate video-cancel <task-id>                       # Cancel generation
+vibe generate video-extend <video-id>                      # Extend video
 
-## Audio
-
-```bash
 # Text-to-speech (ElevenLabs)
-vibe ai tts "<text>" -o out.mp3
-vibe ai tts "<text>" -o out.mp3 -v <voice-id>       # Custom voice
-vibe ai voices                                       # List available voices
+vibe generate speech "<text>" -o out.mp3
+vibe generate speech "<text>" -o out.mp3 -v <voice-id>     # Custom voice
 
 # Sound effects
-vibe ai sfx "<description>" -o out.mp3 -d 5
+vibe generate sound-effect "<description>" -o out.mp3 -d 5
 
 # Music generation (Replicate MusicGen)
-vibe ai music "<description>" -o out.mp3 -d 15
+vibe generate music "<description>" -o out.mp3 -d 15
+vibe generate music-status <prediction-id>                 # Check music status
 
-# Transcription (Whisper)
-vibe ai transcribe <audio> -o out.srt -f srt
-vibe ai transcribe <audio> -l ko                     # Specify language
+# Storyboard generation
+vibe generate storyboard "<content>" -o storyboard.json -d 30
 
-# Voice clone
-vibe ai voice-clone <sample.mp3>
+# Thumbnail
+vibe generate thumbnail <video> -o thumb.png
 
-# Dubbing (transcribe + translate + TTS)
-vibe ai dub <media> -l ko -o dubbed.mp4
+# Background generation
+vibe generate background "<prompt>" -o bg.png
 
-# Audio ducking (lower music when voice plays)
-vibe ai duck <music.mp3> --voice voice.mp3 -o out.mp3
+# Motion graphics (Claude + Remotion)
+vibe generate motion "<description>" -o motion.mp4 --render -s cinematic
+vibe generate motion "<description>" --image bg.png --video base.mp4
 ```
 
-## Video Editing (FFmpeg-based, most need no API key)
+## Edit — Post-Production
 
 ```bash
 # Remove silence
-vibe ai silence-cut <video> -o out.mp4
-vibe ai silence-cut <video> -o out.mp4 --use-gemini  # Smart detection
+vibe edit silence-cut <video> -o out.mp4
+vibe edit silence-cut <video> -o out.mp4 --use-gemini      # Smart detection
 
 # Remove filler words (um, uh, like...)
-vibe ai jump-cut <video> -o out.mp4
+vibe edit jump-cut <video> -o out.mp4
 
 # Add captions (Whisper + FFmpeg)
-vibe ai caption <video> -o out.mp4 -s bold            # bold, minimal, outline, karaoke
-vibe ai caption <video> -o out.mp4 --position top
+vibe edit caption <video> -o out.mp4 -s bold               # bold, minimal, outline, karaoke
+vibe edit caption <video> -o out.mp4 --position top
 
 # Noise reduction (no API key)
-vibe ai noise-reduce <input> -o out.mp4 -s high       # low, medium, high
+vibe edit noise-reduce <input> -o out.mp4 -s high          # low, medium, high
 
 # Fade effects (no API key)
-vibe ai fade <video> -o out.mp4 --fade-in 1 --fade-out 1
+vibe edit fade <video> -o out.mp4 --fade-in 1 --fade-out 1
 
 # Color grading (Claude + FFmpeg)
-vibe ai grade <video> -o out.mp4 -p cinematic-warm    # preset
-vibe ai grade <video> -o out.mp4 -s "film noir look"  # custom style
+vibe edit grade <video> -o out.mp4 --preset cinematic-warm
+vibe edit grade <video> -o out.mp4 -s "film noir look"     # custom style
 
 # Text overlay (FFmpeg)
-vibe ai text-overlay <video> -t "Title" -s center-bold -o out.mp4
-vibe ai text-overlay <video> -t "Line 1" -t "Line 2" --start 0 --end 5 -o out.mp4
+vibe edit text-overlay <video> -t "Title" -s center-bold -o out.mp4
+vibe edit text-overlay <video> -t "Line 1" -t "Line 2" --start 0 --end 5 -o out.mp4
 
 # Speed ramping (Whisper + Claude + FFmpeg)
-vibe ai speed-ramp <video> -o out.mp4 -s dramatic
+vibe edit speed-ramp <video> -o out.mp4 -s dramatic
 
 # Reframe aspect ratio (Claude Vision + FFmpeg)
-vibe ai reframe <video> -o out.mp4 -a 9:16            # Landscape → vertical
+vibe edit reframe <video> -o out.mp4 -a 9:16               # Landscape → vertical
+
+# Image editing (Gemini, up to 3 input images with flash, 14 with pro)
+vibe edit image <image> "<instruction>" -o out.png
+vibe edit image <img1> <img2> "<instruction>" -o out.png -m pro
+
+# Image tools (Stability AI)
+vibe edit upscale <image> -o out.png
+vibe edit remove-bg <image> -o out.png
+vibe edit outpaint <image> -o out.png
+vibe edit replace <image> "<search>" "<replace>" -o out.png
+
+# Video tools
+vibe edit upscale-video <video> -o out.mp4
+vibe edit interpolate <video> -o out.mp4
+vibe edit fill-gaps <project> -o out/
 
 # Translate subtitles
-vibe ai translate-srt <file.srt> -t ko -o out.srt
+vibe edit translate-srt <file.srt> -t ko -o out.srt
 ```
 
-## AI Analysis
+## Analyze — Analysis & Review
 
 ```bash
 # Analyze any media (image, video, YouTube URL)
-vibe ai analyze <source> "<prompt>"
-vibe ai analyze image.png "Describe this image"
-vibe ai analyze video.mp4 "Summarize this video"
-vibe ai analyze "https://youtube.com/watch?v=..." "Key takeaways"
+vibe analyze media <source> "<prompt>"
+vibe analyze media image.png "Describe this image"
+vibe analyze media video.mp4 "Summarize this video"
+vibe analyze media "https://youtube.com/watch?v=..." "Key takeaways"
 
 # Video-specific analysis (Gemini)
-vibe ai gemini-video <video> "<prompt>"
-vibe ai gemini-video <video> "<prompt>" --low-res     # For longer videos
+vibe analyze video <video> "<prompt>"
+vibe analyze video <video> "<prompt>" --low-res            # For longer videos
 
 # AI video review + auto-fix
-vibe ai review <video> --auto-apply -o fixed.mp4
+vibe analyze review <video> --auto-apply -o fixed.mp4
+
+# Suggest edits
+vibe analyze suggest <video>
 ```
 
-## AI Pipelines
+## Audio — Audio Tools
+
+```bash
+# Transcription (Whisper)
+vibe audio transcribe <audio> -o out.srt -f srt
+vibe audio transcribe <audio> -l ko                        # Specify language
+
+# List available voices
+vibe audio voices
+
+# Voice isolation
+vibe audio isolate <audio> -o isolated.mp3
+
+# Voice clone
+vibe audio voice-clone <sample.mp3>
+
+# Dubbing (transcribe + translate + TTS)
+vibe audio dub <media> -l ko -o dubbed.mp4
+
+# Audio ducking (lower music when voice plays)
+vibe audio duck <music.mp3> --voice voice.mp3 -o out.mp3
+```
+
+## Pipeline — Multi-Step Workflows
 
 ```bash
 # Script-to-video (full pipeline: storyboard → images → video → TTS → assembly)
-vibe ai script-to-video "<script>" -o output-dir/ -g runway
-vibe ai script-to-video "<script>" -o output-dir/ -g kling --images-only
-vibe ai script-to-video "<script>" -o output-dir/ -a 9:16 --review
+vibe pipeline script-to-video "<script>" -o output-dir/ -g runway
+vibe pipeline script-to-video "<script>" -o output-dir/ -g kling --images-only
+vibe pipeline script-to-video "<script>" -o output-dir/ -a 9:16 --review
 
 # Regenerate specific scene
-vibe ai regenerate-scene <project-dir> --scene 2
+vibe pipeline regenerate-scene <project-dir> --scene 2
 
 # Extract highlights from long video
-vibe ai highlights <video> -o highlights.json -d 60 --use-gemini
-vibe ai highlights <video> -p project.vibe.json      # Create project with clips
+vibe pipeline highlights <video> -o highlights.json -d 60 --use-gemini
+vibe pipeline highlights <video> --project project.vibe.json
 
 # Auto-generate shorts
-vibe ai auto-shorts <video> -o shorts/ -n 3 -d 60 --add-captions
+vibe pipeline auto-shorts <video> -o shorts/ -n 3 -d 60 --add-captions
 
 # Viral optimization (multi-platform export)
-vibe ai viral <project> -p youtube,tiktok,instagram-reels -o viral/
+vibe pipeline viral <project> --platforms youtube,tiktok,instagram-reels -o viral/
 
-# Storyboard generation
-vibe ai storyboard "<content>" -o storyboard.json -d 30
+# B-roll generation
+vibe pipeline b-roll <video> -o broll/
 
 # AI narration for video
-vibe ai narrate <video> -o narration/ -v rachel -s energetic
-
-# Motion graphics (Claude + Remotion)
-vibe ai motion "<description>" -o motion.mp4 --render -s cinematic
-vibe ai motion "<description>" --image bg.png --video base.mp4
+vibe pipeline narrate <video> -o narration/ -v rachel -s energetic
 ```
 
 ## Common Workflows
 
 ### Generate image → edit → make video
 ```bash
-vibe ai image "a cat on a rooftop" -o cat.png
-vibe ai gemini-edit cat.png "add a sunset background" -o cat-sunset.png
-vibe ai video "the cat watches the sunset" -i cat-sunset.png -o cat.mp4 -p runway
+vibe generate image "a cat on a rooftop" -o cat.png
+vibe edit image cat.png "add a sunset background" -o cat-sunset.png
+vibe generate video "the cat watches the sunset" -i cat-sunset.png -o cat.mp4 -p runway
 ```
 
 ### Create video with narration
 ```bash
-vibe ai kling "ocean waves at sunset" -o waves.mp4 -d 5
-vibe ai tts "The sun sets over the peaceful ocean." -o narration.mp3
+vibe generate video "ocean waves at sunset" -o waves.mp4 -d 5
+vibe generate speech "The sun sets over the peaceful ocean." -o narration.mp3
 vibe project create my-video -o project.vibe.json
 vibe timeline add-source project.vibe.json waves.mp4    # → source ID
 vibe timeline add-source project.vibe.json narration.mp3 # → source ID
@@ -210,26 +237,27 @@ vibe export project.vibe.json -o final.mp4 -y
 
 ### Edit existing video
 ```bash
-vibe ai silence-cut interview.mp4 -o clean.mp4
-vibe ai caption clean.mp4 -o captioned.mp4 -s bold
-vibe ai grade captioned.mp4 -o final.mp4 -p cinematic-warm
+vibe edit silence-cut interview.mp4 -o clean.mp4
+vibe edit caption clean.mp4 -o captioned.mp4 -s bold
+vibe edit grade captioned.mp4 -o final.mp4 --preset cinematic-warm
 ```
 
 ## API Keys
 
 | Command | Required Key |
 |---------|-------------|
-| `ai image` (default) | `GOOGLE_API_KEY` |
-| `ai image -p openai` | `OPENAI_API_KEY` |
-| `ai gemini-edit` | `GOOGLE_API_KEY` |
-| `ai video` / `ai kling` | `KLING_API_KEY` |
-| `ai video -p runway` | `RUNWAY_API_SECRET` |
-| `ai video -p veo` | `GOOGLE_API_KEY` |
-| `ai tts` / `ai sfx` | `ELEVENLABS_API_KEY` |
-| `ai transcribe` / `ai caption` / `ai jump-cut` | `OPENAI_API_KEY` |
-| `ai grade` / `ai reframe` / `ai speed-ramp` | `ANTHROPIC_API_KEY` |
-| `ai gemini-video` / `ai analyze` / `ai review` | `GOOGLE_API_KEY` |
-| `ai silence-cut` / `ai noise-reduce` / `ai fade` | None (FFmpeg only) |
-| `ai script-to-video -g runway` | `ANTHROPIC_API_KEY` + `GOOGLE_API_KEY` + `ELEVENLABS_API_KEY` + `RUNWAY_API_SECRET` |
-| `ai script-to-video -g veo` | `ANTHROPIC_API_KEY` + `GOOGLE_API_KEY` + `ELEVENLABS_API_KEY` |
-| `ai veo-extend` | `GOOGLE_API_KEY` |
+| `generate image` (default) | `GOOGLE_API_KEY` |
+| `generate image -p openai` | `OPENAI_API_KEY` |
+| `edit image` | `GOOGLE_API_KEY` |
+| `generate video` | `KLING_API_KEY` |
+| `generate video -p runway` | `RUNWAY_API_SECRET` |
+| `generate video -p veo` | `GOOGLE_API_KEY` |
+| `generate video -p grok` | `XAI_API_KEY` |
+| `generate speech` / `generate sound-effect` | `ELEVENLABS_API_KEY` |
+| `audio transcribe` / `edit caption` / `edit jump-cut` | `OPENAI_API_KEY` |
+| `edit grade` / `edit reframe` / `edit speed-ramp` | `ANTHROPIC_API_KEY` |
+| `analyze video` / `analyze media` / `analyze review` | `GOOGLE_API_KEY` |
+| `edit silence-cut` / `edit noise-reduce` / `edit fade` | None (FFmpeg only) |
+| `pipeline script-to-video -g runway` | `ANTHROPIC_API_KEY` + `GOOGLE_API_KEY` + `ELEVENLABS_API_KEY` + `RUNWAY_API_SECRET` |
+| `pipeline script-to-video -g veo` | `ANTHROPIC_API_KEY` + `GOOGLE_API_KEY` + `ELEVENLABS_API_KEY` |
+| `generate video-extend -p veo` | `GOOGLE_API_KEY` |

@@ -20,28 +20,7 @@ import { GeminiProvider, KlingProvider, RunwayProvider } from "@vibeframe/ai-pro
 import { getApiKey } from "../utils/api-key.js";
 import { getApiKeyFromConfig } from "../config/index.js";
 import { uploadToImgbb } from "./ai-script-pipeline.js";
-
-/**
- * Download video from URL with appropriate auth headers.
- * Veo (Google) URIs require x-goog-api-key header.
- */
-async function downloadVideo(url: string): Promise<Buffer> {
-  const headers: Record<string, string> = {};
-
-  // Veo returns URIs under generativelanguage.googleapis.com that need API key auth
-  if (url.includes("generativelanguage.googleapis.com")) {
-    const apiKey = process.env.GOOGLE_API_KEY;
-    if (apiKey) {
-      headers["x-goog-api-key"] = apiKey;
-    }
-  }
-
-  const response = await fetch(url, { headers, redirect: "follow" });
-  if (!response.ok) {
-    throw new Error(`Download failed (${response.status}): ${response.statusText}`);
-  }
-  return Buffer.from(await response.arrayBuffer());
-}
+import { downloadVideo } from "./ai-helpers.js";
 
 function getStatusColor(status: string): string {
   switch (status) {
@@ -108,6 +87,13 @@ export function registerVideoCommands(aiCommand: Command): void {
             console.error(chalk.dim("Format: ACCESS_KEY:SECRET_KEY"));
           }
           console.error(chalk.dim(`Use --api-key or set ${envKey} environment variable`));
+          process.exit(1);
+        }
+
+        // Runway Gen-4 requires an input image
+        if (provider === "runway" && !options.image) {
+          console.error(chalk.red("Runway Gen-4 requires an input image. Use -i <image> to specify."));
+          console.error(chalk.dim("Example: vibe ai video \"prompt\" -p runway -i image.png -o out.mp4"));
           process.exit(1);
         }
 
@@ -350,12 +336,12 @@ export function registerVideoCommands(aiCommand: Command): void {
         if (options.output && finalResult.videoUrl) {
           const downloadSpinner = ora("Downloading video...").start();
           try {
-            const buffer = await downloadVideo(finalResult.videoUrl);
+            const buffer = await downloadVideo(finalResult.videoUrl, apiKey);
             const outputPath = resolve(process.cwd(), options.output);
             await writeFile(outputPath, buffer);
             downloadSpinner.succeed(chalk.green(`Saved to: ${outputPath}`));
-          } catch {
-            downloadSpinner.fail(chalk.red("Failed to download video"));
+          } catch (err) {
+            downloadSpinner.fail(chalk.red(`Failed to download video: ${err instanceof Error ? err.message : err}`));
           }
         }
       } catch (error) {
@@ -420,12 +406,12 @@ export function registerVideoCommands(aiCommand: Command): void {
         if (options.output && result.videoUrl) {
           const downloadSpinner = ora("Downloading video...").start();
           try {
-            const buffer = await downloadVideo(result.videoUrl);
+            const buffer = await downloadVideo(result.videoUrl, apiKey);
             const outputPath = resolve(process.cwd(), options.output);
             await writeFile(outputPath, buffer);
             downloadSpinner.succeed(chalk.green(`Saved to: ${outputPath}`));
-          } catch {
-            downloadSpinner.fail(chalk.red("Failed to download video"));
+          } catch (err) {
+            downloadSpinner.fail(chalk.red(`Failed to download video: ${err instanceof Error ? err.message : err}`));
           }
         }
       } catch (error) {
@@ -601,12 +587,12 @@ export function registerVideoCommands(aiCommand: Command): void {
         if (options.output && finalResult.videoUrl) {
           const downloadSpinner = ora("Downloading video...").start();
           try {
-            const buffer = await downloadVideo(finalResult.videoUrl);
+            const buffer = await downloadVideo(finalResult.videoUrl, apiKey);
             const outputPath = resolve(process.cwd(), options.output);
             await writeFile(outputPath, buffer);
             downloadSpinner.succeed(chalk.green(`Saved to: ${outputPath}`));
-          } catch {
-            downloadSpinner.fail(chalk.red("Failed to download video"));
+          } catch (err) {
+            downloadSpinner.fail(chalk.red(`Failed to download video: ${err instanceof Error ? err.message : err}`));
           }
         }
       } catch (error) {
@@ -673,12 +659,12 @@ export function registerVideoCommands(aiCommand: Command): void {
         if (options.output && result.videoUrl) {
           const downloadSpinner = ora("Downloading video...").start();
           try {
-            const buffer = await downloadVideo(result.videoUrl);
+            const buffer = await downloadVideo(result.videoUrl, apiKey);
             const outputPath = resolve(process.cwd(), options.output);
             await writeFile(outputPath, buffer);
             downloadSpinner.succeed(chalk.green(`Saved to: ${outputPath}`));
-          } catch {
-            downloadSpinner.fail(chalk.red("Failed to download video"));
+          } catch (err) {
+            downloadSpinner.fail(chalk.red(`Failed to download video: ${err instanceof Error ? err.message : err}`));
           }
         }
       } catch (error) {
@@ -694,7 +680,7 @@ export function registerVideoCommands(aiCommand: Command): void {
     .argument("<video-id>", "Kling video ID (from generation result)")
     .option("-k, --api-key <key>", "Kling API key (ACCESS_KEY:SECRET_KEY) or set KLING_API_KEY env")
     .option("-o, --output <path>", "Output file path")
-    .option("-p, --prompt <text>", "Continuation prompt")
+    .option("--prompt <text>", "Continuation prompt")
     .option("-d, --duration <sec>", "Duration: 5 or 10 seconds", "5")
     .option("-n, --negative <prompt>", "Negative prompt (what to avoid)")
     .option("--no-wait", "Start generation and return task ID without waiting")
@@ -774,12 +760,12 @@ export function registerVideoCommands(aiCommand: Command): void {
         if (options.output && finalResult.videoUrl) {
           const downloadSpinner = ora("Downloading video...").start();
           try {
-            const buffer = await downloadVideo(finalResult.videoUrl);
+            const buffer = await downloadVideo(finalResult.videoUrl, apiKey);
             const outputPath = resolve(process.cwd(), options.output);
             await writeFile(outputPath, buffer);
             downloadSpinner.succeed(chalk.green(`Saved to: ${outputPath}`));
-          } catch {
-            downloadSpinner.fail(chalk.red("Failed to download video"));
+          } catch (err) {
+            downloadSpinner.fail(chalk.red(`Failed to download video: ${err instanceof Error ? err.message : err}`));
           }
         }
       } catch (error) {
@@ -795,7 +781,7 @@ export function registerVideoCommands(aiCommand: Command): void {
     .argument("<operation-name>", "Veo operation name (from generation result)")
     .option("-k, --api-key <key>", "Google API key (or set GOOGLE_API_KEY env)")
     .option("-o, --output <path>", "Output file path")
-    .option("-p, --prompt <text>", "Continuation prompt")
+    .option("--prompt <text>", "Continuation prompt")
     .option("-d, --duration <sec>", "Duration: 4, 6, or 8 seconds", "6")
     .option("--veo-model <model>", "Veo model: 3.0, 3.1, 3.1-fast", "3.1")
     .option("--no-wait", "Start extension and return operation name without waiting")
@@ -871,12 +857,12 @@ export function registerVideoCommands(aiCommand: Command): void {
         if (options.output && finalResult.videoUrl) {
           const downloadSpinner = ora("Downloading video...").start();
           try {
-            const buffer = await downloadVideo(finalResult.videoUrl);
+            const buffer = await downloadVideo(finalResult.videoUrl, apiKey);
             const outputPath = resolve(process.cwd(), options.output);
             await writeFile(outputPath, buffer);
             downloadSpinner.succeed(chalk.green(`Saved to: ${outputPath}`));
-          } catch {
-            downloadSpinner.fail(chalk.red("Failed to download video"));
+          } catch (err) {
+            downloadSpinner.fail(chalk.red(`Failed to download video: ${err instanceof Error ? err.message : err}`));
           }
         }
       } catch (error) {

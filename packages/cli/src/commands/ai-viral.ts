@@ -85,7 +85,7 @@ export function registerViralCommand(ai: Command): void {
     .command("viral")
     .description("Optimize video for viral potential across platforms")
     .argument("<project>", "Source project file")
-    .option("-p, --platforms <list>", "Target platforms (comma-separated): youtube, youtube-shorts, tiktok, instagram-reels, instagram-feed, twitter", "all")
+    .option("--platforms <list>", "Target platforms (comma-separated): youtube, youtube-shorts, tiktok, instagram-reels, instagram-feed, twitter", "all")
     .option("-o, --output-dir <dir>", "Output directory for platform variants", "viral-output")
     .option("--analyze-only", "Only analyze, don't generate variants")
     .option("--skip-captions", "Skip caption generation")

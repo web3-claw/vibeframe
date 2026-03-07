@@ -4,7 +4,7 @@ import { executeThumbnailBestFrame } from "@vibeframe/cli/commands/ai-image";
 
 export const aiAnalysisTools = [
   {
-    name: "ai_analyze",
+    name: "analyze_media",
     description: "Analyze media (image, video, or YouTube URL) using Gemini AI. Requires GOOGLE_API_KEY.",
     inputSchema: {
       type: "object" as const,
@@ -25,7 +25,7 @@ export const aiAnalysisTools = [
     },
   },
   {
-    name: "ai_gemini_video",
+    name: "analyze_video",
     description: "Analyze video content using Gemini AI with temporal understanding. Requires GOOGLE_API_KEY.",
     inputSchema: {
       type: "object" as const,
@@ -46,7 +46,7 @@ export const aiAnalysisTools = [
     },
   },
   {
-    name: "ai_review",
+    name: "analyze_review",
     description: "AI video review: analyzes quality, suggests fixes, and optionally auto-applies them. Requires GOOGLE_API_KEY.",
     inputSchema: {
       type: "object" as const,
@@ -66,7 +66,7 @@ export const aiAnalysisTools = [
     },
   },
   {
-    name: "ai_thumbnail",
+    name: "generate_thumbnail",
     description: "Extract the best thumbnail frame from a video using Gemini AI analysis. Requires GOOGLE_API_KEY.",
     inputSchema: {
       type: "object" as const,
@@ -86,7 +86,7 @@ export async function handleAiAnalysisToolCall(
   args: Record<string, unknown>
 ): Promise<string> {
   switch (name) {
-    case "ai_analyze": {
+    case "analyze_media": {
       const result = await executeAnalyze({
         source: args.source as string,
         prompt: args.prompt as string,
@@ -105,7 +105,7 @@ export async function handleAiAnalysisToolCall(
       });
     }
 
-    case "ai_gemini_video": {
+    case "analyze_video": {
       const result = await executeGeminiVideo({
         source: args.source as string,
         prompt: args.prompt as string,
@@ -123,7 +123,7 @@ export async function handleAiAnalysisToolCall(
       });
     }
 
-    case "ai_review": {
+    case "analyze_review": {
       const result = await executeReview({
         videoPath: args.videoPath as string,
         storyboardPath: args.storyboardPath as string | undefined,
@@ -141,7 +141,7 @@ export async function handleAiAnalysisToolCall(
       });
     }
 
-    case "ai_thumbnail": {
+    case "generate_thumbnail": {
       const result = await executeThumbnailBestFrame({
         videoPath: args.videoPath as string,
         outputPath: args.outputPath as string,
