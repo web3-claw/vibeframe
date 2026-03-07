@@ -27,6 +27,7 @@ import {
 } from "../../commands/ai-edit.js";
 import { executeReview } from "../../commands/ai-review.js";
 import { executeThumbnailBestFrame } from "../../commands/ai-image.js";
+import { sanitizeAIResult } from "../../commands/sanitize.js";
 
 // ============================================================================
 // Tool Definitions
@@ -455,14 +456,14 @@ const reviewHandler: ToolHandler = async (args) => {
     };
   }
 
-  const fb = result.feedback!;
+  const fb = sanitizeAIResult(result.feedback!);
   let output = `Video Review: ${fb.overallScore}/10\n`;
   output += `Pacing: ${fb.categories.pacing.score}/10, Color: ${fb.categories.color.score}/10, `;
   output += `Text: ${fb.categories.textReadability.score}/10, AV Sync: ${fb.categories.audioVisualSync.score}/10, `;
   output += `Composition: ${fb.categories.composition.score}/10\n`;
 
   if (result.appliedFixes && result.appliedFixes.length > 0) {
-    output += `Applied fixes: ${result.appliedFixes.join("; ")}\n`;
+    output += `Applied fixes: ${sanitizeAIResult(result.appliedFixes).join("; ")}\n`;
   }
   if (result.verificationScore !== undefined) {
     output += `Verification score: ${result.verificationScore}/10\n`;
@@ -763,7 +764,7 @@ const thumbnailBestFrameHandler: ToolHandler = async (args, context): Promise<To
     const lines: string[] = [];
     lines.push(`Best frame extracted: ${result.outputPath}`);
     lines.push(`Timestamp: ${result.timestamp!.toFixed(2)}s`);
-    if (result.reason) lines.push(`Reason: ${result.reason}`);
+    if (result.reason) lines.push(`Reason: ${sanitizeAIResult(result.reason)}`);
 
     return {
       toolCallId: "",

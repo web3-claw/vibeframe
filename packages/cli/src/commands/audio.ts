@@ -30,6 +30,7 @@ import { execSafe, commandExists, execSafeSync } from "../utils/exec-safe.js";
 import { detectFormat, formatTranscript } from "../utils/subtitle.js";
 import { formatTime } from "./ai-helpers.js";
 import { isJsonMode, outputResult } from "./output.js";
+import { rejectControlChars } from "./validate.js";
 
 export const audioCommand = new Command("audio").description(
   "Audio operations (transcribe, TTS, voice clone, ducking)"
@@ -265,6 +266,8 @@ audioCommand
         console.error(chalk.red("Voice name is required. Use --name <name>"));
         process.exit(1);
       }
+
+      rejectControlChars(options.name);
 
       if (!samples || samples.length === 0) {
         console.error(chalk.red("At least one audio sample is required"));

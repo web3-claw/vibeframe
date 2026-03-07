@@ -40,10 +40,12 @@ import {
 } from "@vibeframe/ai-providers";
 import { getApiKey } from "../utils/api-key.js";
 import { getApiKeyFromConfig } from "../config/index.js";
+import { sanitizeLLMResponse } from "./sanitize.js";
 import { isJsonMode, outputResult, log, spinner as createSpinner } from "./output.js";
 import { commandExists } from "../utils/exec-safe.js";
 import { uploadToImgbb } from "./ai-script-pipeline.js";
 import { downloadVideo, formatTime } from "./ai-helpers.js";
+import { rejectControlChars } from "./validate.js";
 import { executeThumbnailBestFrame } from "./ai-image.js";
 import { registerMotionCommand } from "./ai-motion.js";
 
@@ -91,6 +93,8 @@ generateCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (prompt: string, options) => {
     try {
+      rejectControlChars(prompt);
+
       const provider = options.provider.toLowerCase();
       const validProviders = ["openai", "dalle", "gemini", "stability", "runway"];
       if (!validProviders.includes(provider)) {
@@ -460,6 +464,8 @@ generateCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (prompt: string, options) => {
     try {
+      rejectControlChars(prompt);
+
       const provider = options.provider.toLowerCase();
       const validProviders = ["runway", "kling", "veo", "grok"];
       if (!validProviders.includes(provider)) {
@@ -789,6 +795,8 @@ generateCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (text: string, options) => {
     try {
+      rejectControlChars(text);
+
       if (options.dryRun) {
         outputResult({ dryRun: true, command: "generate speech", params: { text, voice: options.voice, output: options.output } });
         return;
@@ -876,6 +884,8 @@ generateCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (prompt: string, options) => {
     try {
+      rejectControlChars(prompt);
+
       if (options.dryRun) {
         outputResult({ dryRun: true, command: "generate sound-effect", params: { prompt, duration: options.duration, promptInfluence: options.promptInfluence, output: options.output } });
         return;
@@ -938,6 +948,8 @@ generateCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (prompt: string, options) => {
     try {
+      rejectControlChars(prompt);
+
       if (options.dryRun) {
         outputResult({ dryRun: true, command: "generate music", params: { prompt, duration: options.duration, model: options.model, output: options.output } });
         return;
@@ -1097,6 +1109,8 @@ generateCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (content: string, options) => {
     try {
+      rejectControlChars(content);
+
       // Validate creativity level
       const creativity = options.creativity?.toLowerCase();
       if (creativity && creativity !== "low" && creativity !== "high") {
@@ -1141,6 +1155,11 @@ generateCommand
       }
 
       spinner.succeed(chalk.green(`Generated ${segments.length} segments`));
+
+      for (const seg of segments) {
+        seg.description = sanitizeLLMResponse(seg.description);
+        if (seg.visuals) seg.visuals = sanitizeLLMResponse(seg.visuals);
+      }
 
       if (options.output) {
         const outputPath = resolve(process.cwd(), options.output);
@@ -1204,6 +1223,8 @@ generateCommand
   .option("--model <model>", "Gemini model: flash, latest, pro (default: flash)", "flash")
   .action(async (description: string | undefined, options) => {
     try {
+      if (description) rejectControlChars(description);
+
       // Best-frame mode: analyze video with Gemini and extract frame
       if (options.bestFrame) {
         const absVideoPath = resolve(process.cwd(), options.bestFrame);
@@ -1359,6 +1380,8 @@ generateCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (description: string, options) => {
     try {
+      rejectControlChars(description);
+
       if (options.dryRun) {
         outputResult({ dryRun: true, command: "generate background", params: { description, aspect: options.aspect, output: options.output } });
         return;

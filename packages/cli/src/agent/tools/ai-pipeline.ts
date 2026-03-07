@@ -27,6 +27,7 @@ import {
   executeGeminiVideo,
   executeAnalyze,
 } from "../../commands/ai-analyze.js";
+import { sanitizeAIResult } from "../../commands/sanitize.js";
 
 // Helper to get timestamp for filenames
 function getTimestamp(): string {
@@ -529,7 +530,7 @@ const highlightsHandler: ToolHandler = async (args, context): Promise<ToolResult
       const endMin = Math.floor(h.endTime / 60);
       const endSec = (h.endTime % 60).toFixed(1);
       lines.push(`${h.index}. [${startMin}:${startSec.padStart(4, "0")} - ${endMin}:${endSec.padStart(4, "0")}] ${h.category} (${(h.confidence * 100).toFixed(0)}%)`);
-      lines.push(`   ${h.reason}`);
+      lines.push(`   ${sanitizeAIResult(h.reason)}`);
     }
 
     if (result.outputPath) {
@@ -608,7 +609,7 @@ const autoShortsHandler: ToolHandler = async (args, context): Promise<ToolResult
       const endMin = Math.floor(s.endTime / 60);
       const endSec = (s.endTime % 60).toFixed(1);
       lines.push(`[Short ${s.index}] ${startMin}:${startSec.padStart(4, "0")} - ${endMin}:${endSec.padStart(4, "0")} (${s.duration.toFixed(1)}s)`);
-      lines.push(`  ${s.reason}`);
+      lines.push(`  ${sanitizeAIResult(s.reason)}`);
       lines.push(`  Confidence: ${(s.confidence * 100).toFixed(0)}%`);
       if (s.outputPath) {
         lines.push(`  📁 ${s.outputPath}`);
@@ -659,7 +660,7 @@ const geminiVideoHandler: ToolHandler = async (args, context): Promise<ToolResul
     }
 
     // Build output
-    const lines: string[] = [result.response || ""];
+    const lines: string[] = [sanitizeAIResult(result.response || "")];
 
     if (result.model || result.totalTokens) {
       lines.push(``);
@@ -716,7 +717,7 @@ const analyzeHandler: ToolHandler = async (args, context): Promise<ToolResult> =
     }
 
     // Build output
-    const lines: string[] = [`[${result.sourceType}] ${result.response || ""}`];
+    const lines: string[] = [`[${result.sourceType}] ${sanitizeAIResult(result.response || "")}`];
 
     if (result.model || result.totalTokens) {
       lines.push(``);

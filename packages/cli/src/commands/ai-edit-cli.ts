@@ -27,6 +27,7 @@ import {
   type CaptionStyle,
 } from './ai-edit.js';
 import { isJsonMode, outputResult } from "./output.js";
+import { rejectControlChars } from "./validate.js";
 
 // ── Command registrations ───────────────────────────────────────────────────
 
@@ -544,6 +545,8 @@ aiCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (videoPath: string, options) => {
     try {
+      if (options.fillers) rejectControlChars(options.fillers);
+
       const absVideoPath = resolve(process.cwd(), videoPath);
       if (!existsSync(absVideoPath)) {
         console.error(chalk.red(`Video not found: ${absVideoPath}`));

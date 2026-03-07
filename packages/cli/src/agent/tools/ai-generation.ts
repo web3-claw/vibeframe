@@ -15,6 +15,7 @@ import type { ToolRegistry, ToolHandler } from "./index.js";
 import type { ToolDefinition, ToolResult } from "../types.js";
 import { getApiKeyFromConfig } from "../../config/index.js";
 import { downloadVideo } from "../../commands/ai-helpers.js";
+import { sanitizeAIResult } from "../../commands/sanitize.js";
 
 // Helper to get timestamp for filenames
 function getTimestamp(): string {
@@ -834,7 +835,8 @@ const generateStoryboard: ToolHandler = async (args, context): Promise<ToolResul
     await writeFile(outputPath, JSON.stringify(result, null, 2), "utf-8");
 
     // Format summary
-    const summary = result.map((scene, i) =>
+    const sanitizedResult = sanitizeAIResult(result);
+    const summary = sanitizedResult.map((scene, i) =>
       `Scene ${i + 1}: ${scene.description.substring(0, 60)}...`
     ).join("\n");
 

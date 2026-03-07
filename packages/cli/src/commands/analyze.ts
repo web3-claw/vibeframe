@@ -24,6 +24,8 @@ import { applySuggestion } from "./ai-helpers.js";
 import { executeAnalyze, executeGeminiVideo } from "./ai-analyze.js";
 import { registerReviewCommand } from "./ai-review.js";
 import { isJsonMode, outputResult } from "./output.js";
+import { sanitizeLLMResponse } from "./sanitize.js";
+import { rejectControlChars } from "./validate.js";
 
 export const analyzeCommand = new Command("analyze").description(
   "Analyze media using AI (images, videos, YouTube URLs)"
@@ -46,6 +48,8 @@ analyzeCommand
   .option("--fields <fields>", "Comma-separated fields to include in output (e.g., response,model)")
   .action(async (source: string, prompt: string, options) => {
     try {
+      rejectControlChars(prompt);
+
       if (options.apiKey) {
         process.env.GOOGLE_API_KEY = options.apiKey;
       } else {
@@ -75,8 +79,10 @@ analyzeCommand
 
       spinner.succeed(chalk.green("Analysis complete"));
 
+      const response = sanitizeLLMResponse(result.response || "");
+
       if (isJsonMode()) {
-        let result_obj: Record<string, unknown> = { success: true, response: result.response, sourceType: result.sourceType, model: result.model };
+        let result_obj: Record<string, unknown> = { success: true, response, sourceType: result.sourceType, model: result.model };
         if (result.totalTokens) {
           result_obj = { ...result_obj, promptTokens: result.promptTokens, responseTokens: result.responseTokens, totalTokens: result.totalTokens };
         }
@@ -89,7 +95,7 @@ analyzeCommand
       }
 
       console.log();
-      console.log(result.response);
+      console.log(response);
       console.log();
 
       if (options.verbose && result.totalTokens) {
@@ -128,6 +134,8 @@ analyzeCommand
   .option("--fields <fields>", "Comma-separated fields to include in output (e.g., response,model)")
   .action(async (source: string, prompt: string, options) => {
     try {
+      rejectControlChars(prompt);
+
       if (options.apiKey) {
         process.env.GOOGLE_API_KEY = options.apiKey;
       } else {
@@ -157,8 +165,10 @@ analyzeCommand
 
       spinner.succeed(chalk.green("Video analyzed"));
 
+      const response = sanitizeLLMResponse(result.response || "");
+
       if (isJsonMode()) {
-        let result_obj: Record<string, unknown> = { success: true, response: result.response, model: result.model };
+        let result_obj: Record<string, unknown> = { success: true, response, model: result.model };
         if (result.totalTokens) {
           result_obj = { ...result_obj, promptTokens: result.promptTokens, responseTokens: result.responseTokens, totalTokens: result.totalTokens };
         }
@@ -171,7 +181,7 @@ analyzeCommand
       }
 
       console.log();
-      console.log(result.response);
+      console.log(response);
       console.log();
 
       if (options.verbose && result.totalTokens) {
@@ -207,6 +217,8 @@ analyzeCommand
   .option("--apply", "Apply the first suggestion automatically")
   .action(async (projectPath: string, instruction: string, options) => {
     try {
+      rejectControlChars(instruction);
+
       const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
       if (!apiKey) {
         console.error(chalk.red("Google API key required. Use --api-key or set GOOGLE_API_KEY"));

@@ -5,6 +5,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { Project, type ProjectFile } from "../engine/index.js";
 import type { MediaType } from "@vibeframe/core/timeline";
+import { validateResourceId } from "./validate.js";
 
 export const timelineCommand = new Command("timeline")
   .description("Timeline editing commands");
@@ -66,6 +67,9 @@ timelineCommand
     const spinner = ora("Adding clip...").start();
 
     try {
+      validateResourceId(sourceId);
+      if (options.track) validateResourceId(options.track);
+
       const filePath = resolve(process.cwd(), projectPath);
       const content = await readFile(filePath, "utf-8");
       const data: ProjectFile = JSON.parse(content);
@@ -171,6 +175,8 @@ timelineCommand
     const spinner = ora("Adding effect...").start();
 
     try {
+      validateResourceId(clipId);
+
       const filePath = resolve(process.cwd(), projectPath);
       const content = await readFile(filePath, "utf-8");
       const data: ProjectFile = JSON.parse(content);
@@ -223,6 +229,8 @@ timelineCommand
     const spinner = ora("Trimming clip...").start();
 
     try {
+      validateResourceId(clipId);
+
       const filePath = resolve(process.cwd(), projectPath);
       const content = await readFile(filePath, "utf-8");
       const data: ProjectFile = JSON.parse(content);
@@ -339,6 +347,8 @@ timelineCommand
     const spinner = ora("Splitting clip...").start();
 
     try {
+      validateResourceId(clipId);
+
       const filePath = resolve(process.cwd(), projectPath);
       const content = await readFile(filePath, "utf-8");
       const data: ProjectFile = JSON.parse(content);
@@ -386,6 +396,8 @@ timelineCommand
     const spinner = ora("Duplicating clip...").start();
 
     try {
+      validateResourceId(clipId);
+
       const filePath = resolve(process.cwd(), projectPath);
       const content = await readFile(filePath, "utf-8");
       const data: ProjectFile = JSON.parse(content);
@@ -427,6 +439,8 @@ timelineCommand
     const spinner = ora("Deleting clip...").start();
 
     try {
+      validateResourceId(clipId);
+
       const filePath = resolve(process.cwd(), projectPath);
       const content = await readFile(filePath, "utf-8");
       const data: ProjectFile = JSON.parse(content);
@@ -465,6 +479,9 @@ timelineCommand
     const spinner = ora("Moving clip...").start();
 
     try {
+      validateResourceId(clipId);
+      if (options.track) validateResourceId(options.track);
+
       const filePath = resolve(process.cwd(), projectPath);
       const content = await readFile(filePath, "utf-8");
       const data: ProjectFile = JSON.parse(content);

@@ -44,6 +44,7 @@ import { applyTextOverlays, type TextOverlayStyle } from "./ai-edit.js";
 import { registerEditCommands } from "./ai-edit-cli.js";
 import { registerFillGapsCommand } from "./ai-fill-gaps.js";
 import { isJsonMode, outputResult } from "./output.js";
+import { rejectControlChars } from "./validate.js";
 
 export const editCommand = new Command("edit").description(
   "Edit and post-process media (silence-cut, caption, grade, reframe, upscale...)"
@@ -71,6 +72,8 @@ editCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (videoPath: string, options) => {
     try {
+      if (options.style) rejectControlChars(options.style);
+
       if (!options.style && !options.preset) {
         console.error(chalk.red("Either --style or --preset is required"));
         console.log(chalk.dim("Examples:"));
@@ -187,6 +190,8 @@ editCommand
         console.log(chalk.dim('  pnpm vibe edit text-overlay video.mp4 -t "NEXUS AI" -t "Intelligence, Unleashed" --style center-bold'));
         process.exit(1);
       }
+
+      for (const t of options.text) rejectControlChars(t);
 
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
@@ -644,6 +649,7 @@ editCommand
       }
 
       const prompt = args[args.length - 1];
+      rejectControlChars(prompt);
       const imagePaths = args.slice(0, -1);
 
       if (options.dryRun) {
@@ -1043,6 +1049,9 @@ editCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (imagePath: string, search: string, replaceText: string, options) => {
     try {
+      rejectControlChars(search);
+      rejectControlChars(replaceText);
+
       if (options.dryRun) {
         outputResult({
           dryRun: true,
