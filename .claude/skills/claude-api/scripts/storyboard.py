@@ -44,7 +44,7 @@ Create professional, actionable storyboards. Output ONLY valid JSON."""
 def generate_storyboard(
     description: str,
     duration: int = 30,
-    model: str = "claude-sonnet-4-20250514",
+    model: str = "claude-sonnet-4-6",
     api_key: str | None = None,
 ) -> dict:
     """Generate storyboard using Claude."""
@@ -117,7 +117,7 @@ def main():
     parser.add_argument("description", help="Video description")
     parser.add_argument("-d", "--duration", type=int, default=30, help="Duration in seconds")
     parser.add_argument("-o", "--output", help="Output JSON file")
-    parser.add_argument("-m", "--model", default="claude-sonnet-4-20250514", help="Model")
+    parser.add_argument("-m", "--model", default="claude-sonnet-4-6", help="Model")
     parser.add_argument("-k", "--api-key", help="API key (or set ANTHROPIC_API_KEY)")
 
     args = parser.parse_args()

@@ -1,6 +1,7 @@
 ---
 name: elevenlabs-tts
-description: Generate speech, sound effects, and clone voices using ElevenLabs API. Use for narration, voiceovers, SFX, and voice cloning.
+description: Generate speech, sound effects, music, and clone voices using ElevenLabs API. Use for narration, voiceovers, SFX, music, and voice cloning.
+argument-hint: "[text-or-action]"
 allowed-tools: Bash(curl *), Bash(python *), Read, Write
 disable-model-invocation: true
 user-invocable: true
@@ -8,7 +9,7 @@ user-invocable: true
 
 # ElevenLabs Audio Generation
 
-Generate high-quality speech, sound effects, and clone voices using ElevenLabs API.
+Generate high-quality speech, sound effects, music, and clone voices using ElevenLabs API.
 
 ## Capabilities
 
@@ -16,6 +17,7 @@ Generate high-quality speech, sound effects, and clone voices using ElevenLabs A
 |---------|----------|-------------|
 | Text-to-Speech | `/v1/text-to-speech/{voice_id}` | Convert text to natural speech |
 | Sound Effects | `/v1/sound-generation` | Generate SFX from text prompts |
+| Music Generation | `/v1/music` | Generate music from text prompts (3s-10min) |
 | Voice Clone | `/v1/voices/add` | Clone voices from audio samples |
 | Voice List | `/v1/voices` | List available voices |
 | Audio Isolation | `/v1/audio-isolation` | Separate vocals from background |
@@ -95,6 +97,43 @@ curl -X POST "https://api.elevenlabs.io/v1/sound-generation" \
   -H "Content-Type: application/json" \
   -d '{"text": "whoosh transition sound", "duration_seconds": 2}' \
   --output effect.mp3
+```
+
+## Music Generation
+
+### Endpoint
+```
+POST https://api.elevenlabs.io/v1/music
+```
+
+### Request Format
+```json
+{
+  "prompt": "upbeat electronic track with synths",
+  "music_length_ms": 30000,
+  "model_id": "music_v1",
+  "force_instrumental": true,
+  "seed": 42
+}
+```
+
+### Parameters
+- `prompt`: Description of the music to generate
+- `music_length_ms`: 3000 to 600000 (3 seconds to 10 minutes), optional
+- `model_id`: `"music_v1"` (only option)
+- `force_instrumental`: `true` to generate without vocals (optional)
+- `seed`: Integer for reproducibility (optional)
+
+### Response
+Binary audio data (MP3, 44.1kHz, 128-192kbps)
+
+### cURL Example
+```bash
+curl -X POST "https://api.elevenlabs.io/v1/music" \
+  -H "xi-api-key: $ELEVENLABS_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"prompt": "calm ambient piano", "music_length_ms": 30000, "model_id": "music_v1", "force_instrumental": true}' \
+  --output music.mp3
 ```
 
 ## Voice Cloning

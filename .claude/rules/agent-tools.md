@@ -73,7 +73,7 @@ When adding new CLI commands:
 | `generate_video` | `vibe generate video` | Generate video (Grok/Runway gen4.5+gen4_turbo/Kling/Veo) |
 | `generate_speech` | `vibe generate speech` | Text-to-speech (ElevenLabs) |
 | `generate_sound_effect` | `vibe generate sound-effect` | Sound effects (ElevenLabs) |
-| `generate_music` | `vibe generate music` | Music generation (Replicate) |
+| `generate_music` | `vibe generate music` | Music generation (ElevenLabs default, Replicate fallback) |
 | `generate_storyboard` | `vibe generate storyboard` | Script → storyboard (Claude) |
 | `generate_motion` | `vibe generate motion` | Motion graphics (Remotion) |
 

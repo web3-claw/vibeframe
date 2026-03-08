@@ -6,6 +6,8 @@ export {
   type Voice,
   type TTSOptions,
   type TTSResult,
+  type MusicOptions,
+  type MusicResult,
   type SoundEffectOptions,
   type SoundEffectResult,
   type AudioIsolationResult,

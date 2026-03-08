@@ -168,9 +168,9 @@ All text-to-video providers also support image-to-video. Key differences per pro
 
 | Provider | Capability | Env Key | Notes |
 |----------|------------|---------|-------|
-| ElevenLabs | TTS, SFX, Voice Clone | `ELEVENLABS_API_KEY` | Default voice: Rachel, model: eleven_v3 |
+| ElevenLabs | TTS, SFX, Music, Voice Clone | `ELEVENLABS_API_KEY` | Music: 3s-10min, model music_v1. TTS: eleven_v3 |
 | Whisper | Transcription | `OPENAI_API_KEY` | OpenAI API |
-| Replicate | Music generation | `REPLICATE_API_TOKEN` | MusicGen model |
+| Replicate | Music generation | `REPLICATE_API_TOKEN` | MusicGen, max 30s |
 
 ---
 
@@ -204,6 +204,8 @@ export REPLICATE_API_TOKEN="..."      # Replicate (music)
 | `vibe generate image -p openai` | `OPENAI_API_KEY` | GPT Image 1.5 |
 | `vibe edit image` | `GOOGLE_API_KEY` | Gemini Nano Banana |
 | `vibe generate speech` | `ELEVENLABS_API_KEY` | ElevenLabs |
+| `vibe generate music` | `ELEVENLABS_API_KEY` | ElevenLabs Music (default) |
+| `vibe generate music -p replicate` | `REPLICATE_API_TOKEN` | Replicate MusicGen |
 | `vibe generate video` | `XAI_API_KEY` | Grok Imagine (default) |
 | `vibe generate video -p kling` | `KLING_API_KEY` | Kling v2.5-turbo |
 | `vibe generate image -p grok` | `XAI_API_KEY` | Grok Imagine |

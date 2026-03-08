@@ -30,6 +30,29 @@ export interface VoiceCloneResult {
 }
 
 /**
+ * Music generation options
+ */
+export interface MusicOptions {
+  /** Duration in seconds (3-600) */
+  duration?: number;
+  /** Force instrumental (no vocals) */
+  forceInstrumental?: boolean;
+  /** Reproducibility seed */
+  seed?: number;
+}
+
+/**
+ * Music generation result
+ */
+export interface MusicResult {
+  success: boolean;
+  /** Audio data as Buffer */
+  audioBuffer?: Buffer;
+  /** Error message if failed */
+  error?: string;
+}
+
+/**
  * Sound effect generation options
  */
 export interface SoundEffectOptions {
@@ -178,7 +201,7 @@ export class ElevenLabsProvider implements AIProvider {
   id = "elevenlabs";
   name = "ElevenLabs";
   description = "AI text-to-speech with natural voices and voice cloning";
-  capabilities: AICapability[] = ["text-to-speech", "sound-generation", "audio-isolation", "voice-clone"];
+  capabilities: AICapability[] = ["text-to-speech", "sound-generation", "music-generation", "audio-isolation", "voice-clone"];
   iconUrl = "/icons/elevenlabs.svg";
   isAvailable = true;
 
@@ -373,6 +396,73 @@ export class ElevenLabsProvider implements AIProvider {
         return {
           success: false,
           error: `Sound generation failed: ${error}`,
+        };
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const audioBuffer = Buffer.from(arrayBuffer);
+
+      return {
+        success: true,
+        audioBuffer,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * Generate music from text prompt
+   */
+  async generateMusic(
+    prompt: string,
+    options: MusicOptions = {}
+  ): Promise<MusicResult> {
+    if (!this.apiKey) {
+      return {
+        success: false,
+        error: "ElevenLabs API key not configured",
+      };
+    }
+
+    try {
+      const body: Record<string, unknown> = {
+        prompt,
+        model_id: "music_v1",
+      };
+
+      if (options.duration !== undefined) {
+        // Clamp to valid range (3-600 seconds), convert to milliseconds
+        const duration = Math.max(3, Math.min(600, options.duration));
+        body.music_length_ms = duration * 1000;
+      }
+
+      if (options.forceInstrumental !== undefined) {
+        body.force_instrumental = options.forceInstrumental;
+      }
+
+      if (options.seed !== undefined) {
+        body.seed = options.seed;
+      }
+
+      const response = await fetch(`${this.baseUrl}/music`, {
+        method: "POST",
+        headers: {
+          "xi-api-key": this.apiKey,
+          "Content-Type": "application/json",
+          Accept: "audio/mpeg",
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        return {
+          success: false,
+          error: `Music generation failed: ${error}`,
         };
       }
 

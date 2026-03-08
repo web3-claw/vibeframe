@@ -8,7 +8,7 @@
  *   generate video          - Generate video (Kling, Runway, Veo, Grok)
  *   generate speech         - Text-to-speech (ElevenLabs)
  *   generate sound-effect   - Sound effects (ElevenLabs)
- *   generate music          - Music generation (Replicate MusicGen)
+ *   generate music          - Music generation (ElevenLabs default, Replicate MusicGen)
  *   generate music-status   - Check music generation status
  *   generate storyboard     - Script-to-storyboard (Claude)
  *   generate motion         - Motion graphics (Claude/Gemini + Remotion)
@@ -987,105 +987,148 @@ generateCommand
 
 generateCommand
   .command("music")
-  .description("Generate background music from a text prompt using MusicGen")
+  .description("Generate background music from a text prompt (ElevenLabs or Replicate MusicGen)")
   .argument("<prompt>", "Description of the music to generate")
-  .option("-k, --api-key <key>", "Replicate API token (or set REPLICATE_API_TOKEN env)")
-  .option("-d, --duration <seconds>", "Duration in seconds (1-30)", "8")
-  .option("-m, --melody <file>", "Reference melody audio file for conditioning")
-  .option("--model <model>", "Model variant: large, stereo-large, melody-large, stereo-melody-large", "stereo-large")
+  .option("-p, --provider <provider>", "Provider: elevenlabs (default, up to 10min), replicate (MusicGen, max 30s)", "elevenlabs")
+  .option("-k, --api-key <key>", "API key (or set ELEVENLABS_API_KEY / REPLICATE_API_TOKEN env)")
+  .option("-d, --duration <seconds>", "Duration in seconds (elevenlabs: 3-600, replicate: 1-30)", "8")
+  .option("--instrumental", "Force instrumental music, no vocals (ElevenLabs only)")
+  .option("-m, --melody <file>", "Reference melody audio file for conditioning (Replicate only)")
+  .option("--model <model>", "Model variant (Replicate only): large, stereo-large, melody-large, stereo-melody-large", "stereo-large")
   .option("-o, --output <path>", "Output audio file path", "music.mp3")
-  .option("--no-wait", "Don't wait for generation to complete (async mode)")
+  .option("--no-wait", "Don't wait for generation to complete (Replicate async mode)")
   .option("--dry-run", "Preview parameters without executing")
   .action(async (prompt: string, options) => {
     try {
       rejectControlChars(prompt);
 
+      const provider = (options.provider || "elevenlabs").toLowerCase();
+
       if (options.dryRun) {
-        outputResult({ dryRun: true, command: "generate music", params: { prompt, duration: options.duration, model: options.model, output: options.output } });
+        outputResult({ dryRun: true, command: "generate music", params: { prompt, provider, duration: options.duration, model: options.model, output: options.output, instrumental: options.instrumental } });
         return;
       }
 
-      const apiKey = await getApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("Replicate API token required. Use --api-key or set REPLICATE_API_TOKEN"));
-        process.exit(1);
-      }
-
-      const replicate = new ReplicateProvider();
-      await replicate.initialize({ apiKey });
-
-      const spinner = ora("Starting music generation...").start();
-
-      const duration = Math.max(1, Math.min(30, parseFloat(options.duration)));
-
-      // If melody file provided, upload it first
-      let melodyUrl: string | undefined;
-      if (options.melody) {
-        spinner.text = "Uploading melody reference...";
-        const absPath = resolve(process.cwd(), options.melody);
-        if (!existsSync(absPath)) {
-          spinner.fail(chalk.red(`Melody file not found: ${options.melody}`));
+      if (provider === "elevenlabs") {
+        // ElevenLabs Music API — synchronous, up to 10 minutes
+        const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
+        if (!apiKey) {
+          console.error(chalk.red("ElevenLabs API key required. Use --api-key or set ELEVENLABS_API_KEY"));
           process.exit(1);
         }
-        // For Replicate, we need a publicly accessible URL
-        // In practice, users would need to host the file or use a data URL
-        console.log(chalk.yellow("Note: Melody conditioning requires a publicly accessible URL"));
-        console.log(chalk.yellow("Please upload your melody file and provide the URL"));
-        process.exit(1);
-      }
 
-      const result = await replicate.generateMusic(prompt, {
-        duration,
-        model: options.model as "large" | "stereo-large" | "melody-large" | "stereo-melody-large",
-        melodyUrl,
-      });
+        const elevenlabs = new ElevenLabsProvider();
+        await elevenlabs.initialize({ apiKey });
 
-      if (!result.success || !result.taskId) {
-        spinner.fail(chalk.red(result.error || "Music generation failed"));
-        process.exit(1);
-      }
+        const duration = Math.max(3, Math.min(600, parseFloat(options.duration)));
+        const spinner = ora(`Generating music (${duration}s)...`).start();
 
-      if (!options.wait) {
-        spinner.succeed(chalk.green("Music generation started"));
+        const result = await elevenlabs.generateMusic(prompt, {
+          duration,
+          forceInstrumental: options.instrumental || false,
+        });
+
+        if (!result.success || !result.audioBuffer) {
+          spinner.fail(chalk.red(result.error || "Music generation failed"));
+          process.exit(1);
+        }
+
+        const outputPath = resolve(process.cwd(), options.output);
+        await writeFile(outputPath, result.audioBuffer);
+
+        spinner.succeed(chalk.green("Music generated successfully"));
+
+        if (isJsonMode()) {
+          outputResult({ success: true, provider: "elevenlabs", outputPath, duration });
+          return;
+        }
+
         console.log();
-        console.log(`Task ID: ${chalk.bold(result.taskId)}`);
-        console.log(chalk.dim("Check status with: vibe generate music-status " + result.taskId));
-        return;
+        console.log(`Saved to: ${chalk.bold(outputPath)}`);
+        console.log(`Duration: ${duration}s`);
+        console.log(`Provider: ElevenLabs (music_v1)`);
+        if (options.instrumental) console.log(`Mode: Instrumental`);
+        console.log();
+      } else {
+        // Replicate MusicGen — async, max 30 seconds
+        const apiKey = await getApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
+        if (!apiKey) {
+          console.error(chalk.red("Replicate API token required. Use --api-key or set REPLICATE_API_TOKEN"));
+          process.exit(1);
+        }
+
+        const replicate = new ReplicateProvider();
+        await replicate.initialize({ apiKey });
+
+        const spinner = ora("Starting music generation...").start();
+
+        const duration = Math.max(1, Math.min(30, parseFloat(options.duration)));
+
+        // If melody file provided, upload it first
+        if (options.melody) {
+          spinner.text = "Uploading melody reference...";
+          const absPath = resolve(process.cwd(), options.melody);
+          if (!existsSync(absPath)) {
+            spinner.fail(chalk.red(`Melody file not found: ${options.melody}`));
+            process.exit(1);
+          }
+          console.log(chalk.yellow("Note: Melody conditioning requires a publicly accessible URL"));
+          console.log(chalk.yellow("Please upload your melody file and provide the URL"));
+          process.exit(1);
+        }
+
+        const result = await replicate.generateMusic(prompt, {
+          duration,
+          model: options.model as "large" | "stereo-large" | "melody-large" | "stereo-melody-large",
+        });
+
+        if (!result.success || !result.taskId) {
+          spinner.fail(chalk.red(result.error || "Music generation failed"));
+          process.exit(1);
+        }
+
+        if (!options.wait) {
+          spinner.succeed(chalk.green("Music generation started"));
+          console.log();
+          console.log(`Task ID: ${chalk.bold(result.taskId)}`);
+          console.log(chalk.dim("Check status with: vibe generate music-status " + result.taskId));
+          return;
+        }
+
+        spinner.text = "Generating music (this may take a few minutes)...";
+
+        const finalResult = await replicate.waitForMusic(result.taskId);
+
+        if (!finalResult.success || !finalResult.audioUrl) {
+          spinner.fail(chalk.red(finalResult.error || "Music generation failed"));
+          process.exit(1);
+        }
+
+        spinner.text = "Downloading generated audio...";
+
+        const response = await fetch(finalResult.audioUrl);
+        if (!response.ok) {
+          spinner.fail(chalk.red("Failed to download generated audio"));
+          process.exit(1);
+        }
+
+        const audioBuffer = Buffer.from(await response.arrayBuffer());
+        const outputPath = resolve(process.cwd(), options.output);
+        await writeFile(outputPath, audioBuffer);
+
+        spinner.succeed(chalk.green("Music generated successfully"));
+
+        if (isJsonMode()) {
+          outputResult({ success: true, provider: "replicate", taskId: result.taskId, audioUrl: finalResult.audioUrl, outputPath });
+          return;
+        }
+
+        console.log();
+        console.log(`Saved to: ${chalk.bold(outputPath)}`);
+        console.log(`Duration: ${duration}s`);
+        console.log(`Model: ${options.model}`);
+        console.log();
       }
-
-      spinner.text = "Generating music (this may take a few minutes)...";
-
-      const finalResult = await replicate.waitForMusic(result.taskId);
-
-      if (!finalResult.success || !finalResult.audioUrl) {
-        spinner.fail(chalk.red(finalResult.error || "Music generation failed"));
-        process.exit(1);
-      }
-
-      spinner.text = "Downloading generated audio...";
-
-      const response = await fetch(finalResult.audioUrl);
-      if (!response.ok) {
-        spinner.fail(chalk.red("Failed to download generated audio"));
-        process.exit(1);
-      }
-
-      const audioBuffer = Buffer.from(await response.arrayBuffer());
-      const outputPath = resolve(process.cwd(), options.output);
-      await writeFile(outputPath, audioBuffer);
-
-      spinner.succeed(chalk.green("Music generated successfully"));
-
-      if (isJsonMode()) {
-        outputResult({ success: true, taskId: result.taskId, audioUrl: finalResult.audioUrl, outputPath });
-        return;
-      }
-
-      console.log();
-      console.log(`Saved to: ${chalk.bold(outputPath)}`);
-      console.log(`Duration: ${duration}s`);
-      console.log(`Model: ${options.model}`);
-      console.log();
     } catch (error) {
       console.error(chalk.red("Music generation failed"));
       console.error(error);

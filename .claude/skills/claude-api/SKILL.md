@@ -1,6 +1,7 @@
 ---
 name: claude-api
 description: Use Claude API for natural language processing, video command parsing, motion graphics generation, and storyboarding. Use for complex reasoning and creative tasks.
+argument-hint: "[task-description]"
 allowed-tools: Bash(curl *), Bash(python *), Read, Write
 disable-model-invocation: true
 user-invocable: true
@@ -28,15 +29,15 @@ POST https://api.anthropic.com/v1/messages
 
 | Model | ID | Best For |
 |-------|-----|----------|
-| Claude Opus 4.5 | `claude-opus-4-5-20251101` | Complex creative tasks |
-| Claude Sonnet 4 | `claude-sonnet-4-20250514` | Balanced performance |
-| Claude Haiku 3.5 | `claude-3-5-haiku-20241022` | Fast, cost-effective |
+| Claude Opus 4.6 | `claude-opus-4-6` | Complex creative tasks |
+| Claude Sonnet 4.6 | `claude-sonnet-4-6` | **Default**. Balanced performance |
+| Claude Haiku 4.5 | `claude-haiku-4-5-20251001` | Fast, cost-effective |
 
 ## Basic Request
 
 ```json
 {
-  "model": "claude-sonnet-4-20250514",
+  "model": "claude-sonnet-4-6",
   "max_tokens": 1024,
   "messages": [
     {"role": "user", "content": "Hello, Claude!"}
@@ -52,7 +53,7 @@ curl -X POST "https://api.anthropic.com/v1/messages" \
   -H "anthropic-version: 2023-06-01" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "claude-sonnet-4-20250514",
+    "model": "claude-sonnet-4-6",
     "max_tokens": 1024,
     "messages": [
       {"role": "user", "content": "Parse this video edit command: trim first 10 seconds and add fade in"}
@@ -71,7 +72,7 @@ curl -X POST "https://api.anthropic.com/v1/messages" \
     "type": "text",
     "text": "..."
   }],
-  "model": "claude-sonnet-4-20250514",
+  "model": "claude-sonnet-4-6",
   "stop_reason": "end_turn",
   "usage": {
     "input_tokens": 25,
@@ -85,7 +86,7 @@ curl -X POST "https://api.anthropic.com/v1/messages" \
 ### Video Command Parser
 ```json
 {
-  "model": "claude-sonnet-4-20250514",
+  "model": "claude-sonnet-4-6",
   "max_tokens": 1024,
   "system": "You are a video editing command parser. Convert natural language into structured JSON commands for VibeFrame. Output only valid JSON.",
   "messages": [
@@ -97,7 +98,7 @@ curl -X POST "https://api.anthropic.com/v1/messages" \
 ### Motion Graphics Generator
 ```json
 {
-  "model": "claude-sonnet-4-20250514",
+  "model": "claude-sonnet-4-6",
   "max_tokens": 4096,
   "system": "You are a Remotion motion graphics expert. Generate React/TypeScript code for animated video components. Use @remotion/core for animations.",
   "messages": [
@@ -109,7 +110,7 @@ curl -X POST "https://api.anthropic.com/v1/messages" \
 ### Storyboard Creator
 ```json
 {
-  "model": "claude-sonnet-4-20250514",
+  "model": "claude-sonnet-4-6",
   "max_tokens": 4096,
   "system": "You are a video storyboard expert. Create detailed shot lists with timing, camera angles, and visual descriptions.",
   "messages": [
@@ -118,13 +119,13 @@ curl -X POST "https://api.anthropic.com/v1/messages" \
 }
 ```
 
-## Extended Thinking (Claude Opus 4.5)
+## Extended Thinking (Claude Opus 4.6)
 
 For complex tasks, use extended thinking:
 
 ```json
 {
-  "model": "claude-opus-4-5-20251101",
+  "model": "claude-opus-4-6",
   "max_tokens": 16000,
   "thinking": {
     "type": "enabled",
@@ -142,7 +143,7 @@ Claude can analyze images for video editing context:
 
 ```json
 {
-  "model": "claude-sonnet-4-20250514",
+  "model": "claude-sonnet-4-6",
   "max_tokens": 1024,
   "messages": [{
     "role": "user",
@@ -175,7 +176,7 @@ curl -X POST "https://api.anthropic.com/v1/messages" \
   -H "Content-Type: application/json" \
   --no-buffer \
   -d '{
-    "model": "claude-sonnet-4-20250514",
+    "model": "claude-sonnet-4-6",
     "max_tokens": 4096,
     "stream": true,
     "messages": [{"role": "user", "content": "Generate a complex animation sequence"}]
@@ -188,7 +189,7 @@ Claude can use tools for structured output:
 
 ```json
 {
-  "model": "claude-sonnet-4-20250514",
+  "model": "claude-sonnet-4-6",
   "max_tokens": 1024,
   "tools": [{
     "name": "parse_video_command",
@@ -245,9 +246,9 @@ vibe ai analyze frame.png "what effects would improve this"
 
 | Model | Rate Limit | Input Price | Output Price |
 |-------|------------|-------------|--------------|
-| Claude Opus 4.5 | 4K TPM | $15/1M | $75/1M |
-| Claude Sonnet 4 | 80K TPM | $3/1M | $15/1M |
-| Claude Haiku 3.5 | 100K TPM | $0.80/1M | $4/1M |
+| Claude Opus 4.6 | 4K TPM | $15/1M | $75/1M |
+| Claude Sonnet 4.6 | 80K TPM | $3/1M | $15/1M |
+| Claude Haiku 4.5 | 100K TPM | $0.80/1M | $4/1M |
 
 ## References
 

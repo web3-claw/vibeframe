@@ -4,7 +4,7 @@ Claude Chat Script
 
 Usage:
     python chat.py "your prompt"
-    python chat.py "parse command" -m claude-sonnet-4-20250514 -s "You are a video editor"
+    python chat.py "parse command" -m claude-sonnet-4-6 -s "You are a video editor"
 """
 
 import argparse
@@ -16,15 +16,15 @@ import urllib.error
 
 
 MODELS = {
-    "opus": "claude-opus-4-5-20251101",
-    "sonnet": "claude-sonnet-4-20250514",
-    "haiku": "claude-3-5-haiku-20241022",
+    "opus": "claude-opus-4-6",
+    "sonnet": "claude-sonnet-4-6",
+    "haiku": "claude-haiku-4-5-20251001",
 }
 
 
 def chat(
     prompt: str,
-    model: str = "claude-sonnet-4-20250514",
+    model: str = "claude-sonnet-4-6",
     system: str | None = None,
     max_tokens: int = 1024,
     api_key: str | None = None,

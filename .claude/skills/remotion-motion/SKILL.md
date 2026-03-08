@@ -2,8 +2,7 @@
 name: remotion-motion
 description: Generate and render motion graphics using Remotion. Use for creating animated intros, titles, lower thirds, transitions, and React-based video components.
 allowed-tools: Bash(npx *), Bash(pnpm *), Bash(npm *), Read, Write
-disable-model-invocation: true
-user-invocable: true
+user-invocable: false
 ---
 
 # Remotion Motion Graphics

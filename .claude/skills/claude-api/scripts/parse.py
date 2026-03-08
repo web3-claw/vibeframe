@@ -39,7 +39,7 @@ Output ONLY valid JSON array, no explanations."""
 
 def parse_command(
     command: str,
-    model: str = "claude-sonnet-4-20250514",
+    model: str = "claude-sonnet-4-6",
     api_key: str | None = None,
 ) -> dict:
     """Parse natural language video command using Claude."""
@@ -100,7 +100,7 @@ def main():
     parser = argparse.ArgumentParser(description="Parse video editing commands")
     parser.add_argument("command", help="Natural language video command")
     parser.add_argument("-o", "--output", help="Save JSON to file")
-    parser.add_argument("-m", "--model", default="claude-sonnet-4-20250514", help="Model")
+    parser.add_argument("-m", "--model", default="claude-sonnet-4-6", help="Model")
     parser.add_argument("-k", "--api-key", help="API key (or set ANTHROPIC_API_KEY)")
 
     args = parser.parse_args()

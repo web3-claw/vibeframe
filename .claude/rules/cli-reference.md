@@ -79,9 +79,11 @@ vibe generate speech "<text>" -o out.mp3 -v <voice-id>     # Custom voice
 # Sound effects
 vibe generate sound-effect "<description>" -o out.mp3 -d 5
 
-# Music generation (Replicate MusicGen)
-vibe generate music "<description>" -o out.mp3 -d 15
-vibe generate music-status <prediction-id>                 # Check music status
+# Music generation (default: ElevenLabs, up to 10min)
+vibe generate music "<description>" -o out.mp3 -d 30                # ElevenLabs (default)
+vibe generate music "<description>" -o out.mp3 -d 30 -p replicate   # Replicate MusicGen
+vibe generate music "<description>" -o out.mp3 --instrumental       # No vocals (ElevenLabs)
+vibe generate music-status <prediction-id>                          # Check status (Replicate only)
 
 # Storyboard generation
 vibe generate storyboard "<content>" -o storyboard.json -d 30
@@ -258,7 +260,8 @@ vibe edit grade captioned.mp4 -o final.mp4 --preset cinematic-warm
 | `generate video -p kling` | `KLING_API_KEY` |
 | `generate video -p runway` | `RUNWAY_API_SECRET` |
 | `generate video -p veo` | `GOOGLE_API_KEY` |
-| `generate speech` / `generate sound-effect` | `ELEVENLABS_API_KEY` |
+| `generate speech` / `generate sound-effect` / `generate music` | `ELEVENLABS_API_KEY` |
+| `generate music -p replicate` | `REPLICATE_API_TOKEN` |
 | `audio transcribe` / `edit caption` / `edit jump-cut` | `OPENAI_API_KEY` |
 | `edit grade` / `edit reframe` / `edit speed-ramp` | `ANTHROPIC_API_KEY` |
 | `analyze video` / `analyze media` / `analyze review` | `GOOGLE_API_KEY` |

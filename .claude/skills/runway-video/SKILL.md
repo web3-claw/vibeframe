@@ -1,6 +1,7 @@
 ---
 name: runway-video
-description: Generate videos and images using Runway API. Use for text-to-image, image-to-video generation.
+description: Generate videos and images using Runway API. Use for text-to-video, image-to-video, and text-to-image generation.
+argument-hint: "[prompt-or-action]"
 allowed-tools: Bash(curl *), Bash(python *), Read, Write
 disable-model-invocation: true
 user-invocable: true
@@ -14,7 +15,8 @@ Generate high-quality videos and images using Runway Gen-4 models.
 
 | Feature | Model | Description |
 |---------|-------|-------------|
-| Image-to-Video | gen4_turbo | Animate an image with motion |
+| Text+Image-to-Video | gen4.5 | **Flagship**. Text or image input (12 credits/sec) |
+| Image-to-Video | gen4_turbo | Legacy, image-to-video only |
 | Text-to-Image | gen4_image | High-quality image generation |
 | Text-to-Image | gen4_image_turbo | Fast image generation (2 credits) |
 
@@ -29,6 +31,7 @@ export RUNWAY_API_SECRET="your-api-key"
 ### Video Generation
 | Model | Pricing |
 |-------|---------|
+| gen4.5 | 12 credits/sec (2-10s) |
 | gen4_turbo | Per generation (5s/10s) |
 
 ### Image Generation
@@ -41,6 +44,22 @@ export RUNWAY_API_SECRET="your-api-key"
 
 Install: `pip install runwayml`
 
+### Text-to-Video (gen4.5)
+```python
+from runwayml import RunwayML
+
+client = RunwayML()
+
+task = client.image_to_video.create(
+    model='gen4.5',
+    prompt_text='A serene mountain landscape with flowing clouds',
+    ratio='1280:720',
+    duration=5,
+).wait_for_task_output()
+
+print(task.output[0])  # Video URL
+```
+
 ### Image-to-Video
 ```python
 from runwayml import RunwayML
@@ -48,7 +67,7 @@ from runwayml import RunwayML
 client = RunwayML()
 
 task = client.image_to_video.create(
-    model='gen4_turbo',
+    model='gen4.5',
     prompt_image='https://example.com/image.jpg',  # or base64 data URI
     prompt_text='A timelapse with clouds flying by',
     ratio='1280:720',
@@ -96,11 +115,11 @@ task = client.image_to_video.create(
 ### Video Parameters
 | Parameter | Type | Values | Description |
 |-----------|------|--------|-------------|
-| `model` | string | `gen4_turbo` | Model to use |
-| `prompt_image` | string | URL or base64 | Input image (required) |
+| `model` | string | `gen4.5`, `gen4_turbo` | Model to use |
+| `prompt_image` | string | URL or base64 | Input image (required for gen4_turbo, optional for gen4.5) |
 | `prompt_text` | string | - | Motion/animation description |
 | `ratio` | string | `1280:720`, `720:1280` | Output resolution |
-| `duration` | int | 5, 10 | Video duration in seconds |
+| `duration` | int | 2-10 (gen4.5), 5/10 (gen4_turbo) | Video duration in seconds |
 
 ### Image Parameters
 | Parameter | Type | Values | Description |
@@ -156,7 +175,7 @@ vibe ai image "sunset over mountains" -o sunset.png -p runway
 
 ## Tips
 
-1. **Video**: gen4_turbo requires an input image (no text-to-video)
+1. **Video**: gen4.5 supports both text-to-video and image-to-video; gen4_turbo requires an input image (image-to-video only)
 2. **Image**: Use `gen4_image_turbo` for quick iterations (2 credits)
 3. **Quality**: Use `gen4_image` for final/production images
 4. **Prompts**: Be descriptive - include style, lighting, mood

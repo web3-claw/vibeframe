@@ -37,11 +37,12 @@ Also check `apps/web/app/page.tsx` for the version badge (search for pattern lik
 
 ### 3. Tool & Provider Counts
 
-- `apps/web/app/page.tsx`:
-  - Agent tool count (should be 48)
-  - MCP tool badge: 4 shown + N more = should total 12
-  - Provider count and list (should be 12, check against README)
-- `README.md`: MCP tools listed (should be 12), provider table
+- Agent tool count: grep for `registry.register` in `packages/cli/src/agent/tools/` to get actual count
+- MCP tool count: grep for `server.tool` in `packages/mcp-server/src/` to get actual count
+- Compare against:
+  - `apps/web/app/page.tsx`: Agent tool count, MCP tool badge
+  - `README.md`: MCP tools listed, provider table
+  - `CLAUDE.md`: tool counts mentioned
 
 ### 4. Install URL
 
@@ -65,8 +66,8 @@ README.md "CLI Reference" section must list all available commands.
 
 **How to check:**
 1. Run `pnpm vibe --help` to get top-level commands
-2. Run `pnpm vibe ai --help` to get all AI subcommands
-3. Run `pnpm vibe detect --help`, `pnpm vibe batch --help`, `pnpm vibe media --help` for other subcommands
+2. Run `pnpm vibe generate --help`, `pnpm vibe edit --help`, `pnpm vibe analyze --help`, `pnpm vibe audio --help`, `pnpm vibe pipeline --help`
+3. Run `pnpm vibe detect --help`, `pnpm vibe batch --help` for other subcommands
 4. Compare against the CLI Reference section in `README.md`
 
 **Report:**

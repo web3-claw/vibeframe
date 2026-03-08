@@ -1,6 +1,7 @@
 ---
 name: kling-video
 description: Generate videos using Kling AI. Use for text-to-video and image-to-video generation with high quality results.
+argument-hint: "[prompt-or-action]"
 allowed-tools: Bash(curl *), Bash(python *), Read, Write
 disable-model-invocation: true
 user-invocable: true
@@ -8,7 +9,16 @@ user-invocable: true
 
 # Kling AI Video Generation
 
-Generate high-quality videos using Kling AI v1.5 model.
+Generate high-quality videos using Kling AI v2.5/v2.6/v3 models.
+
+## Available Models
+
+| Model | ID | Notes |
+|-------|-----|-------|
+| v2.5 Turbo | `kling-v2-5-turbo` | Fast (~36s generation), **default** |
+| v2.6 | `kling-v2-6` | High quality |
+| v3 | `kling-v3` | Multi-shot, lip-sync |
+| v3 Omni | `kling-v3-omni` | Native audio (multilingual), 3-15s |
 
 ## Capabilities
 
@@ -47,7 +57,7 @@ Base URL: `https://api.klingai.com/v1`
 ```json
 {
   "prompt": "A serene mountain landscape with flowing clouds",
-  "model_name": "kling-v1-5",
+  "model_name": "kling-v2-5-turbo",
   "mode": "std",
   "aspect_ratio": "16:9",
   "duration": "5",
@@ -60,7 +70,7 @@ Base URL: `https://api.klingai.com/v1`
 {
   "image": "data:image/png;base64,...",
   "prompt": "Camera slowly zooms into the scene",
-  "model_name": "kling-v1-5",
+  "model_name": "kling-v2-5-turbo",
   "mode": "std",
   "aspect_ratio": "16:9",
   "duration": "5"
@@ -72,10 +82,10 @@ Base URL: `https://api.klingai.com/v1`
 | Parameter | Type | Values | Description |
 |-----------|------|--------|-------------|
 | `prompt` | string | - | Text description |
-| `model_name` | string | `kling-v1`, `kling-v1-5` | Model version |
+| `model_name` | string | `kling-v2-5-turbo`, `kling-v2-6`, `kling-v3`, `kling-v3-omni` | Model version |
 | `mode` | string | `std`, `pro` | Quality mode |
 | `aspect_ratio` | string | `16:9`, `9:16`, `1:1` | Aspect ratio |
-| `duration` | string | `5`, `10` | Duration in seconds |
+| `duration` | string | `5`, `10` (v3-omni: `3`-`15`) | Duration in seconds |
 | `negative_prompt` | string | - | What to avoid |
 | `cfg_scale` | number | 1-10 | Prompt adherence |
 
@@ -176,7 +186,7 @@ curl -X POST "https://api.klingai.com/v1/videos/text2video" \
   -H "Content-Type: application/json" \
   -d '{
     "prompt": "A beautiful sunset over the ocean",
-    "model_name": "kling-v1-5",
+    "model_name": "kling-v2-5-turbo",
     "mode": "std",
     "aspect_ratio": "16:9",
     "duration": "5"

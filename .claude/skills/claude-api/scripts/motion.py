@@ -55,7 +55,7 @@ Output ONLY the code, no explanations or markdown code blocks."""
 
 def generate_motion(
     description: str,
-    model: str = "claude-sonnet-4-20250514",
+    model: str = "claude-sonnet-4-6",
     api_key: str | None = None,
 ) -> dict:
     """Generate motion graphics code using Claude."""
@@ -116,7 +116,7 @@ def main():
     parser = argparse.ArgumentParser(description="Generate Remotion motion graphics")
     parser.add_argument("description", help="Description of the animation")
     parser.add_argument("-o", "--output", help="Output .tsx file")
-    parser.add_argument("-m", "--model", default="claude-sonnet-4-20250514", help="Model")
+    parser.add_argument("-m", "--model", default="claude-sonnet-4-6", help="Model")
     parser.add_argument("-k", "--api-key", help="API key (or set ANTHROPIC_API_KEY)")
 
     args = parser.parse_args()

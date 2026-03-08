@@ -2,8 +2,7 @@
 name: gemini-image
 description: Generate images using Google Gemini (Nano Banana). Use for creating visual assets, thumbnails, backgrounds, UI mockups, or any image generation task.
 allowed-tools: Bash(curl *), Bash(python *), Read, Write
-disable-model-invocation: true
-user-invocable: true
+user-invocable: false
 ---
 
 # Gemini Image Generation (Nano Banana)

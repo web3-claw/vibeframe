@@ -28,7 +28,7 @@ except ImportError:
     SYSTEM_PROMPT = """You are a Remotion motion graphics expert. Generate React/TypeScript code for animated video components.
 Use @remotion/core imports. Output ONLY the code, no markdown."""
 
-    def generate_motion(description: str, model: str = "claude-sonnet-4-20250514", api_key: str | None = None) -> dict:
+    def generate_motion(description: str, model: str = "claude-sonnet-4-6", api_key: str | None = None) -> dict:
         api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
             return {"success": False, "error": "ANTHROPIC_API_KEY not set"}
@@ -71,7 +71,7 @@ def main():
     parser = argparse.ArgumentParser(description="Generate Remotion component")
     parser.add_argument("description", help="Animation description")
     parser.add_argument("-o", "--output", help="Output .tsx file")
-    parser.add_argument("-m", "--model", default="claude-sonnet-4-20250514", help="Claude model")
+    parser.add_argument("-m", "--model", default="claude-sonnet-4-6", help="Claude model")
     parser.add_argument("-k", "--api-key", help="API key (or set ANTHROPIC_API_KEY)")
 
     args = parser.parse_args()

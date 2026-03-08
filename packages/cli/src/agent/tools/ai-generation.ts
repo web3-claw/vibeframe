@@ -5,7 +5,7 @@
  * async polling -- tool returns immediately with task status.
  *
  * ## Tools: generate_image, generate_video, generate_speech, generate_sound_effect, generate_music, generate_storyboard, generate_motion
- * ## Dependencies: OpenAI, Gemini, Runway, Kling, ElevenLabs, Replicate, Claude, Remotion
+ * ## Dependencies: OpenAI, Gemini, Runway, Kling, ElevenLabs (TTS/SFX/Music), Replicate, Claude, Remotion
  * @see MODELS.md for the Single Source of Truth (SSOT) on supported providers/models
  */
 
@@ -154,7 +154,7 @@ const sfxDef: ToolDefinition = {
 
 const musicDef: ToolDefinition = {
   name: "generate_music",
-  description: "Generate music using AI (Replicate/MusicGen). Note: Music generation is async.",
+  description: "Generate music using AI. Default: ElevenLabs (synchronous, up to 10min). Alternative: Replicate/MusicGen (async, max 30s).",
   parameters: {
     type: "object",
     properties: {
@@ -168,7 +168,16 @@ const musicDef: ToolDefinition = {
       },
       duration: {
         type: "number",
-        description: "Duration in seconds (1-30)",
+        description: "Duration in seconds (elevenlabs: 3-600, replicate: 1-30)",
+      },
+      provider: {
+        type: "string",
+        description: "Provider: elevenlabs (default, synchronous, up to 10min) or replicate (async, max 30s)",
+        enum: ["elevenlabs", "replicate"],
+      },
+      instrumental: {
+        type: "boolean",
+        description: "Force instrumental music with no vocals (ElevenLabs only)",
       },
     },
     required: ["prompt"],
@@ -819,75 +828,118 @@ const generateMusic: ToolHandler = async (args, context): Promise<ToolResult> =>
   const prompt = args.prompt as string;
   const output = (args.output as string) || `music-${getTimestamp()}.mp3`;
   const duration = (args.duration as number) || 8;
+  const provider = (args.provider as string) || "elevenlabs";
+  const instrumental = (args.instrumental as boolean) || false;
 
   try {
-    const apiKey = await getApiKeyFromConfig("replicate");
-    if (!apiKey) {
-      return {
-        toolCallId: "",
-        success: false,
-        output: "",
-        error: "Replicate API key required. Configure via 'vibe setup'.",
-      };
-    }
-
-    const { ReplicateProvider } = await import("@vibeframe/ai-providers");
-    const replicate = new ReplicateProvider();
-    await replicate.initialize({ apiKey });
-
-    const result = await replicate.generateMusic(prompt, {
-      duration,
-    });
-
-    if (!result.success) {
-      return {
-        toolCallId: "",
-        success: false,
-        output: "",
-        error: `Music generation failed: ${result.error || "Unknown error"}`,
-      };
-    }
-
-    // Music generation is async - need to poll
-    if (result.taskId) {
-      let finalResult = result;
-      const maxAttempts = 60;
-      for (let i = 0; i < maxAttempts; i++) {
-        await new Promise((r) => setTimeout(r, 3000));
-        finalResult = await replicate.getMusicStatus(result.taskId);
-        if (finalResult.success && finalResult.audioUrl) {
-          break;
-        }
-        if (finalResult.error) {
-          return {
-            toolCallId: "",
-            success: false,
-            output: "",
-            error: `Music generation failed: ${finalResult.error}`,
-          };
-        }
-      }
-
-      if (finalResult.audioUrl) {
-        const outputPath = resolve(context.workingDirectory, output);
-        const response = await fetch(finalResult.audioUrl);
-        const buffer = Buffer.from(await response.arrayBuffer());
-        await writeFile(outputPath, buffer);
-      } else {
+    if (provider === "elevenlabs") {
+      // ElevenLabs Music API — synchronous, up to 10 minutes
+      const apiKey = await getApiKeyFromConfig("elevenlabs");
+      if (!apiKey) {
         return {
           toolCallId: "",
           success: false,
           output: "",
-          error: "Music generation timed out",
+          error: "ElevenLabs API key required. Configure via 'vibe setup'.",
         };
       }
-    }
 
-    return {
-      toolCallId: "",
-      success: true,
-      output: `Music generated: ${output}\nPrompt: ${prompt}\nDuration: ${duration}s`,
-    };
+      const { ElevenLabsProvider } = await import("@vibeframe/ai-providers");
+      const elevenlabs = new ElevenLabsProvider();
+      await elevenlabs.initialize({ apiKey });
+
+      const result = await elevenlabs.generateMusic(prompt, {
+        duration,
+        forceInstrumental: instrumental,
+      });
+
+      if (!result.success || !result.audioBuffer) {
+        return {
+          toolCallId: "",
+          success: false,
+          output: "",
+          error: `Music generation failed: ${result.error || "No audio generated"}`,
+        };
+      }
+
+      const outputPath = resolve(context.workingDirectory, output);
+      await writeFile(outputPath, result.audioBuffer);
+
+      return {
+        toolCallId: "",
+        success: true,
+        output: `Music generated: ${output}\nPrompt: ${prompt}\nDuration: ${duration}s\nProvider: ElevenLabs${instrumental ? "\nMode: Instrumental" : ""}`,
+      };
+    } else {
+      // Replicate MusicGen — async polling
+      const apiKey = await getApiKeyFromConfig("replicate");
+      if (!apiKey) {
+        return {
+          toolCallId: "",
+          success: false,
+          output: "",
+          error: "Replicate API key required. Configure via 'vibe setup'.",
+        };
+      }
+
+      const { ReplicateProvider } = await import("@vibeframe/ai-providers");
+      const replicate = new ReplicateProvider();
+      await replicate.initialize({ apiKey });
+
+      const result = await replicate.generateMusic(prompt, {
+        duration,
+      });
+
+      if (!result.success) {
+        return {
+          toolCallId: "",
+          success: false,
+          output: "",
+          error: `Music generation failed: ${result.error || "Unknown error"}`,
+        };
+      }
+
+      // Music generation is async - need to poll
+      if (result.taskId) {
+        let finalResult = result;
+        const maxAttempts = 60;
+        for (let i = 0; i < maxAttempts; i++) {
+          await new Promise((r) => setTimeout(r, 3000));
+          finalResult = await replicate.getMusicStatus(result.taskId);
+          if (finalResult.success && finalResult.audioUrl) {
+            break;
+          }
+          if (finalResult.error) {
+            return {
+              toolCallId: "",
+              success: false,
+              output: "",
+              error: `Music generation failed: ${finalResult.error}`,
+            };
+          }
+        }
+
+        if (finalResult.audioUrl) {
+          const outputPath = resolve(context.workingDirectory, output);
+          const response = await fetch(finalResult.audioUrl);
+          const buffer = Buffer.from(await response.arrayBuffer());
+          await writeFile(outputPath, buffer);
+        } else {
+          return {
+            toolCallId: "",
+            success: false,
+            output: "",
+            error: "Music generation timed out",
+          };
+        }
+      }
+
+      return {
+        toolCallId: "",
+        success: true,
+        output: `Music generated: ${output}\nPrompt: ${prompt}\nDuration: ${duration}s\nProvider: Replicate`,
+      };
+    }
   } catch (error) {
     return {
       toolCallId: "",

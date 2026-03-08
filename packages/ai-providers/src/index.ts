@@ -21,7 +21,7 @@ export { ClaudeProvider, claudeProvider } from "./claude/index.js";
 export type { MotionOptions, MotionResult, RemotionComponent, StoryboardSegment } from "./claude/index.js";
 export { OllamaProvider, ollamaProvider } from "./ollama/index.js";
 export { ElevenLabsProvider, elevenLabsProvider, KNOWN_VOICES, resolveVoiceId } from "./elevenlabs/index.js";
-export type { Voice, TTSOptions, TTSResult, SoundEffectOptions, SoundEffectResult, AudioIsolationResult, VoiceCloneOptions, VoiceCloneResult } from "./elevenlabs/index.js";
+export type { Voice, TTSOptions, TTSResult, MusicOptions, MusicResult, SoundEffectOptions, SoundEffectResult, AudioIsolationResult, VoiceCloneOptions, VoiceCloneResult } from "./elevenlabs/index.js";
 export { OpenAIImageProvider, openaiImageProvider } from "./openai-image/index.js";
 export type { ImageOptions, ImageResult, ImageEditOptions } from "./openai-image/index.js";
 export { RunwayProvider, runwayProvider } from "./runway/index.js";
