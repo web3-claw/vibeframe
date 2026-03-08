@@ -594,7 +594,7 @@ export class ReplicateProvider implements AIProvider {
           Authorization: `Bearer ${this.apiToken}`,
         },
         body: JSON.stringify({
-          version: "aa9adce25e29d8a8a6c6cddbd25627d7e11b9c1a4e3f8f7f7b7f5e88d5b8f4c1", // resemble-enhance
+          model: "lucataco/resemble-enhance",
           input,
         }),
       });
@@ -804,9 +804,7 @@ export class ReplicateProvider implements AIProvider {
       if (point) {
         // Point tracking with co-tracker
         input.query_points = [[point[0], point[1], 0]]; // x, y, frame
-        modelVersion = "facebookresearch/co-tracker:a12e tried"; // co-tracker model
-        // Fallback to known working version
-        modelVersion = "0a0dcaf0c51e8d6a8b1a3e4c5f6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5";
+        modelVersion = "facebookresearch/co-tracker";
       } else if (box) {
         // Box tracking with SAM-2
         input.box = [box[0], box[1], box[0] + box[2], box[1] + box[3]]; // x1, y1, x2, y2
@@ -830,7 +828,9 @@ export class ReplicateProvider implements AIProvider {
           Authorization: `Bearer ${this.apiToken}`,
         },
         body: JSON.stringify({
-          version: modelVersion.split(":")[1] || modelVersion,
+          ...(modelVersion.includes(":")
+            ? { version: modelVersion.split(":")[1] }
+            : { model: modelVersion }),
           input,
         }),
       });

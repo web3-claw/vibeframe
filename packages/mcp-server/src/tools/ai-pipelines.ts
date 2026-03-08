@@ -20,7 +20,7 @@ export const aiPipelineTools = [
         },
         imageProvider: {
           type: "string",
-          enum: ["openai", "dalle", "stability", "gemini"],
+          enum: ["openai", "stability", "gemini"],
           description: "Image generation provider (default: gemini)",
         },
         aspectRatio: {

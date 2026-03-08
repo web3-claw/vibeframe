@@ -112,7 +112,7 @@ export class RunwayProvider implements AIProvider {
         return {
           id: "",
           status: "failed",
-          error: "Runway Gen-4 requires an input image. Use -i <image> to specify an image.",
+          error: "Runway Gen-4.5 requires an input image. Use -i <image> to specify an image.",
         };
       }
 

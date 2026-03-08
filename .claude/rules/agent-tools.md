@@ -64,9 +64,9 @@ When adding new CLI commands:
 - `CLAUDE.md` - Update tool counts
 - `ROADMAP.md` - Mark `[x]` and update CLI status section
 
-## Current Agent AI Tools (23)
+## Current Agent AI Tools (23 across 3 files)
 
-### Generate (8 tools)
+### Generate (7 tools — registered in ai-generation.ts)
 | Tool | CLI Command | Description |
 |------|-------------|-------------|
 | `generate_image` | `vibe generate image` | Generate images (OpenAI/Gemini/Stability) |
@@ -76,9 +76,8 @@ When adding new CLI commands:
 | `generate_music` | `vibe generate music` | Music generation (Replicate) |
 | `generate_storyboard` | `vibe generate storyboard` | Script → storyboard (Claude) |
 | `generate_motion` | `vibe generate motion` | Motion graphics (Remotion) |
-| `generate_thumbnail` | `vibe generate thumbnail` | Extract best thumbnail (Gemini + FFmpeg) |
 
-### Edit (8 tools)
+### Edit (9 tools — registered in ai-editing.ts)
 | Tool | CLI Command | Description |
 |------|-------------|-------------|
 | `edit_silence_cut` | `vibe edit silence-cut` | Remove silent segments |
@@ -88,18 +87,15 @@ When adding new CLI commands:
 | `edit_fade` | `vibe edit fade` | Fade in/out effects |
 | `edit_text_overlay` | `vibe edit text-overlay` | Apply text overlays (FFmpeg drawtext) |
 | `edit_translate_srt` | `vibe edit translate-srt` | Translate SRT subtitles |
-| `edit_image` | `vibe edit image` | Multi-image editing (Gemini) |
+| `analyze_review` | `vibe analyze review` | AI video review & auto-fix (Gemini) |
+| `generate_thumbnail` | `vibe generate thumbnail` | Extract best thumbnail (Gemini + FFmpeg) |
 
-### Analyze (3 tools)
+### Analyze + Edit + Pipeline (7 tools — registered in ai-pipeline.ts)
 | Tool | CLI Command | Description |
 |------|-------------|-------------|
 | `analyze_media` | `vibe analyze media` | Unified media analysis (image/video/YouTube) |
 | `analyze_video` | `vibe analyze video` | Video analysis (Gemini) |
-| `analyze_review` | `vibe analyze review` | AI video review & auto-fix (Gemini) |
-
-### Pipeline (4 tools)
-| Tool | CLI Command | Description |
-|------|-------------|-------------|
+| `edit_image` | `vibe edit image` | Multi-image editing (Gemini) |
 | `pipeline_script_to_video` | `vibe pipeline script-to-video` | Full video pipeline |
 | `pipeline_highlights` | `vibe pipeline highlights` | Extract highlights |
 | `pipeline_auto_shorts` | `vibe pipeline auto-shorts` | Generate shorts |

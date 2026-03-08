@@ -14,8 +14,8 @@
  *   generate motion         - Motion graphics (Claude/Gemini + Remotion)
  *   generate thumbnail      - Thumbnail generation/extraction
  *   generate background     - AI background generation (OpenAI)
- *   generate video-status   - Check video generation status (Runway/Kling)
- *   generate video-cancel   - Cancel Runway video generation
+ *   generate video-status   - Check video generation status (Grok/Runway/Kling)
+ *   generate video-cancel   - Cancel video generation (Grok/Runway)
  *   generate video-extend   - Extend video (Kling/Veo)
  *
  * @dependencies OpenAI, Gemini, Stability, Runway, Kling, ElevenLabs, Replicate, Claude, FFmpeg
@@ -448,7 +448,7 @@ generateCommand
   .description("Generate video using AI (Kling, Runway, Veo, or Grok)")
   .argument("<prompt>", "Text prompt describing the video")
   .option("-p, --provider <provider>", "Provider: grok (default), kling, runway, veo", "grok")
-  .option("-k, --api-key <key>", "API key (or set RUNWAY_API_SECRET / KLING_API_KEY / GOOGLE_API_KEY env)")
+  .option("-k, --api-key <key>", "API key (or set XAI_API_KEY / RUNWAY_API_SECRET / KLING_API_KEY / GOOGLE_API_KEY env)")
   .option("-o, --output <path>", "Output file path (downloads video)")
   .option("-i, --image <path>", "Reference image for image-to-video")
   .option("-d, --duration <sec>", "Duration: 5 or 10 seconds", "5")
@@ -557,7 +557,7 @@ generateCommand
         console.log();
         console.log(chalk.bold.cyan("Video Generation Started"));
         console.log(chalk.dim("─".repeat(60)));
-        console.log(`Provider: ${chalk.bold("Runway Gen-3")}`);
+        console.log(`Provider: ${chalk.bold("Runway Gen-4.5")}`);
         console.log(`Task ID: ${chalk.bold(result.id)}`);
 
         if (!options.wait) {
@@ -1507,18 +1507,80 @@ generateCommand
 
 generateCommand
   .command("video-status")
-  .description("Check video generation status (Runway or Kling)")
+  .description("Check video generation status (Grok, Runway, or Kling)")
   .argument("<task-id>", "Task ID from video generation")
-  .option("-p, --provider <provider>", "Provider: runway, kling", "runway")
-  .option("-k, --api-key <key>", "API key (or set RUNWAY_API_SECRET / KLING_API_KEY env)")
+  .option("-p, --provider <provider>", "Provider: grok, runway, kling", "grok")
+  .option("-k, --api-key <key>", "API key (or set XAI_API_KEY / RUNWAY_API_SECRET / KLING_API_KEY env)")
   .option("-t, --type <type>", "Task type: text2video or image2video (Kling only)", "text2video")
   .option("-w, --wait", "Wait for completion")
   .option("-o, --output <path>", "Download video when complete")
   .action(async (taskId: string, options) => {
     try {
-      const provider = (options.provider || "runway").toLowerCase();
+      const provider = (options.provider || "grok").toLowerCase();
 
-      if (provider === "runway") {
+      if (provider === "grok") {
+        const apiKey = await getApiKey("XAI_API_KEY", "xAI", options.apiKey);
+        if (!apiKey) {
+          console.error(chalk.red("xAI API key required"));
+          process.exit(1);
+        }
+
+        const spinner = ora("Checking status...").start();
+
+        const grok = new GrokProvider();
+        await grok.initialize({ apiKey });
+
+        let result = await grok.getGenerationStatus(taskId);
+
+        if (options.wait && result.status !== "completed" && result.status !== "failed") {
+          spinner.text = "Waiting for completion...";
+          result = await grok.waitForCompletion(
+            taskId,
+            (status) => {
+              spinner.text = `Generating... ${status.status}`;
+            }
+          );
+        }
+
+        spinner.stop();
+
+        if (isJsonMode()) {
+          let outputPath: string | undefined;
+          if (options.output && result.videoUrl) {
+            const buffer = await downloadVideo(result.videoUrl);
+            outputPath = resolve(process.cwd(), options.output);
+            await writeFile(outputPath, buffer);
+          }
+          outputResult({ success: true, taskId, provider: "grok", status: result.status, videoUrl: result.videoUrl, error: result.error, outputPath });
+          return;
+        }
+
+        console.log();
+        console.log(chalk.bold.cyan("Generation Status"));
+        console.log(chalk.dim("─".repeat(60)));
+        console.log(`Task ID: ${taskId}`);
+        console.log(`Provider: Grok Imagine`);
+        console.log(`Status: ${getStatusColor(result.status)}`);
+        if (result.videoUrl) {
+          console.log(`Video URL: ${result.videoUrl}`);
+        }
+        if (result.error) {
+          console.log(`Error: ${chalk.red(result.error)}`);
+        }
+        console.log();
+
+        if (options.output && result.videoUrl) {
+          const downloadSpinner = ora("Downloading video...").start();
+          try {
+            const buffer = await downloadVideo(result.videoUrl);
+            const outputPath = resolve(process.cwd(), options.output);
+            await writeFile(outputPath, buffer);
+            downloadSpinner.succeed(chalk.green(`Saved to: ${outputPath}`));
+          } catch (err) {
+            downloadSpinner.fail(chalk.red(`Failed to download video: ${err instanceof Error ? err.message : err}`));
+          }
+        }
+      } else if (provider === "runway") {
         const apiKey = await getApiKey("RUNWAY_API_SECRET", "Runway", options.apiKey);
         if (!apiKey) {
           console.error(chalk.red("Runway API key required"));
@@ -1654,7 +1716,7 @@ generateCommand
           }
         }
       } else {
-        console.error(chalk.red(`Invalid provider: ${provider}. Use runway or kling.`));
+        console.error(chalk.red(`Invalid provider: ${provider}. Use grok, runway, or kling.`));
         process.exit(1);
       }
     } catch (error) {
@@ -1670,32 +1732,62 @@ generateCommand
 
 generateCommand
   .command("video-cancel")
-  .description("Cancel Runway video generation")
+  .description("Cancel video generation (Grok or Runway)")
   .argument("<task-id>", "Task ID to cancel")
-  .option("-k, --api-key <key>", "Runway API key (or set RUNWAY_API_SECRET env)")
+  .option("-p, --provider <provider>", "Provider: grok, runway", "grok")
+  .option("-k, --api-key <key>", "API key (or set XAI_API_KEY / RUNWAY_API_SECRET env)")
   .action(async (taskId: string, options) => {
     try {
-      const apiKey = await getApiKey("RUNWAY_API_SECRET", "Runway", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("Runway API key required"));
-        process.exit(1);
-      }
+      const provider = (options.provider || "grok").toLowerCase();
 
-      const spinner = ora("Cancelling generation...").start();
+      let success = false;
 
-      const runway = new RunwayProvider();
-      await runway.initialize({ apiKey });
+      if (provider === "grok") {
+        const apiKey = await getApiKey("XAI_API_KEY", "xAI", options.apiKey);
+        if (!apiKey) {
+          console.error(chalk.red("xAI API key required"));
+          process.exit(1);
+        }
 
-      const success = await runway.cancelGeneration(taskId);
+        const spinner = ora("Cancelling generation...").start();
+        const grok = new GrokProvider();
+        await grok.initialize({ apiKey });
+        success = await grok.cancelGeneration(taskId);
 
-      if (success) {
-        spinner.succeed(chalk.green("Generation cancelled"));
-        if (isJsonMode()) {
-          outputResult({ success: true, taskId, cancelled: true });
-          return;
+        if (success) {
+          spinner.succeed(chalk.green("Generation cancelled"));
+          if (isJsonMode()) {
+            outputResult({ success: true, taskId, provider: "grok", cancelled: true });
+            return;
+          }
+        } else {
+          spinner.fail(chalk.red("Failed to cancel generation"));
+          process.exit(1);
+        }
+      } else if (provider === "runway") {
+        const apiKey = await getApiKey("RUNWAY_API_SECRET", "Runway", options.apiKey);
+        if (!apiKey) {
+          console.error(chalk.red("Runway API key required"));
+          process.exit(1);
+        }
+
+        const spinner = ora("Cancelling generation...").start();
+        const runway = new RunwayProvider();
+        await runway.initialize({ apiKey });
+        success = await runway.cancelGeneration(taskId);
+
+        if (success) {
+          spinner.succeed(chalk.green("Generation cancelled"));
+          if (isJsonMode()) {
+            outputResult({ success: true, taskId, provider: "runway", cancelled: true });
+            return;
+          }
+        } else {
+          spinner.fail(chalk.red("Failed to cancel generation"));
+          process.exit(1);
         }
       } else {
-        spinner.fail(chalk.red("Failed to cancel generation"));
+        console.error(chalk.red(`Invalid provider: ${provider}. Use grok or runway.`));
         process.exit(1);
       }
     } catch (error) {
