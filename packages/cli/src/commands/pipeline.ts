@@ -30,11 +30,35 @@ import { registerScriptPipelineCommands } from "./ai-script-pipeline-cli.js";
 import { registerHighlightsCommands } from "./ai-highlights.js";
 import { registerViralCommand } from "./ai-viral.js";
 import { registerBrollCommand } from "./ai-broll.js";
+import { executeAnimatedCaption, type AnimatedCaptionStyle } from "./ai-animated-caption.js";
 import { isJsonMode, outputResult } from "./output.js";
 
-export const pipelineCommand = new Command("pipeline").description(
-  "AI video pipelines (script-to-video, highlights, shorts, viral)"
-);
+export const pipelineCommand = new Command("pipeline")
+  .description(
+    "AI video pipelines (script-to-video, highlights, shorts, animated-caption)"
+  )
+  .addHelpText(
+    "after",
+    `
+Examples:
+  $ vibe pipeline script-to-video "A day in the life..." -o ./output/ -g kling
+  $ vibe pipeline script-to-video "..." -o ./output/ --images-only
+  $ vibe pipeline highlights long-video.mp4 -o highlights.json -d 60
+  $ vibe pipeline auto-shorts long-video.mp4 -o shorts/ -n 3 --add-captions
+  $ vibe pipeline animated-caption video.mp4 -o captioned.mp4 -s highlight
+  $ vibe pipeline animated-caption video.mp4 -o out.mp4 -s karaoke-sweep --fast
+
+Required API Keys (pipelines use multiple providers):
+  script-to-video:     ANTHROPIC_API_KEY + GOOGLE_API_KEY + ELEVENLABS_API_KEY
+                       + video provider key (KLING_API_KEY / RUNWAY_API_SECRET / GOOGLE_API_KEY)
+  highlights:          GOOGLE_API_KEY (Gemini analysis)
+  auto-shorts:         GOOGLE_API_KEY + OPENAI_API_KEY (optional captions)
+  animated-caption:    OPENAI_API_KEY (Whisper transcription)
+
+Use '--dry-run' to preview parameters before execution.
+Run 'vibe setup --show' to check API key status.
+`
+  );
 
 // ── pipeline script-to-video & regenerate-scene ────────────────────────
 
@@ -56,7 +80,7 @@ registerBrollCommand(pipelineCommand);
 
 pipelineCommand
   .command("narrate")
-  .description("Generate AI narration for a video file or project")
+  .description("Generate AI narration for a video file or project (deprecated)")
   .argument("<input>", "Video file or project file (.vibe.json)")
   .option("-o, --output <dir>", "Output directory for generated files", ".")
   .option("-v, --voice <name>", "ElevenLabs voice name (rachel, adam, josh, etc.)", "rachel")
@@ -67,6 +91,10 @@ pipelineCommand
   .option("--dry-run", "Preview pipeline parameters without executing")
   .action(async (inputPath: string, options) => {
     try {
+      console.warn(chalk.yellow("Warning: 'pipeline narrate' is deprecated. Use individual commands instead:"));
+      console.warn(chalk.dim("  vibe analyze video <video> 'describe scenes' → vibe generate speech '<script>'"));
+      console.warn();
+
       const absPath = resolve(process.cwd(), inputPath);
       if (!existsSync(absPath)) {
         console.error(chalk.red(`File not found: ${absPath}`));
@@ -231,6 +259,138 @@ pipelineCommand
       console.log();
     } catch (error) {
       console.error(chalk.red("Auto-narrate failed"));
+      console.error(error);
+      process.exit(1);
+    }
+  });
+
+// ── pipeline animated-caption ────────────────────────────────────────────
+
+const ANIMATED_CAPTION_STYLES = ["highlight", "bounce", "pop-in", "neon", "karaoke-sweep", "typewriter"];
+
+pipelineCommand
+  .command("animated-caption")
+  .description("Add animated captions with word-by-word effects (Whisper + Remotion/ASS)")
+  .argument("<video>", "Video file path")
+  .option("-s, --style <preset>", "Style preset (default: highlight)", "highlight")
+  .option("--highlight-color <color>", "Active word highlight color", "#FFFF00")
+  .option("--font-size <px>", "Font size (default: auto based on resolution)")
+  .option("--position <pos>", "Caption position: top, center, bottom", "bottom")
+  .option("--words-per-group <n>", "Words shown at once (default: auto 3-5)")
+  .option("--max-chars <n>", "Max characters per group")
+  .option("-l, --language <lang>", "Whisper language hint")
+  .option("--fast", "Use ASS/FFmpeg only (no Remotion, forces ASS tier styles)")
+  .option("-o, --output <path>", "Output file path")
+  .option("--dry-run", "Preview parameters without executing")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  $ vibe pipeline animated-caption video.mp4 -o captioned.mp4
+  $ vibe pipeline animated-caption video.mp4 -o out.mp4 -s bounce
+  $ vibe pipeline animated-caption video.mp4 -o out.mp4 -s karaoke-sweep --fast
+
+Styles:
+  highlight (default)  TikTok-style background highlight on active word (Remotion)
+  bounce               Words spring-animate in (Remotion)
+  pop-in               Words scale-up on entry (Remotion)
+  neon                 Glowing neon effect on active word (Remotion)
+  karaoke-sweep        Color sweep across active word (ASS/FFmpeg, fast)
+  typewriter           Words appear one by one (ASS/FFmpeg, fast)
+
+Required API Key: OPENAI_API_KEY (Whisper transcription)
+`,
+  )
+  .action(async (videoPath: string, options) => {
+    try {
+      const absVideoPath = resolve(process.cwd(), videoPath);
+      if (!existsSync(absVideoPath)) {
+        console.error(chalk.red(`File not found: ${absVideoPath}`));
+        process.exit(1);
+      }
+
+      // Validate style
+      if (!ANIMATED_CAPTION_STYLES.includes(options.style)) {
+        console.error(chalk.red(`Invalid style: ${options.style}`));
+        console.error(chalk.dim(`Valid styles: ${ANIMATED_CAPTION_STYLES.join(", ")}`));
+        process.exit(1);
+      }
+
+      const outputFile = options.output || videoPath.replace(/(\.\w+)$/, "-captioned$1");
+
+      if (options.dryRun) {
+        outputResult({
+          dryRun: true,
+          command: "pipeline animated-caption",
+          params: {
+            videoPath: absVideoPath,
+            outputPath: outputFile,
+            style: options.style,
+            highlightColor: options.highlightColor,
+            fontSize: options.fontSize ? parseInt(options.fontSize) : "auto",
+            position: options.position,
+            wordsPerGroup: options.wordsPerGroup ? parseInt(options.wordsPerGroup) : "auto",
+            maxChars: options.maxChars ? parseInt(options.maxChars) : "auto",
+            language: options.language || "auto",
+            fast: !!options.fast,
+          },
+        });
+        return;
+      }
+
+      console.log();
+      console.log(chalk.bold.cyan("Animated Caption Pipeline"));
+      console.log(chalk.dim("─".repeat(60)));
+      console.log(`  Video: ${chalk.bold(basename(absVideoPath))}`);
+      console.log(`  Style: ${chalk.bold(options.style)}`);
+      console.log(`  Mode:  ${chalk.bold(options.fast ? "ASS (fast)" : "Remotion")}`);
+      console.log();
+
+      const spinner = ora("Processing animated captions...").start();
+
+      const result = await executeAnimatedCaption({
+        videoPath: absVideoPath,
+        outputPath: outputFile,
+        style: options.style as AnimatedCaptionStyle,
+        highlightColor: options.highlightColor,
+        fontSize: options.fontSize ? parseInt(options.fontSize) : undefined,
+        position: options.position as "top" | "center" | "bottom",
+        wordsPerGroup: options.wordsPerGroup ? parseInt(options.wordsPerGroup) : undefined,
+        maxChars: options.maxChars ? parseInt(options.maxChars) : undefined,
+        language: options.language,
+        fast: options.fast,
+      });
+
+      if (!result.success) {
+        spinner.fail(chalk.red(result.error || "Animated caption failed"));
+        process.exit(1);
+      }
+
+      spinner.succeed(chalk.green("Animated captions applied successfully"));
+
+      if (isJsonMode()) {
+        outputResult({
+          success: true,
+          outputPath: result.outputPath,
+          wordCount: result.wordCount,
+          groupCount: result.groupCount,
+          style: result.style,
+          tier: result.tier,
+        });
+        return;
+      }
+
+      console.log();
+      console.log(chalk.bold.cyan("Result"));
+      console.log(chalk.dim("─".repeat(60)));
+      console.log(`  Output:  ${chalk.green(result.outputPath)}`);
+      console.log(`  Words:   ${result.wordCount}`);
+      console.log(`  Groups:  ${result.groupCount}`);
+      console.log(`  Style:   ${result.style}`);
+      console.log(`  Tier:    ${result.tier}`);
+      console.log();
+    } catch (error) {
+      console.error(chalk.red("Animated caption failed"));
       console.error(error);
       process.exit(1);
     }

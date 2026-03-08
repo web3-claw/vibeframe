@@ -64,7 +64,7 @@ When adding new CLI commands:
 - `CLAUDE.md` - Update tool counts
 - `ROADMAP.md` - Mark `[x]` and update CLI status section
 
-## Current Agent AI Tools (23 across 3 files)
+## Current Agent AI Tools (24 across 3 files)
 
 ### Generate (7 tools — registered in ai-generation.ts)
 | Tool | CLI Command | Description |
@@ -90,7 +90,7 @@ When adding new CLI commands:
 | `analyze_review` | `vibe analyze review` | AI video review & auto-fix (Gemini) |
 | `generate_thumbnail` | `vibe generate thumbnail` | Extract best thumbnail (Gemini + FFmpeg) |
 
-### Analyze + Edit + Pipeline (7 tools — registered in ai-pipeline.ts)
+### Analyze + Edit + Pipeline (8 tools — registered in ai-pipeline.ts)
 | Tool | CLI Command | Description |
 |------|-------------|-------------|
 | `analyze_media` | `vibe analyze media` | Unified media analysis (image/video/YouTube) |
@@ -100,6 +100,7 @@ When adding new CLI commands:
 | `pipeline_highlights` | `vibe pipeline highlights` | Extract highlights |
 | `pipeline_auto_shorts` | `vibe pipeline auto-shorts` | Generate shorts |
 | `pipeline_regenerate_scene` | `vibe pipeline regenerate-scene` | Regenerate specific scene(s) |
+| `pipeline_animated_caption` | `vibe pipeline animated-caption` | Animated word-by-word captions (Whisper + Remotion/ASS) |
 
 ### Audio (1 tool in media category)
 | Tool | CLI Command | Description |

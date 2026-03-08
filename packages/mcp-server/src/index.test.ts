@@ -16,8 +16,8 @@ describe("@vibeframe/mcp-server", () => {
       expect(tools.length).toBeGreaterThan(0);
     });
 
-    it("should have 28 tools total", () => {
-      expect(tools.length).toBe(28);
+    it("should have 27 tools total", () => {
+      expect(tools.length).toBe(27);
     });
 
     it("should have correct tool structure", () => {
@@ -72,7 +72,7 @@ describe("@vibeframe/mcp-server", () => {
       expect(toolNames).toContain("pipeline_script_to_video");
       expect(toolNames).toContain("pipeline_highlights");
       expect(toolNames).toContain("pipeline_auto_shorts");
-      expect(toolNames).toContain("pipeline_narrate");
+      expect(toolNames).not.toContain("pipeline_narrate");
     });
 
     it("should have unique tool names", () => {

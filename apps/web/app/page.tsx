@@ -13,7 +13,6 @@ import {
   MessageSquare,
   Wand2,
   Film,
-  Image,
   Code2,
 } from "lucide-react";
 
@@ -203,7 +202,7 @@ export default function LandingPage() {
                 <div>
                   <h2 className="text-2xl sm:text-3xl font-bold mb-2">MCP Ready <span className="text-sm font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full align-middle">beta</span></h2>
                   <p className="text-muted-foreground">
-                    28 tools in Claude Desktop and Cursor — add one JSON config and go
+                    27 tools in Claude Desktop and Cursor — add one JSON config and go
                   </p>
                 </div>
               </div>
@@ -244,7 +243,7 @@ export default function LandingPage() {
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
               No Claude Code or MCP? Type <code className="text-primary bg-primary/10 px-2 py-0.5 rounded">vibe</code> for a built-in natural language session.
-              5 LLM providers, 57 tools, fully autonomous.
+              5 LLM providers, 58 tools, fully autonomous.
             </p>
           </div>
 
@@ -319,25 +318,18 @@ export default function LandingPage() {
               gradient="from-purple-500 to-pink-500"
             />
             <PipelineCard
-              icon={<Image className="w-6 h-6" />}
-              title="B-Roll Matcher"
-              command="vibe pipeline b-roll"
-              description="Narration → Vision analysis → Auto-cut"
+              icon={<MessageSquare className="w-6 h-6" />}
+              title="Animated Captions"
+              command="vibe pipeline animated-caption"
+              description="Word-by-word TikTok/Reels-style captions"
               gradient="from-pink-500 to-red-500"
             />
             <PipelineCard
               icon={<Zap className="w-6 h-6" />}
-              title="Viral Optimizer"
-              command="vibe pipeline viral"
-              description="One video → TikTok, Shorts, Reels"
+              title="Auto Shorts"
+              command="vibe pipeline auto-shorts"
+              description="Long video → Vertical shorts with captions"
               gradient="from-orange-500 to-yellow-500"
-            />
-            <PipelineCard
-              icon={<MessageSquare className="w-6 h-6" />}
-              title="Auto Narrate"
-              command="vibe pipeline narrate"
-              description="Video → Claude Vision → ElevenLabs TTS"
-              gradient="from-cyan-500 to-blue-500"
             />
             <PipelineCard
               icon={<Wand2 className="w-6 h-6" />}
@@ -379,7 +371,7 @@ export default function LandingPage() {
             <FeatureCard
               icon={<MessageSquare className="w-6 h-6" />}
               title="MCP Native (beta)"
-              description="28 tools in Claude Desktop and Cursor. Let AI control your edits."
+              description="27 tools in Claude Desktop and Cursor. Let AI control your edits."
               gradient="from-purple-500 to-pink-500"
             />
             <FeatureCard
@@ -536,7 +528,7 @@ function TerminalAnimation() {
         VibeFrame
       </div>
       <div className="text-muted-foreground text-xs mb-4">
-        57 tools · openai<br/>
+        58 tools · openai<br/>
         Commands: exit · reset · tools · context
       </div>
 

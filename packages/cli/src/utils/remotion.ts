@@ -626,6 +626,242 @@ export const ${name} = () => {
   return { code, name };
 }
 
+// ── Animated Caption Component Generator ──────────────────────────────────
+
+export interface AnimatedCaptionWord {
+  word: string;
+  start: number;
+  end: number;
+}
+
+export interface AnimatedCaptionGroup {
+  words: AnimatedCaptionWord[];
+  startTime: number;
+  endTime: number;
+  text: string;
+}
+
+export type AnimatedCaptionStylePreset = "highlight" | "bounce" | "pop-in" | "neon";
+
+export interface GenerateAnimatedCaptionComponentOptions {
+  groups: AnimatedCaptionGroup[];
+  style: AnimatedCaptionStylePreset;
+  highlightColor: string;
+  fontSize: number;
+  position: "top" | "center" | "bottom";
+  width: number;
+  height: number;
+  fps: number;
+  videoFileName?: string;
+}
+
+/**
+ * Generate a Remotion TSX component for word-level animated captions.
+ * Each style creates different visual effects per word.
+ */
+export function generateAnimatedCaptionComponent(options: GenerateAnimatedCaptionComponentOptions): {
+  code: string;
+  name: string;
+} {
+  const { groups, style, highlightColor, fontSize, position, width, height, fps, videoFileName } = options;
+  const name = videoFileName ? "VideoAnimatedCaption" : "AnimatedCaptionOverlay";
+
+  const groupsJSON = JSON.stringify(
+    groups.map((g) => ({
+      words: g.words.map((w) => ({ word: w.word, start: w.start, end: w.end })),
+      startTime: g.startTime,
+      endTime: g.endTime,
+      text: g.text,
+    })),
+  );
+
+  const justifyContent =
+    position === "top" ? "flex-start" : position === "center" ? "center" : "flex-end";
+  const paddingDir = position === "top" ? "paddingTop" : position === "bottom" ? "paddingBottom" : "";
+  const paddingVal = position === "center" ? "" : `${paddingDir}: 40,`;
+
+  const videoImport = videoFileName ? `, staticFile` : "";
+  const videoElement = videoFileName
+    ? `<Video src={staticFile("${videoFileName}")} style={{ width: "100%", height: "100%" }} muted />`
+    : "";
+  const videoMediaImport = videoFileName
+    ? `import { Video } from "@remotion/media";\n`
+    : "";
+
+  // Style-specific word rendering
+  let wordRenderer: string;
+
+  switch (style) {
+    case "highlight":
+      wordRenderer = `
+    const isActive = currentTime >= w.start && currentTime < w.end;
+    const bgOpacity = isActive ? 1 : 0;
+    return (
+      <span
+        key={wi}
+        style={{
+          display: "inline-block",
+          padding: "2px 6px",
+          margin: "0 2px",
+          borderRadius: 4,
+          backgroundColor: isActive ? "${highlightColor}" : "transparent",
+          color: isActive ? "#000000" : "#FFFFFF",
+          transition: "background-color 0.1s",
+          fontWeight: "bold",
+          textShadow: isActive ? "none" : "2px 2px 4px rgba(0,0,0,0.8)",
+        }}
+      >
+        {w.word}
+      </span>
+    );`;
+      break;
+
+    case "bounce":
+      wordRenderer = `
+    const isActive = currentTime >= w.start && currentTime < w.end;
+    const entryFrame = w.start * ${fps};
+    const progress = Math.min(1, Math.max(0, (frame - entryFrame) / 5));
+    const springVal = isActive
+      ? 1 + Math.sin(progress * Math.PI) * 0.15
+      : 1;
+    const translateY = isActive
+      ? -Math.sin(progress * Math.PI) * 8
+      : 0;
+    return (
+      <span
+        key={wi}
+        style={{
+          display: "inline-block",
+          margin: "0 3px",
+          transform: \`scale(\${springVal}) translateY(\${translateY}px)\`,
+          color: isActive ? "${highlightColor}" : "#FFFFFF",
+          fontWeight: "bold",
+          textShadow: "2px 2px 4px rgba(0,0,0,0.8)",
+        }}
+      >
+        {w.word}
+      </span>
+    );`;
+      break;
+
+    case "pop-in":
+      wordRenderer = `
+    const entryFrame = w.start * ${fps};
+    const scale = frame >= entryFrame
+      ? Math.min(1, (frame - entryFrame) / 5)
+      : 0;
+    const isActive = currentTime >= w.start && currentTime < w.end;
+    return (
+      <span
+        key={wi}
+        style={{
+          display: "inline-block",
+          margin: "0 3px",
+          transform: \`scale(\${scale})\`,
+          opacity: scale,
+          color: isActive ? "${highlightColor}" : "#FFFFFF",
+          fontWeight: "bold",
+          textShadow: "2px 2px 4px rgba(0,0,0,0.8)",
+        }}
+      >
+        {w.word}
+      </span>
+    );`;
+      break;
+
+    case "neon":
+      wordRenderer = `
+    const isActive = currentTime >= w.start && currentTime < w.end;
+    const pulse = isActive ? 0.8 + Math.sin(frame * 0.3) * 0.2 : 0.5;
+    const glowSize = isActive ? 15 : 0;
+    return (
+      <span
+        key={wi}
+        style={{
+          display: "inline-block",
+          margin: "0 3px",
+          color: isActive ? "${highlightColor}" : "#FFFFFF",
+          fontWeight: "bold",
+          opacity: isActive ? 1 : pulse,
+          textShadow: isActive
+            ? \`0 0 \${glowSize}px ${highlightColor}, 0 0 \${glowSize * 2}px ${highlightColor}, 0 0 \${glowSize * 3}px ${highlightColor}\`
+            : "2px 2px 4px rgba(0,0,0,0.8)",
+        }}
+      >
+        {w.word}
+      </span>
+    );`;
+      break;
+  }
+
+  const code = `import { AbsoluteFill, useCurrentFrame, useVideoConfig${videoImport} } from "remotion";
+${videoMediaImport}
+interface Word {
+  word: string;
+  start: number;
+  end: number;
+}
+
+interface WordGroup {
+  words: Word[];
+  startTime: number;
+  endTime: number;
+  text: string;
+}
+
+const groups: WordGroup[] = ${groupsJSON};
+
+export const ${name} = () => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const currentTime = frame / fps;
+
+  const activeGroup = groups.find(
+    (g) => currentTime >= g.startTime && currentTime < g.endTime
+  );
+
+  const renderWord = (w: Word, wi: number) => {
+    ${wordRenderer}
+  };
+
+  return (
+    <AbsoluteFill>
+      ${videoElement}
+      {activeGroup && (
+        <AbsoluteFill
+          style={{
+            display: "flex",
+            justifyContent: "${justifyContent}",
+            alignItems: "center",
+            ${paddingVal}
+          }}
+        >
+          <div
+            style={{
+              fontSize: ${fontSize},
+              fontFamily: "Arial, Helvetica, sans-serif",
+              textAlign: "center" as const,
+              maxWidth: "${Math.round(width * 0.9)}px",
+              lineHeight: 1.5,
+              padding: "8px 16px",
+              display: "flex",
+              flexWrap: "wrap" as const,
+              justifyContent: "center",
+              gap: "0px",
+            }}
+          >
+            {activeGroup.words.map((w, wi) => renderWord(w, wi))}
+          </div>
+        </AbsoluteFill>
+      )}
+    </AbsoluteFill>
+  );
+};
+`;
+
+  return { code, name };
+}
+
 // ── Legacy composite helpers (kept for backward compat) ───────────────────
 
 /**

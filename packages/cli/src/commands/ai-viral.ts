@@ -83,7 +83,7 @@ export function registerViralCommand(ai: Command): void {
   // Viral Optimizer command
   ai
     .command("viral")
-    .description("Optimize video for viral potential across platforms")
+    .description("Optimize video for viral potential across platforms (deprecated)")
     .argument("<project>", "Source project file")
     .option("--platforms <list>", "Target platforms (comma-separated): youtube, youtube-shorts, tiktok, instagram-reels, instagram-feed, twitter", "all")
     .option("-o, --output-dir <dir>", "Output directory for platform variants", "viral-output")
@@ -96,6 +96,9 @@ export function registerViralCommand(ai: Command): void {
     .option("--narrate-voice <voice>", "Voice for auto-narration (default: rachel)", "rachel")
     .option("--narrate-style <style>", "Style for auto-narration: informative, energetic, calm, dramatic", "informative")
     .action(async (projectPath: string, options) => {
+      console.warn(chalk.yellow("Warning: 'pipeline viral' is deprecated. Use individual commands instead:"));
+      console.warn(chalk.dim("  vibe edit reframe <video> -a 9:16 → vibe edit caption <video> -s bold"));
+      console.warn();
       try {
         // Validate API keys
         const openaiApiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");

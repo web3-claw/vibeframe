@@ -1,6 +1,5 @@
 import { executeScriptToVideo } from "@vibeframe/cli/commands/ai-script-pipeline";
 import { executeHighlights, executeAutoShorts } from "@vibeframe/cli/commands/ai-highlights";
-import { autoNarrate } from "@vibeframe/cli/commands/ai-narrate";
 
 export const aiPipelineTools = [
   {
@@ -105,26 +104,6 @@ export const aiPipelineTools = [
       required: ["video"],
     },
   },
-  {
-    name: "pipeline_narrate",
-    description: "Auto-generate narration for a video: analyze content with Gemini, generate script, produce voiceover with ElevenLabs. Requires GOOGLE_API_KEY + ELEVENLABS_API_KEY.",
-    inputSchema: {
-      type: "object" as const,
-      properties: {
-        videoPath: { type: "string", description: "Path to the input video file" },
-        duration: { type: "number", description: "Video duration in seconds (auto-detected if omitted)" },
-        outputDir: { type: "string", description: "Output directory for narration audio" },
-        voice: { type: "string", description: "ElevenLabs voice name (default: Rachel)" },
-        style: {
-          type: "string",
-          enum: ["informative", "energetic", "calm", "dramatic"],
-          description: "Narration style (default: informative)",
-        },
-        language: { type: "string", description: "Language code (default: en)" },
-      },
-      required: ["videoPath", "duration", "outputDir"],
-    },
-  },
 ];
 
 export async function handleAiPipelineToolCall(
@@ -210,23 +189,6 @@ export async function handleAiPipelineToolCall(
           reason: s.reason,
           outputPath: s.outputPath,
         })),
-      });
-    }
-
-    case "pipeline_narrate": {
-      const result = await autoNarrate({
-        videoPath: args.videoPath as string,
-        duration: args.duration as number,
-        outputDir: args.outputDir as string,
-        voice: args.voice as string | undefined,
-        style: args.style as "informative" | "energetic" | "calm" | "dramatic" | undefined,
-        language: args.language as string | undefined,
-      });
-      if (!result.success) return `Narration failed: ${result.error}`;
-      return JSON.stringify({
-        audioPath: result.audioPath,
-        script: result.script,
-        segments: result.segments?.length,
       });
     }
 

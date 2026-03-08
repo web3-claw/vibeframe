@@ -411,7 +411,7 @@ export const DEFAULT_FILLER_WORDS = [
  * Transcribe audio with word-level timestamps using Whisper API directly.
  * Uses timestamp_granularities[]=word for filler detection.
  */
-async function transcribeWithWords(
+export async function transcribeWithWords(
   audioPath: string,
   apiKey: string,
   language?: string,

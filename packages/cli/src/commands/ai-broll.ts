@@ -98,7 +98,7 @@ async function extractKeyFrame(videoPath: string, timestamp: number): Promise<st
 export function registerBrollCommand(ai: Command): void {
   ai
     .command("b-roll")
-    .description("Match B-roll footage to narration content")
+    .description("Match B-roll footage to narration content (deprecated)")
     .argument("<narration>", "Narration audio file or script text")
     .option("-b, --broll <paths>", "B-roll video files (comma-separated)")
     .option("--broll-dir <dir>", "Directory containing B-roll files")
@@ -109,6 +109,10 @@ export function registerBrollCommand(ai: Command): void {
     .option("--analyze-only", "Only analyze, don't create project")
     .action(async (narration: string, options) => {
       try {
+        console.warn(chalk.yellow("Warning: 'pipeline b-roll' is deprecated. Use individual commands instead:"));
+        console.warn(chalk.dim("  vibe analyze video <video> 'identify scenes needing b-roll' → vibe generate video '<prompt>'"));
+        console.warn();
+
         // Validate B-roll input
         if (!options.broll && !options.brollDir) {
           console.error(chalk.red("B-roll files required. Use -b or --broll-dir"));

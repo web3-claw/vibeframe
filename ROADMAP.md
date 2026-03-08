@@ -106,18 +106,17 @@ Intelligence built into every interaction.
 - [x] **Auto Highlights** - Extract highlights from long-form content
   - FFmpeg audio extraction → Whisper transcription → Claude highlight analysis
   - Full pipeline: `vibe pipeline highlights <media> -o highlights.json -p project.vibe.json`
-- [x] **B-Roll Matcher** - Auto-match B-roll to narration
-  - Whisper transcription → Claude Vision B-roll analysis → Claude semantic matching
-  - Full pipeline: `vibe pipeline b-roll <narration> --broll-dir ./broll -o project.vibe.json`
-- [x] **Viral Optimizer** - Platform-specific optimization (YouTube, TikTok, Instagram)
-  - Whisper transcription → Claude viral analysis → Platform cuts generation
-  - Full pipeline: `vibe pipeline viral <project> -p youtube-shorts,tiktok -o ./viral-output`
+- [x] **Animated Caption** - Word-by-word TikTok/Reels-style captions (`vibe pipeline animated-caption`)
+  - Whisper word-level → Word grouping → ASS fast tier or Remotion animated tier
+  - 6 styles: highlight, bounce, pop-in, neon (Remotion) + karaoke-sweep, typewriter (ASS)
+- [x] ~~**B-Roll Matcher**~~ - Deprecated (`vibe pipeline b-roll`)
+- [x] ~~**Viral Optimizer**~~ - Deprecated (`vibe pipeline viral`)
 
 ### Video Understanding & Generation
 - [x] **Gemini Video Analysis** - Summarize, Q&A, extract info (`vibe analyze video`)
 - [x] **Unified Analyze** - Image/video/YouTube analysis in one command (`vibe analyze media`)
 - [x] **Gemini Image Edit** - Multi-image editing (`vibe edit image`)
-- [x] **Auto Narrate** - AI narration for videos (`vibe pipeline narrate`)
+- [x] ~~**Auto Narrate**~~ - Deprecated (`vibe pipeline narrate`)
 - [x] Video Extend - AI-powered clip extension (`vibe generate video-extend`)
 - [x] ~~Video Inpainting~~ - Deprecated (requires public URL, not local files)
 - [x] Video Upscale - Low-res → 4K AI upscaling (`vibe edit upscale-video`)
@@ -174,6 +173,7 @@ Intelligence built into every interaction.
     - `pipeline_script_to_video` - Full script→video pipeline via natural language
     - `pipeline_highlights` - Extract highlights from long-form content
     - `pipeline_auto_shorts` - Auto-generate vertical shorts
+    - `pipeline_animated_caption` - Animated word-by-word captions
     - `analyze_video` - Analyze video with Gemini
     - `analyze_media` - Unified media analysis (image/video/YouTube)
 - [x] **Config System** - YAML config at `~/.vibeframe/config.yaml`

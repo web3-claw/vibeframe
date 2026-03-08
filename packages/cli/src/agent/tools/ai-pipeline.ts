@@ -20,6 +20,10 @@ import {
   executeRegenerateScene,
 } from "../../commands/ai-script-pipeline.js";
 import {
+  executeAnimatedCaption,
+  type AnimatedCaptionStyle,
+} from "../../commands/ai-animated-caption.js";
+import {
   executeHighlights,
   executeAutoShorts,
 } from "../../commands/ai-highlights.js";
@@ -387,6 +391,56 @@ This tool re-creates videos for failed scenes using image-to-video (if ImgBB key
       },
     },
     required: ["projectDir", "scenes"],
+  },
+};
+
+const animatedCaptionDef: ToolDefinition = {
+  name: "pipeline_animated_caption",
+  description:
+    "Add animated word-by-word captions to video. Styles: highlight (TikTok-style), bounce, pop-in, neon (Remotion), karaoke-sweep, typewriter (ASS/fast). Requires OPENAI_API_KEY for Whisper.",
+  parameters: {
+    type: "object",
+    properties: {
+      videoPath: {
+        type: "string",
+        description: "Input video file path",
+      },
+      outputPath: {
+        type: "string",
+        description: "Output video file path",
+      },
+      style: {
+        type: "string",
+        description: "Caption animation style",
+        enum: ["highlight", "bounce", "pop-in", "neon", "karaoke-sweep", "typewriter"],
+      },
+      highlightColor: {
+        type: "string",
+        description: "Active word highlight color (default: #FFFF00)",
+      },
+      fontSize: {
+        type: "number",
+        description: "Font size in pixels (default: auto based on resolution)",
+      },
+      position: {
+        type: "string",
+        description: "Caption position",
+        enum: ["top", "center", "bottom"],
+      },
+      wordsPerGroup: {
+        type: "number",
+        description: "Words shown at once (default: auto 3-5)",
+      },
+      language: {
+        type: "string",
+        description: "Whisper language hint (e.g., en, ko)",
+      },
+      fast: {
+        type: "boolean",
+        description: "Use ASS/FFmpeg only (no Remotion, forces ASS tier styles)",
+      },
+    },
+    required: ["videoPath", "outputPath"],
   },
 };
 
@@ -944,6 +998,47 @@ const regenerateSceneHandler: ToolHandler = async (args) => {
   };
 };
 
+const animatedCaptionHandler: ToolHandler = async (args, context): Promise<ToolResult> => {
+  const videoPath = resolve(context.workingDirectory, args.videoPath as string);
+  const outputPath = resolve(context.workingDirectory, args.outputPath as string);
+
+  try {
+    const result = await executeAnimatedCaption({
+      videoPath,
+      outputPath,
+      style: (args.style as AnimatedCaptionStyle) || "highlight",
+      highlightColor: (args.highlightColor as string) || "#FFFF00",
+      fontSize: args.fontSize as number | undefined,
+      position: (args.position as "top" | "center" | "bottom") || "bottom",
+      wordsPerGroup: args.wordsPerGroup as number | undefined,
+      language: args.language as string | undefined,
+      fast: args.fast as boolean | undefined,
+    });
+
+    if (!result.success) {
+      return {
+        toolCallId: "",
+        success: false,
+        output: "",
+        error: result.error || "Animated caption failed",
+      };
+    }
+
+    return {
+      toolCallId: "",
+      success: true,
+      output: `✅ Animated captions applied!\n\nOutput: ${result.outputPath}\nWords: ${result.wordCount}\nGroups: ${result.groupCount}\nStyle: ${result.style}\nTier: ${result.tier}`,
+    };
+  } catch (error) {
+    return {
+      toolCallId: "",
+      success: false,
+      output: "",
+      error: `Animated caption failed: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+};
+
 // ============================================================================
 // Registration
 // ============================================================================
@@ -956,4 +1051,5 @@ export function registerPipelineTools(registry: ToolRegistry): void {
   registry.register(analyzeDef, analyzeHandler);
   registry.register(editImageDef, editImageHandler);
   registry.register(regenerateSceneDef, regenerateSceneHandler);
+  registry.register(animatedCaptionDef, animatedCaptionHandler);
 }

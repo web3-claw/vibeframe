@@ -68,6 +68,17 @@ vi.mock("../../commands/ai-highlights.js", () => ({
   }),
 }));
 
+vi.mock("../../commands/ai-animated-caption.js", () => ({
+  executeAnimatedCaption: vi.fn().mockResolvedValue({
+    success: true,
+    outputPath: "/test/captioned.mp4",
+    wordCount: 42,
+    groupCount: 10,
+    style: "highlight",
+    tier: "remotion",
+  }),
+}));
+
 vi.mock("../../commands/ai-analyze.js", () => ({
   executeGeminiVideo: vi.fn().mockResolvedValue({
     success: true,
@@ -173,7 +184,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
   describe("Tool Registration", () => {
     it("should register all 57 tools", () => {
       const tools = registry.getAll();
-      expect(tools.length).toBe(57);
+      expect(tools.length).toBe(58);
     });
 
     it("should register all project tools (5)", () => {
@@ -669,7 +680,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       expect(generateTools.length).toBe(8);  // image, video, speech, sound_effect, music, storyboard, motion, thumbnail
       expect(editTools.length).toBe(8);  // text_overlay, silence_cut, jump_cut, caption, noise_reduce, fade, translate_srt, image
       expect(analyzeTools.length).toBe(3);  // video, media, review
-      expect(pipelineTools.length).toBe(4);  // script_to_video, highlights, auto_shorts, regenerate_scene
+      expect(pipelineTools.length).toBe(5);  // script_to_video, highlights, auto_shorts, regenerate_scene, animated_caption
       expect(exportTools.length).toBe(3);
       expect(batchTools.length).toBe(3);
 
@@ -684,7 +695,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
           pipelineTools.length +
           exportTools.length +
           batchTools.length;
-      expect(totalTools).toBe(57);
+      expect(totalTools).toBe(58);
     });
   });
 });
