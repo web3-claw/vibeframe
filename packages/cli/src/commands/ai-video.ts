@@ -16,7 +16,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import chalk from "chalk";
 import ora from "ora";
-import { GeminiProvider, KlingProvider, RunwayProvider } from "@vibeframe/ai-providers";
+import { GeminiProvider, GrokProvider, KlingProvider, RunwayProvider } from "@vibeframe/ai-providers";
 import { getApiKey } from "../utils/api-key.js";
 import { getApiKeyFromConfig } from "../config/index.js";
 import { uploadToImgbb } from "./ai-script-pipeline.js";
@@ -41,9 +41,9 @@ function getStatusColor(status: string): string {
 export function registerVideoCommands(aiCommand: Command): void {
   aiCommand
     .command("video")
-    .description("Generate video using AI (Runway, Kling, or Veo)")
+    .description("Generate video using AI (Grok, Runway, Kling, or Veo)")
     .argument("<prompt>", "Text prompt describing the video")
-    .option("-p, --provider <provider>", "Provider: kling, runway, veo", "kling")
+    .option("-p, --provider <provider>", "Provider: grok, kling, runway, veo", "kling")
     .option("-k, --api-key <key>", "API key (or set RUNWAY_API_SECRET / KLING_API_KEY / GOOGLE_API_KEY env)")
     .option("-o, --output <path>", "Output file path (downloads video)")
     .option("-i, --image <path>", "Reference image for image-to-video")
@@ -57,11 +57,12 @@ export function registerVideoCommands(aiCommand: Command): void {
     .option("--ref-images <paths...>", "Reference images for character consistency (Veo 3.1 only, max 3)")
     .option("--person <mode>", "Person generation: allow_all, allow_adult (Veo only)")
     .option("--veo-model <model>", "Veo model: 3.0, 3.1, 3.1-fast (default: 3.1-fast)", "3.1-fast")
+    .option("--runway-model <model>", "Runway model: gen4.5 (default, text+image-to-video), gen4_turbo (image-to-video only)", "gen4.5")
     .option("--no-wait", "Start generation and return task ID without waiting")
     .action(async (prompt: string, options) => {
       try {
         const provider = options.provider.toLowerCase();
-        const validProviders = ["runway", "kling", "veo"];
+        const validProviders = ["grok", "runway", "kling", "veo"];
         if (!validProviders.includes(provider)) {
           console.error(chalk.red(`Invalid provider: ${provider}`));
           console.error(chalk.dim(`Available providers: ${validProviders.join(", ")}`));
@@ -69,11 +70,13 @@ export function registerVideoCommands(aiCommand: Command): void {
         }
 
         const envKeyMap: Record<string, string> = {
+          grok: "XAI_API_KEY",
           runway: "RUNWAY_API_SECRET",
           kling: "KLING_API_KEY",
           veo: "GOOGLE_API_KEY",
         };
         const providerNameMap: Record<string, string> = {
+          grok: "Grok",
           runway: "Runway",
           kling: "Kling",
           veo: "Veo",
@@ -90,10 +93,11 @@ export function registerVideoCommands(aiCommand: Command): void {
           process.exit(1);
         }
 
-        // Runway Gen-4 requires an input image
-        if (provider === "runway" && !options.image) {
-          console.error(chalk.red("Runway Gen-4 requires an input image. Use -i <image> to specify."));
-          console.error(chalk.dim("Example: vibe ai video \"prompt\" -p runway -i image.png -o out.mp4"));
+        // Runway gen4_turbo requires an input image (gen4.5 supports text-to-video)
+        const runwayModel = options.runwayModel || "gen4.5";
+        if (provider === "runway" && !options.image && runwayModel === "gen4_turbo") {
+          console.error(chalk.red("Runway gen4_turbo requires an input image. Use -i <image> to specify."));
+          console.error(chalk.dim("Tip: Use gen4.5 (default) for text-to-video, or provide -i <image>"));
           process.exit(1);
         }
 
@@ -143,7 +147,7 @@ export function registerVideoCommands(aiCommand: Command): void {
           console.log();
           console.log(chalk.bold.cyan("Video Generation Started"));
           console.log(chalk.dim("─".repeat(60)));
-          console.log(`Provider: ${chalk.bold("Runway Gen-3")}`);
+          console.log(`Provider: ${chalk.bold(`Runway ${runwayModel}`)}`);
           console.log(`Task ID: ${chalk.bold(result.id)}`);
 
           if (!options.wait) {
@@ -309,6 +313,43 @@ export function registerVideoCommands(aiCommand: Command): void {
 
           spinner.text = "Generating video (this may take 1-3 minutes)...";
           finalResult = await gemini.waitForVideoCompletion(
+            result.id,
+            (status) => {
+              spinner.text = `Generating video... ${status.status}`;
+            },
+            300000
+          );
+        } else if (provider === "grok") {
+          const grok = new GrokProvider();
+          await grok.initialize({ apiKey });
+
+          result = await grok.generateVideo(prompt, {
+            prompt,
+            referenceImage,
+            duration: parseInt(options.duration),
+            aspectRatio: options.ratio as "16:9" | "9:16" | "1:1",
+          });
+
+          if (result.status === "failed") {
+            spinner.fail(chalk.red(result.error || "Failed to start generation"));
+            process.exit(1);
+          }
+
+          console.log();
+          console.log(chalk.bold.cyan("Video Generation Started"));
+          console.log(chalk.dim("─".repeat(60)));
+          console.log(`Provider: ${chalk.bold("Grok Imagine")}`);
+          console.log(`Task ID: ${chalk.bold(result.id)}`);
+
+          if (!options.wait) {
+            spinner.succeed(chalk.green("Generation started"));
+            console.log();
+            return;
+          }
+
+          spinner.text = "Generating video (this may take 1-3 minutes)...";
+
+          finalResult = await grok.waitForCompletion(
             result.id,
             (status) => {
               spinner.text = `Generating video... ${status.status}`;

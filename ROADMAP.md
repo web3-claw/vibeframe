@@ -50,10 +50,6 @@ Unified interface for AI services.
 ### Image
 - [x] **OpenAI GPT Image 1.5** - Image generation (`vibe generate image --provider openai`)
 - [x] **Gemini Nano Banana** - Image generation (`vibe generate image`, default provider)
-- [x] **Stability AI** - Stable Diffusion SD3.5 (`vibe edit upscale/image/remove-bg`)
-- [x] Background removal (`vibe edit remove-bg`)
-- [x] Search & replace (`vibe edit replace`) - AI-powered object replacement
-- [x] Outpainting (`vibe edit outpaint`) - Extend image canvas
 
 ### Video
 - [x] Scene detection & auto-cutting (`vibe detect scenes`)

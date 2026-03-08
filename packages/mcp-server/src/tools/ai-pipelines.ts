@@ -20,7 +20,7 @@ export const aiPipelineTools = [
         },
         imageProvider: {
           type: "string",
-          enum: ["openai", "stability", "gemini"],
+          enum: ["openai", "gemini", "grok"],
           description: "Image generation provider (default: gemini)",
         },
         aspectRatio: {
@@ -139,7 +139,7 @@ export async function handleAiPipelineToolCall(
         duration: args.duration as number | undefined,
         voice: args.voice as string | undefined,
         generator: args.generator as "runway" | "kling" | undefined,
-        imageProvider: args.imageProvider as "openai" | "dalle" | "stability" | "gemini" | undefined,
+        imageProvider: args.imageProvider as "openai" | "dalle" | "gemini" | undefined,
         aspectRatio: args.aspectRatio as "16:9" | "9:16" | "1:1" | undefined,
         imagesOnly: args.imagesOnly as boolean | undefined,
         noVoiceover: args.noVoiceover as boolean | undefined,

@@ -1,1 +1,1 @@
-export { GrokProvider, grokProvider, type GrokModel, type GrokVideoOptions } from "./GrokProvider.js";
+export { GrokProvider, grokProvider, type GrokModel, type GrokVideoOptions, type GrokImageOptions, type GrokEditOptions } from "./GrokProvider.js";

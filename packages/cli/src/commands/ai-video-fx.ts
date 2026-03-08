@@ -182,7 +182,7 @@ export function registerVideoFxCommands(ai: Command): void {
     .option("-t, --target <description>", "Object to remove (text description)")
     .option("-m, --mask <path>", "Mask video file path (white = remove)")
     .option("-k, --api-key <key>", "Replicate API token (or set REPLICATE_API_TOKEN env)")
-    .option("--provider <name>", "Provider: replicate or stability", "replicate")
+    .option("--provider <name>", "Provider: replicate", "replicate")
     .option("--no-wait", "Start processing and return task ID without waiting")
     .action(async (videoPath: string, options) => {
       try {

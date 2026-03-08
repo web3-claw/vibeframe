@@ -69,8 +69,8 @@ When adding new CLI commands:
 ### Generate (7 tools — registered in ai-generation.ts)
 | Tool | CLI Command | Description |
 |------|-------------|-------------|
-| `generate_image` | `vibe generate image` | Generate images (OpenAI/Gemini/Stability) |
-| `generate_video` | `vibe generate video` | Generate video (Kling/Veo/Runway/Grok) |
+| `generate_image` | `vibe generate image` | Generate images (OpenAI/Gemini/Grok) |
+| `generate_video` | `vibe generate video` | Generate video (Grok/Runway gen4.5+gen4_turbo/Kling/Veo) |
 | `generate_speech` | `vibe generate speech` | Text-to-speech (ElevenLabs) |
 | `generate_sound_effect` | `vibe generate sound-effect` | Sound effects (ElevenLabs) |
 | `generate_music` | `vibe generate music` | Music generation (Replicate) |
@@ -95,7 +95,7 @@ When adding new CLI commands:
 |------|-------------|-------------|
 | `analyze_media` | `vibe analyze media` | Unified media analysis (image/video/YouTube) |
 | `analyze_video` | `vibe analyze video` | Video analysis (Gemini) |
-| `edit_image` | `vibe edit image` | Multi-image editing (Gemini) |
+| `edit_image` | `vibe edit image` | Image editing (Gemini/OpenAI/Grok) |
 | `pipeline_script_to_video` | `vibe pipeline script-to-video` | Full video pipeline |
 | `pipeline_highlights` | `vibe pipeline highlights` | Extract highlights |
 | `pipeline_auto_shorts` | `vibe pipeline auto-shorts` | Generate shorts |

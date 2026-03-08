@@ -10,25 +10,48 @@ Used for natural language processing in Agent mode (`vibe` command).
 
 | Provider | Model | API Model ID | Env Key | CLI Option |
 |----------|-------|-------------|---------|------------|
-| OpenAI | GPT-4o | `gpt-4o` | `OPENAI_API_KEY` | `-p openai` |
+| OpenAI | GPT-5-mini | `gpt-5-mini` | `OPENAI_API_KEY` | `-p openai` |
 | Claude | Sonnet 4.6 | `claude-sonnet-4-6` | `ANTHROPIC_API_KEY` | `-p claude` |
 | Gemini | 2.5 Flash | `gemini-2.5-flash` | `GOOGLE_API_KEY` | `-p gemini` |
-| xAI | Grok-4 | `grok-4` | `XAI_API_KEY` | `-p xai` |
+| xAI | Grok 4.1 Fast | `grok-4-1-fast-reasoning` | `XAI_API_KEY` | `-p xai` |
 | Ollama | Local models | user-configured | - | `-p ollama` |
 
 **OpenAI model options:**
 
-`gpt-4o` is the default — widely available, strong function calling, cost-effective for agentic loops. You can override per-session:
+`gpt-5-mini` is the default — 10× cheaper input / 5× cheaper output than GPT-4o, with better performance. Ideal for agentic loops (20+ calls per task). You can override per-session:
 
 | Model ID | Variant | Notes |
 |----------|---------|-------|
-| `gpt-4o` | Standard | **Default**. Best balance of speed, cost, and tool calling stability |
-| `gpt-5.2-chat-latest` | GPT-5.2 Instant | Latest/fastest. Chat Completions API ✓. Pricing: $1.75/M input, $14/M output |
-| `gpt-5.2` | GPT-5.2 Thinking | More capable reasoning. Chat Completions API ✓. Same pricing as Instant |
+| `gpt-5-mini` | GPT-5 Mini | **Default**. Best cost-performance ratio. $0.25/M input, $2/M output |
+| `gpt-5.4` | GPT-5.4 | Frontier model, 1M context. $2.50/M input, $20/M output |
 
-> `gpt-5.2-pro` is **not** available via Chat Completions (Responses API only) — not usable for Agent mode.
+> `gpt-5.4-pro` is **not** available via Chat Completions (Responses API only) — not usable for Agent mode.
 
-To use GPT-5.2 in agent mode: `vibe agent -p openai --model gpt-5.2-chat-latest`
+To use GPT-5.4 in agent mode: `vibe agent -p openai --model gpt-5.4`
+
+**Claude model options:**
+
+`claude-sonnet-4-6` is the default — best balance of capability and cost for agentic loops. You can override per-session:
+
+| Model ID | Variant | Notes |
+|----------|---------|-------|
+| `claude-sonnet-4-6` | Sonnet 4.6 | **Default**. Best cost-performance for agent loops. $3/M input, $15/M output |
+| `claude-opus-4-6` | Opus 4.6 | Highest capability, best for complex reasoning. $15/M input, $75/M output |
+| `claude-haiku-4-5-20251001` | Haiku 4.5 | Fastest, lowest cost. $0.80/M input, $4/M output |
+
+To use Opus in agent mode: `vibe agent -p claude --model claude-opus-4-6`
+
+**xAI model options:**
+
+`grok-4-1-fast-reasoning` is the default — optimized for tool calling with 2M context window, 15× cheaper input / 30× cheaper output than Grok 4. You can override per-session:
+
+| Model ID | Variant | Notes |
+|----------|---------|-------|
+| `grok-4-1-fast-reasoning` | Grok 4.1 Fast (reasoning) | **Default**. Agent-optimized, 2M context. $0.20/M input, $0.50/M output |
+| `grok-4` | Grok 4 (flagship) | Highest capability, 256K context. $3/M input, $15/M output |
+| `grok-4-1-fast-non-reasoning` | Grok 4.1 Fast (non-reasoning) | Faster responses, no chain-of-thought. $0.20/M input, $0.50/M output |
+
+To use Grok 4 in agent mode: `vibe agent -p xai --model grok-4`
 
 **Why Gemini 2.5 Flash, not 3.1 Pro?**
 
@@ -40,6 +63,18 @@ Agent mode runs an agentic loop — the LLM is called repeatedly (potentially do
 - **Preview models in production**: Preview models can change response format or have stricter rate limits unsuitable for agentic loops
 
 `gemini-3.1-pro-preview` is available for **motion graphics code generation** (`vibe generate motion -m gemini-3.1-pro`) where its superior creative reasoning matters for a single, expensive generation call.
+
+**Gemini model options:**
+
+`gemini-2.5-flash` is the default — fastest and most cost-effective for agentic loops. You can override per-session:
+
+| Model ID | Variant | Notes |
+|----------|---------|-------|
+| `gemini-2.5-flash` | 2.5 Flash | **Default**. Fast, stable tool calling. Free tier available |
+| `gemini-2.5-pro` | 2.5 Pro | Higher reasoning capability, slower. $1.25/M input, $10/M output |
+| `gemini-3.1-pro-preview` | 3.1 Pro (preview) | Latest, preview — may have unstable tool calling |
+
+To use 2.5 Pro in agent mode: `vibe agent -p gemini --model gemini-2.5-pro`
 
 ---
 
@@ -61,22 +96,29 @@ Used for Remotion component code generation (`vibe generate motion`).
 | Provider | Model | Env Key | CLI Option | Notes |
 |----------|-------|---------|------------|-------|
 | OpenAI | `gpt-image-1.5` | `OPENAI_API_KEY` | `-p openai` | Quality tiers: low ($0.009), medium ($0.035), high ($0.133) |
-| Gemini | `gemini-2.5-flash-image` | `GOOGLE_API_KEY` | `-p gemini` | Default. Nano Banana Flash - fast |
+| Gemini | `gemini-2.5-flash-image` | `GOOGLE_API_KEY` | `-p gemini` | Default. Nano Banana Flash - **GA**, fast |
 | Gemini | `gemini-3.1-flash-image-preview` | `GOOGLE_API_KEY` | `-p gemini -m 3.1-flash` | Nano Banana 2 - Image Search grounding, 512px |
 | Gemini | `gemini-3-pro-image-preview` | `GOOGLE_API_KEY` | `-p gemini -m pro` | Nano Banana Pro - higher quality, up to 4K |
-| Stability | `stable-diffusion-xl` | `STABILITY_API_KEY` | `-p stability` | For image editing (upscale, remove-bg, outpaint) |
+| xAI Grok | `grok-imagine-image` | `XAI_API_KEY` | `-p grok` | $0.02/image, standard quality |
+| xAI Grok | `grok-imagine-image-pro` | `XAI_API_KEY` | `-p grok -m pro` | $0.07/image, higher quality |
 
 ### Image Aspect Ratios (Gemini)
 
 All Gemini image models support 14 aspect ratios: `1:1`, `1:4`, `1:8`, `2:3`, `3:2`, `3:4`, `4:1`, `4:3`, `4:5`, `5:4`, `8:1`, `9:16`, `16:9`, `21:9`
 
-### Image Editing (Gemini)
+### Image Aspect Ratios (Grok)
 
-| Model | Max Input Images | Features |
-|-------|------------------|----------|
-| Flash | 3 | Fast editing, 1K output |
-| 3.1 Flash | 3 | Image Search grounding, 512px-1K output |
-| Pro | 14 | Multi-image composition, up to 4K output |
+Grok Imagine supports 14 aspect ratios: `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3`, `2:1`, `1:2`, `19.5:9`, `9:19.5`, `20:9`, `9:20`, `auto`
+
+### Image Editing (3 providers)
+
+| Provider | Model | Max Input Images | CLI Option | Features |
+|----------|-------|------------------|------------|----------|
+| Gemini | Flash | 3 | `-p gemini` (default) | Fast editing, 1K output |
+| Gemini | 3.1 Flash | 3 | `-p gemini -m 3.1-flash` | Image Search grounding, 512px-1K output |
+| Gemini | Pro | 14 | `-p gemini -m pro` | Multi-image composition, up to 4K output |
+| OpenAI | `gpt-image-1.5` | 16 | `-p openai` | Instruction-based editing, multipart upload |
+| xAI Grok | `grok-imagine-image` | 1 | `-p grok` | Single image editing, $0.02/edit |
 
 ---
 
@@ -86,14 +128,16 @@ All Gemini image models support 14 aspect ratios: `1:1`, `1:4`, `1:8`, `2:3`, `3
 
 | Provider | Model | Duration | Audio | Env Key | CLI Option | Notes |
 |----------|-------|----------|-------|---------|------------|-------|
-| xAI Grok | `grok-imagine-video` | 1-15 sec | Yes | `XAI_API_KEY` | `-p grok` | **Default**. #2 Elo, best lip-sync/native audio |
+| xAI Grok | `grok-imagine-video` | 1-15 sec | Yes | `XAI_API_KEY` | `-p grok` | **Default**. Best lip-sync/native audio. $0.07/s (720p) |
 | Kling | `kling-v2-5-turbo` | 5-10 sec | No | `KLING_API_KEY` | `-p kling` | Fast (~36s generation) |
-| Kling | `kling-v2-6` | 5-10 sec | No | `KLING_API_KEY` | `-p kling -m v2.6` | Higher quality |
-| Kling | `kling-3.0-omni` | 3-15 sec | Yes | `KLING_API_KEY` | `-p kling -m 3.0` | #1 Elo, multi-shot |
+| Kling | `kling-v2-6` | 5-10 sec | No | `KLING_API_KEY` | `-p kling -m v2.6` | High quality |
+| Kling | `kling-v3` | 5-10 sec | No | `KLING_API_KEY` | `-p kling -m v3` | Higher quality, multi-shot, lip-sync |
+| Kling | `kling-v3-omni` | 3-15 sec | Yes | `KLING_API_KEY` | `-p kling -m v3-omni` | Native audio (multilingual), character consistency |
 | Veo | `veo-3.1-fast-generate-preview` | 4-8 sec | Yes | `GOOGLE_API_KEY` | `-p veo` | Native audio, fast |
 | Veo | `veo-3.1-generate-preview` | 4-8 sec | Yes | `GOOGLE_API_KEY` | `-p veo --veo-model 3.1` | Native audio, higher quality |
 | Veo | `veo-3.0-generate-preview` | 5-8 sec | Yes | `GOOGLE_API_KEY` | `-p veo --veo-model 3.0` | Native audio |
-| Runway | `gen4.5` | 5-10 sec | No | `RUNWAY_API_SECRET` | `-p runway` | Best physics |
+| Runway | `gen4.5` | 2-10 sec | No | `RUNWAY_API_SECRET` | `-p runway` | Flagship, text+image-to-video (12 credits/sec) |
+| Runway | `gen4_turbo` | 5-10 sec | No | `RUNWAY_API_SECRET` | `-p runway --runway-model gen4_turbo` | Legacy, **image-to-video only** |
 
 ### Veo Advanced Options
 
@@ -108,7 +152,15 @@ All Gemini image models support 14 aspect ratios: `1:1`, `1:4`, `1:8`, `2:3`, `3
 
 ### Image-to-Video
 
-Same providers as text-to-video. Note: Kling uses `kling-v1-5` model for base64 images (v2.x requires URL).
+All text-to-video providers also support image-to-video. Key differences per provider:
+
+| Provider | Model | I2V Support | Image Input | Notes |
+|----------|-------|-------------|-------------|-------|
+| xAI Grok | `grok-imagine-video` | Yes | URL or data URI | Same pricing as T2V |
+| Kling | all v2.5+ models | Yes | **URL only** | Auto-uploads via ImgBB (`IMGBB_API_KEY`) |
+| Veo | all models | Yes | base64 (first frame) | Supports `--last-frame` for frame interpolation |
+| Runway | `gen4.5` | Yes | URL or data URI | Text+image-to-video |
+| Runway | `gen4_turbo` | **I2V only** | URL or data URI | Cannot do text-only generation |
 
 ---
 
@@ -116,7 +168,7 @@ Same providers as text-to-video. Note: Kling uses `kling-v1-5` model for base64 
 
 | Provider | Capability | Env Key | Notes |
 |----------|------------|---------|-------|
-| ElevenLabs | TTS, SFX, Voice Clone | `ELEVENLABS_API_KEY` | Default voice: Rachel |
+| ElevenLabs | TTS, SFX, Voice Clone | `ELEVENLABS_API_KEY` | Default voice: Rachel, model: eleven_v3 |
 | Whisper | Transcription | `OPENAI_API_KEY` | OpenAI API |
 | Replicate | Music generation | `REPLICATE_API_TOKEN` | MusicGen model |
 
@@ -135,9 +187,8 @@ export XAI_API_KEY="xai-..."          # xAI Grok
 
 # Media Providers
 export ELEVENLABS_API_KEY="..."       # TTS, SFX
-export STABILITY_API_KEY="sk-..."     # Stability AI
-export RUNWAY_API_SECRET="..."        # Runway Gen-4.5
-export KLING_API_KEY="..."            # Kling v2.x/3.0
+export RUNWAY_API_SECRET="..."        # Runway Gen-4 Turbo
+export KLING_API_KEY="..."            # Kling v2.x/v3
 export REPLICATE_API_TOKEN="..."      # Replicate (music)
 ```
 
@@ -145,14 +196,15 @@ export REPLICATE_API_TOKEN="..."      # Replicate (music)
 
 | Command | Required API Key | Model |
 |---------|-----------------|-------|
-| `vibe` (default) | `OPENAI_API_KEY` | GPT-4o (Agent LLM) |
+| `vibe` (default) | `OPENAI_API_KEY` | GPT-5-mini (Agent LLM) |
 | `vibe -p claude` | `ANTHROPIC_API_KEY` | Claude Sonnet 4.6 (Agent LLM) |
 | `vibe -p gemini` | `GOOGLE_API_KEY` | Gemini 2.5 Flash (Agent LLM) |
-| `vibe -p xai` | `XAI_API_KEY` | Grok-4 (Agent LLM) |
+| `vibe -p xai` | `XAI_API_KEY` | Grok 4.1 Fast (Agent LLM) |
 | `vibe generate image` | `GOOGLE_API_KEY` | Gemini Nano Banana |
 | `vibe generate image -p openai` | `OPENAI_API_KEY` | GPT Image 1.5 |
 | `vibe edit image` | `GOOGLE_API_KEY` | Gemini Nano Banana |
 | `vibe generate speech` | `ELEVENLABS_API_KEY` | ElevenLabs |
 | `vibe generate video` | `XAI_API_KEY` | Grok Imagine (default) |
 | `vibe generate video -p kling` | `KLING_API_KEY` | Kling v2.5-turbo |
+| `vibe generate image -p grok` | `XAI_API_KEY` | Grok Imagine |
 | `vibe generate video -p veo` | `GOOGLE_API_KEY` | Veo 3.1 |

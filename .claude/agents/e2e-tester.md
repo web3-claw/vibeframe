@@ -65,7 +65,7 @@ Every `ai` subcommand must respond to `--help` (56 commands):
 for cmd in analyze audio-restore auto-shorts b-roll background dub duck edit fade fill-gaps \
   gemini gemini-edit gemini-video grade highlights image isolate kling kling-status \
   motion music music-status narrate noise-reduce providers reframe regenerate-scene review \
-  script-to-video sd sd-img2img sd-outpaint sd-remove-bg sd-replace sd-upscale \
+  script-to-video \
   sfx speed-ramp storyboard style-transfer suggest text-overlay thumbnail translate-srt \
   silence-cut jump-cut caption track-object transcribe tts video video-cancel video-extend video-inpaint \
   video-interpolate video-status video-upscale viral voice-clone voices; do
@@ -172,11 +172,6 @@ pnpm vibe ai background "sunset cityscape" -o test-output/bg.png
 
 ```bash
 pnpm vibe ai gemini-edit test-output/img-gemini.png "make it blue"
-pnpm vibe ai sd-upscale test-output/img-sd.png -o test-output/sd-upscaled.png
-pnpm vibe ai sd-remove-bg test-output/img-sd.png -o test-output/sd-nobg.png
-pnpm vibe ai sd-img2img test-output/img-sd.png "watercolor painting" -o test-output/sd-img2img.png
-pnpm vibe ai sd-replace test-output/img-sd.png "triangle" "circle" -o test-output/sd-replaced.png
-pnpm vibe ai sd-outpaint test-output/img-sd.png -o test-output/sd-outpaint.png
 ```
 
 ### Phase 11: AI — TTS & Audio

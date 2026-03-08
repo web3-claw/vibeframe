@@ -8,12 +8,13 @@ import type {
 
 /**
  * Runway model versions
- * - gen4_turbo: Latest model (best quality)
+ * - gen4.5: Latest flagship model (text-to-video + image-to-video, 12 credits/sec)
+ * - gen4_turbo: Previous model (image-to-video only)
  */
-export type RunwayModel = "gen4_turbo";
+export type RunwayModel = "gen4_turbo" | "gen4.5";
 
-/** Default model - Gen-4 Turbo */
-const DEFAULT_MODEL: RunwayModel = "gen4_turbo";
+/** Default model - Gen-4.5 */
+const DEFAULT_MODEL: RunwayModel = "gen4.5";
 
 /**
  * Runway video generation options
@@ -27,8 +28,8 @@ export interface RunwayVideoOptions {
   seed?: number;
   /** Model to use */
   model?: RunwayModel;
-  /** Duration in seconds (5 or 10) */
-  duration?: 5 | 10;
+  /** Duration in seconds (2-10 for gen4.5, 5 or 10 for gen4_turbo) */
+  duration?: number;
   /** Aspect ratio */
   ratio?: "16:9" | "9:16";
   /** Enable watermark */
@@ -51,7 +52,8 @@ interface RunwayTaskResponse {
 
 /**
  * Runway provider for professional video generation
- * Uses Gen-4.5 model (top-ranked on Artificial Analysis benchmark)
+ * Default: Gen-4.5 (text-to-video + image-to-video, 12 credits/sec)
+ * Legacy: Gen-4 Turbo (image-to-video only)
  */
 export class RunwayProvider implements AIProvider {
   id = "runway";
@@ -107,32 +109,38 @@ export class RunwayProvider implements AIProvider {
       // Use specified model or default
       const model = (options?.model as RunwayModel) || DEFAULT_MODEL;
 
-      // Runway requires an image for video generation
-      if (!options?.referenceImage) {
+      // gen4_turbo requires an image; gen4.5 supports text-to-video
+      if (!options?.referenceImage && model !== "gen4.5") {
         return {
           id: "",
           status: "failed",
-          error: "Runway Gen-4.5 requires an input image. Use -i <image> to specify an image.",
+          error: `Runway ${model} requires an input image. Use -i <image> or switch to gen4.5 for text-to-video.`,
         };
       }
 
-      const imageData = typeof options.referenceImage === "string"
-        ? options.referenceImage
-        : await this.blobToDataUri(options.referenceImage as Blob);
+      // Determine endpoint based on whether image is provided
+      const hasImage = !!options?.referenceImage;
+      const endpoint = hasImage ? "image_to_video" : "text_to_video";
 
       const body: Record<string, unknown> = {
         model,
         promptText: prompt,
-        promptImage: imageData,
         ratio: apiRatio,
-        duration: options?.duration === 10 ? 10 : 5,
+        duration: this.clampDuration(options?.duration, model),
       };
+
+      if (hasImage) {
+        const imageData = typeof options!.referenceImage === "string"
+          ? options!.referenceImage
+          : await this.blobToDataUri(options!.referenceImage as Blob);
+        body.promptImage = imageData;
+      }
 
       if (options?.seed !== undefined) {
         body.seed = options.seed;
       }
 
-      const response = await fetch(`${this.baseUrl}/image_to_video`, {
+      const response = await fetch(`${this.baseUrl}/${endpoint}`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
@@ -335,6 +343,19 @@ export class RunwayProvider implements AIProvider {
       status: "failed",
       error: "Generation timed out",
     };
+  }
+
+  /**
+   * Clamp duration to valid range for the given model
+   */
+  private clampDuration(duration: number | undefined, model: RunwayModel): number {
+    if (model === "gen4.5") {
+      // gen4.5 supports 2-10 seconds (integer)
+      const d = duration ?? 5;
+      return Math.max(2, Math.min(10, Math.round(d)));
+    }
+    // gen4_turbo supports 5 or 10
+    return duration === 10 ? 10 : 5;
   }
 
   /**

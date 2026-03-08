@@ -8,11 +8,13 @@ import type {
 } from "../interface/types.js";
 
 /**
- * Kling model versions (v2.5+ only)
+ * Kling model versions (v2.5+)
  * - kling-v2-5-turbo: v2.5 turbo (fastest, best quality/speed ratio)
- * - kling-v2-6: v2.6 (latest, highest quality)
+ * - kling-v2-6: v2.6 (high quality)
+ * - kling-v3: v3 (higher quality, multi-shot, lip-sync)
+ * - kling-v3-omni: v3 omni (native audio, character consistency)
  */
-export type KlingModel = "kling-v2-5-turbo" | "kling-v2-6";
+export type KlingModel = "kling-v2-5-turbo" | "kling-v2-6" | "kling-v3" | "kling-v3-omni";
 
 /**
  * Kling video generation options
@@ -73,14 +75,15 @@ interface KlingTaskResponse {
 
 /**
  * Kling AI provider for high-quality video generation
- * Supports Kling v1, v1.5, v1.6, v2.0, and v2.1 models
  *
- * Model capabilities:
- * - v1/v1.5: Original models (v1.5 pro mode only)
- * - v1.6: Improved quality, std/pro modes
- * - v2.0/v2.1: Fastest generation, std/pro modes
+ * Supported models (v2.5+):
+ * - kling-v2-5-turbo: Fastest, best quality/speed ratio (default)
+ * - kling-v2-6: High quality
+ * - kling-v3: Higher quality, multi-shot, lip-sync
+ * - kling-v3-omni: Native audio (multilingual), character consistency
  *
- * Note: image2video requires image URL (not base64) for v2.x models
+ * Note: image2video requires image URL (not base64) for all supported models.
+ * Use ImgBB or similar service to upload base64 images before passing to Kling.
  */
 /**
  * Options for video extension
@@ -98,7 +101,7 @@ export interface KlingVideoExtendOptions {
 const DEFAULT_MODEL: KlingModel = "kling-v2-5-turbo";
 
 /** All v2.5+ models support std mode */
-const STD_MODE_MODELS: KlingModel[] = ["kling-v2-5-turbo", "kling-v2-6"];
+const STD_MODE_MODELS: KlingModel[] = ["kling-v2-5-turbo", "kling-v2-6", "kling-v3", "kling-v3-omni"];
 
 export class KlingProvider implements AIProvider {
   id = "kling";
@@ -214,26 +217,26 @@ export class KlingProvider implements AIProvider {
       if (options?.referenceImage) {
         const imageInput = options.referenceImage;
 
-        // v2.5/v2.6 models require image URL (not base64)
-        // Caller must provide a URL for image-to-video with v2.x models
+        // v2.5+ models require image URL (not base64)
+        // Caller must provide a URL for image-to-video with v2.x/v3 models
         if (typeof imageInput === "string") {
           if (imageInput.startsWith("http://") || imageInput.startsWith("https://")) {
-            // URL - works with v2.x models
+            // URL - works with v2.x/v3 models
             body.image = imageInput;
           } else {
-            // Base64 or data URI not supported for v2.x
+            // Base64 or data URI not supported for v2.x/v3
             return {
               id: "",
               status: "failed",
-              error: "Kling v2.5/v2.6 requires image URL, not base64. Upload image to a hosting service first.",
+              error: "Kling v2.5+ requires image URL, not base64. Upload image to a hosting service first.",
             };
           }
         } else {
-          // Blob not supported for v2.x
+          // Blob not supported for v2.x/v3
           return {
             id: "",
             status: "failed",
-            error: "Kling v2.5/v2.6 requires image URL, not Blob. Upload image to a hosting service first.",
+            error: "Kling v2.5+ requires image URL, not Blob. Upload image to a hosting service first.",
           };
         }
 

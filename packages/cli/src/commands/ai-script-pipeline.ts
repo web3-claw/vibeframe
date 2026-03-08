@@ -12,7 +12,7 @@
  * Also exports shared helpers: uploadToImgbb, extendVideoToTarget,
  * generateVideoWithRetryKling, generateVideoWithRetryRunway, generateVideoWithRetryVeo, waitForVideoWithRetry
  *
- * @dependencies Claude (storyboard), ElevenLabs (TTS), OpenAI/Gemini/Stability (images),
+ * @dependencies Claude (storyboard), ElevenLabs (TTS), OpenAI/Gemini (images),
  *              Kling/Runway (video), FFmpeg (assembly/extension)
  */
 
@@ -28,7 +28,7 @@ import {
   ElevenLabsProvider,
   KlingProvider,
   RunwayProvider,
-  StabilityProvider,
+  GrokProvider,
 } from "@vibeframe/ai-providers";
 import { getApiKey } from "../utils/api-key.js";
 import { getApiKeyFromConfig } from "../config/index.js";
@@ -413,7 +413,7 @@ export interface ScriptToVideoOptions {
   /** Video generation provider */
   generator?: "runway" | "kling" | "veo";
   /** Image generation provider */
-  imageProvider?: "openai" | "dalle" | "stability" | "gemini";
+  imageProvider?: "openai" | "dalle" | "gemini" | "grok";
   /** Video aspect ratio */
   aspectRatio?: "16:9" | "9:16" | "1:1";
   /** Stop after image generation (skip video) */
@@ -494,7 +494,7 @@ export interface ScriptToVideoResult {
  * Pipeline stages:
  * 1. Generate storyboard with Claude
  * 2. Generate per-scene voiceovers with ElevenLabs TTS
- * 3. Generate scene images (OpenAI/Gemini/Stability)
+ * 3. Generate scene images (OpenAI/Gemini)
  * 4. Generate scene videos (Kling/Runway) with extension to match narration
  * 4.5. Apply text overlays if present in storyboard
  * 5. Assemble .vibe.json project file
@@ -540,15 +540,15 @@ export async function executeScriptToVideo(
       if (!imageApiKey) {
         return { success: false, outputDir, scenes: 0, error: "OpenAI API key required for image generation" };
       }
-    } else if (imageProvider === "stability") {
-      imageApiKey = (await getApiKey("STABILITY_API_KEY", "Stability AI")) ?? undefined;
-      if (!imageApiKey) {
-        return { success: false, outputDir, scenes: 0, error: "Stability API key required for image generation" };
-      }
     } else if (imageProvider === "gemini") {
       imageApiKey = (await getApiKey("GOOGLE_API_KEY", "Google")) ?? undefined;
       if (!imageApiKey) {
         return { success: false, outputDir, scenes: 0, error: "Google API key required for Gemini image generation" };
+      }
+    } else if (imageProvider === "grok") {
+      imageApiKey = (await getApiKey("XAI_API_KEY", "xAI")) ?? undefined;
+      if (!imageApiKey) {
+        return { success: false, outputDir, scenes: 0, error: "xAI API key required for Grok image generation" };
       }
     }
 
@@ -695,26 +695,19 @@ export async function executeScriptToVideo(
       "9:16": "1024x1536",
       "1:1": "1024x1024",
     };
-    type StabilityAspectRatio = "16:9" | "1:1" | "21:9" | "2:3" | "3:2" | "4:5" | "5:4" | "9:16" | "9:21";
-    const stabilityAspectRatios: Record<string, StabilityAspectRatio> = {
-      "16:9": "16:9",
-      "9:16": "9:16",
-      "1:1": "1:1",
-    };
-
     let openaiImageInstance: OpenAIImageProvider | undefined;
-    let stabilityInstance: StabilityProvider | undefined;
     let geminiInstance: GeminiProvider | undefined;
+    let grokInstance: GrokProvider | undefined;
 
     if (imageProvider === "openai" || imageProvider === "dalle") {
       openaiImageInstance = new OpenAIImageProvider();
       await openaiImageInstance.initialize({ apiKey: imageApiKey! });
-    } else if (imageProvider === "stability") {
-      stabilityInstance = new StabilityProvider();
-      await stabilityInstance.initialize({ apiKey: imageApiKey! });
     } else if (imageProvider === "gemini") {
       geminiInstance = new GeminiProvider();
       await geminiInstance.initialize({ apiKey: imageApiKey! });
+    } else if (imageProvider === "grok") {
+      grokInstance = new GrokProvider();
+      await grokInstance.initialize({ apiKey: imageApiKey! });
     }
 
     const imagePaths: string[] = [];
@@ -743,20 +736,6 @@ export async function executeScriptToVideo(
             }
           }
           // else: imageResult.error is available but not captured
-        } else if (imageProvider === "stability" && stabilityInstance) {
-          const imageResult = await stabilityInstance.generateImage(imagePrompt, {
-            aspectRatio: stabilityAspectRatios[options.aspectRatio || "16:9"] || "16:9",
-            model: "sd3.5-large",
-          });
-          if (imageResult.success && imageResult.images?.[0]) {
-            const img = imageResult.images[0];
-            if (img.base64) {
-              imageBuffer = Buffer.from(img.base64, "base64");
-            } else if (img.url) {
-              imageUrl = img.url;
-            }
-          }
-          // else: imageResult.error is available but not captured
         } else if (imageProvider === "gemini" && geminiInstance) {
           const imageResult = await geminiInstance.generateImage(imagePrompt, {
             aspectRatio: (options.aspectRatio || "16:9") as "16:9" | "9:16" | "1:1",
@@ -765,6 +744,18 @@ export async function executeScriptToVideo(
             imageBuffer = Buffer.from(imageResult.images[0].base64, "base64");
           }
           // else: imageResult.error is available but not captured
+        } else if (imageProvider === "grok" && grokInstance) {
+          const imageResult = await grokInstance.generateImage(imagePrompt, {
+            aspectRatio: options.aspectRatio || "16:9",
+          });
+          if (imageResult.success && imageResult.images && imageResult.images.length > 0) {
+            const img = imageResult.images[0];
+            if (img.base64) {
+              imageBuffer = Buffer.from(img.base64, "base64");
+            } else if (img.url) {
+              imageUrl = img.url;
+            }
+          }
         }
 
         const imagePath = resolve(absOutputDir, `scene-${i + 1}.png`);
@@ -1153,7 +1144,7 @@ export interface RegenerateSceneOptions {
   /** Video generation provider */
   generator?: "kling" | "runway" | "veo";
   /** Image generation provider */
-  imageProvider?: "gemini" | "openai" | "stability";
+  imageProvider?: "gemini" | "openai" | "grok";
   /** ElevenLabs voice name or ID */
   voice?: string;
   /** Video aspect ratio */

@@ -43,7 +43,7 @@ vibe generate image "<prompt>" -o out.png
 vibe generate image "<prompt>" -o out.png -m latest        # Gemini latest (Nano Banana 2)
 vibe generate image "<prompt>" -o out.png -m pro           # Gemini Pro (4K)
 vibe generate image "<prompt>" -o out.png -p openai        # Use GPT Image
-vibe generate image "<prompt>" -o out.png -p stability     # Use Stability
+vibe generate image "<prompt>" -o out.png -p grok          # Use Grok Imagine
 vibe generate image "<prompt>" -o out.png -r 16:9          # Aspect ratio
 
 # Text-to-video (default: Grok Imagine — native audio)
@@ -52,8 +52,15 @@ vibe generate video "<prompt>" -o out.mp4 -p kling         # Kling
 vibe generate video "<prompt>" -o out.mp4 -p runway        # Runway Gen-4.5
 vibe generate video "<prompt>" -o out.mp4 -p veo           # Google Veo
 
-# Image-to-video
-vibe generate video "<prompt>" -i image.png -o out.mp4 -p runway
+# Runway text-to-video (gen4.5 default — no image needed)
+vibe generate video "<prompt>" -p runway -o out.mp4
+
+# Image-to-video (all providers support I2V)
+vibe generate video "<prompt>" -i image.png -o out.mp4                  # Grok (default)
+vibe generate video "<prompt>" -i image.png -o out.mp4 -p runway        # Runway gen4.5
+vibe generate video "<prompt>" -i image.png -o out.mp4 -p runway --runway-model gen4_turbo
+vibe generate video "<prompt>" -i image.png -o out.mp4 -p kling         # Kling (needs IMGBB_API_KEY)
+vibe generate video "<prompt>" -i image.png -o out.mp4 -p veo           # Veo (first frame)
 
 # Veo options
 vibe generate video "<prompt>" -p veo --resolution 1080p -o out.mp4
@@ -124,15 +131,11 @@ vibe edit speed-ramp <video> -o out.mp4 -s dramatic
 # Reframe aspect ratio (Claude Vision + FFmpeg)
 vibe edit reframe <video> -o out.mp4 -a 9:16               # Landscape → vertical
 
-# Image editing (Gemini, up to 3 input images with flash, 14 with pro)
-vibe edit image <image> "<instruction>" -o out.png
-vibe edit image <img1> <img2> "<instruction>" -o out.png -m pro
-
-# Image tools (Stability AI)
-vibe edit upscale <image> -o out.png
-vibe edit remove-bg <image> -o out.png
-vibe edit outpaint <image> -o out.png
-vibe edit replace <image> "<search>" "<replace>" -o out.png
+# Image editing (default: Gemini)
+vibe edit image <image> "<instruction>" -o out.png                    # Gemini Flash (default)
+vibe edit image <img1> <img2> "<instruction>" -o out.png -m pro       # Gemini Pro (14 images)
+vibe edit image <image> "<instruction>" -o out.png -p openai          # OpenAI GPT Image 1.5
+vibe edit image <image> "<instruction>" -o out.png -p grok            # Grok Imagine
 
 # Video tools
 vibe edit upscale-video <video> -o out.mp4
@@ -248,7 +251,9 @@ vibe edit grade captioned.mp4 -o final.mp4 --preset cinematic-warm
 |---------|-------------|
 | `generate image` (default) | `GOOGLE_API_KEY` |
 | `generate image -p openai` | `OPENAI_API_KEY` |
-| `edit image` | `GOOGLE_API_KEY` |
+| `edit image` (default) | `GOOGLE_API_KEY` |
+| `edit image -p openai` | `OPENAI_API_KEY` |
+| `edit image -p grok` | `XAI_API_KEY` |
 | `generate video` | `XAI_API_KEY` |
 | `generate video -p kling` | `KLING_API_KEY` |
 | `generate video -p runway` | `RUNWAY_API_SECRET` |

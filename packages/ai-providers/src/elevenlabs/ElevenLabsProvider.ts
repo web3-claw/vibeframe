@@ -77,7 +77,7 @@ export interface Voice {
 export interface TTSOptions {
   /** Voice ID to use */
   voiceId?: string;
-  /** Model to use (eleven_multilingual_v2, eleven_monolingual_v1) */
+  /** Model to use (eleven_v3, eleven_multilingual_v2, eleven_monolingual_v1) */
   model?: string;
   /** Stability (0-1) - higher = more consistent */
   stability?: number;
@@ -247,7 +247,7 @@ export class ElevenLabsProvider implements AIProvider {
         };
       }
 
-      const model = options.model || "eleven_multilingual_v2";
+      const model = options.model || "eleven_v3";
 
       const response = await fetch(
         `${this.baseUrl}/text-to-speech/${voiceId}`,

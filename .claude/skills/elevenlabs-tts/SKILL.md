@@ -49,7 +49,7 @@ POST https://api.elevenlabs.io/v1/text-to-speech/{voice_id}
 ```json
 {
   "text": "Your text here",
-  "model_id": "eleven_multilingual_v2",
+  "model_id": "eleven_v3",
   "voice_settings": {
     "stability": 0.5,
     "similarity_boost": 0.75,
@@ -63,7 +63,7 @@ POST https://api.elevenlabs.io/v1/text-to-speech/{voice_id}
 curl -X POST "https://api.elevenlabs.io/v1/text-to-speech/EXAVITQu4vr4xnSDxMaL" \
   -H "xi-api-key: $ELEVENLABS_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"text": "Hello world", "model_id": "eleven_multilingual_v2"}' \
+  -d '{"text": "Hello world", "model_id": "eleven_v3"}' \
   --output speech.mp3
 ```
 
@@ -164,7 +164,8 @@ vibe ai voices
 
 | Model | ID | Languages | Best For |
 |-------|-----|-----------|----------|
-| Multilingual v2 | `eleven_multilingual_v2` | 29 languages | General use |
+| v3 | `eleven_v3` | 32+ languages | **Default**. Latest, best quality |
+| Multilingual v2 | `eleven_multilingual_v2` | 29 languages | Legacy, stable |
 | Turbo v2.5 | `eleven_turbo_v2_5` | 32 languages | Low latency |
 | English v1 | `eleven_monolingual_v1` | English only | English content |
 

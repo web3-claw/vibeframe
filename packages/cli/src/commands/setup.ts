@@ -92,9 +92,9 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
   const providers: LLMProvider[] = ["claude", "openai", "gemini", "xai", "ollama"];
   const providerDescriptions: Record<LLMProvider, string> = {
     claude: "Best understanding, most capable",
-    openai: "GPT-4, reliable and fast",
+    openai: "GPT-5-mini, reliable and fast",
     gemini: "Google AI, good for general use",
-    xai: "Grok-3, xAI's latest model",
+    xai: "Grok 4.1, optimized for tool calling",
     ollama: "Free, local, no API key needed",
   };
   const providerLabels = providers.map((p) => {
@@ -182,7 +182,6 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
       { key: "runway", name: "Runway", desc: "Video Gen" },
       { key: "kling", name: "Kling", desc: "Video Gen" },
       { key: "imgbb", name: "ImgBB", desc: "Image Hosting (for Kling)" },
-      { key: "stability", name: "Stability AI", desc: "Images" },
       { key: "replicate", name: "Replicate", desc: "Various" },
     ];
 
@@ -460,7 +459,6 @@ async function showConfig(): Promise<void> {
     { key: "runway", name: "Runway", env: "RUNWAY_API_SECRET" },
     { key: "kling", name: "Kling", env: "KLING_API_KEY" },
     { key: "imgbb", name: "ImgBB", env: "IMGBB_API_KEY" },
-    { key: "stability", name: "Stability", env: "STABILITY_API_KEY" },
     { key: "replicate", name: "Replicate", env: "REPLICATE_API_TOKEN" },
   ];
 

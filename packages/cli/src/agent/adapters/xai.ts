@@ -15,7 +15,7 @@ import type {
 export class XAIAdapter implements LLMAdapter {
   readonly provider: LLMProvider = "xai";
   private client: OpenAI | null = null;
-  private model: string = "grok-4";
+  private model: string = "grok-4-1-fast-reasoning";
 
   async initialize(apiKey: string): Promise<void> {
     this.client = new OpenAI({

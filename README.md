@@ -129,7 +129,7 @@ Every command supports `--help`. Run `vibe --help` for a full list.
 | Group | Commands | Example |
 |-------|----------|---------|
 | **`vibe generate`** | `image`, `video`, `speech`, `sound-effect`, `music`, `motion`, `storyboard`, `thumbnail`, `background` | `vibe generate image "prompt" -o img.png` |
-| **`vibe edit`** | `silence-cut`, `jump-cut`, `caption`, `grade`, `reframe`, `speed-ramp`, `text-overlay`, `fade`, `noise-reduce`, `image`, `upscale`, `remove-bg`, `outpaint`, `replace`, `fill-gaps` | `vibe edit caption video.mp4 -o out.mp4` |
+| **`vibe edit`** | `silence-cut`, `jump-cut`, `caption`, `grade`, `reframe`, `speed-ramp`, `text-overlay`, `fade`, `noise-reduce`, `image`, `fill-gaps` | `vibe edit caption video.mp4 -o out.mp4` |
 | **`vibe analyze`** | `media`, `video`, `review`, `suggest` | `vibe analyze media video.mp4 "summarize"` |
 | **`vibe audio`** | `transcribe`, `voices`, `isolate`, `voice-clone`, `dub`, `duck` | `vibe audio transcribe audio.mp3` |
 | **`vibe pipeline`** | `script-to-video`, `highlights`, `auto-shorts`, `viral`, `b-roll`, `narrate`, `regenerate-scene` | `vibe pipeline script-to-video "..." -a 9:16` |
@@ -166,11 +166,11 @@ vibe agent -p ollama           # Use local Ollama
 | Category | Providers | Default |
 |----------|-----------|---------|
 | **Agent LLM** | OpenAI, Claude, Gemini, xAI, Ollama | GPT-4o |
-| **Image** | Gemini, OpenAI, Stability | Gemini Nano Banana |
+| **Image** | Gemini, OpenAI, xAI Grok | Gemini Nano Banana |
 | **Video** | xAI Grok, Kling, Runway, Veo | Grok Imagine |
 | **Audio** | ElevenLabs, Whisper | - |
 
-**Required API Keys:** `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `ELEVENLABS_API_KEY`, `RUNWAY_API_SECRET`, `KLING_API_KEY`, `XAI_API_KEY`, `STABILITY_API_KEY`
+**Required API Keys:** `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `ELEVENLABS_API_KEY`, `RUNWAY_API_SECRET`, `KLING_API_KEY`, `XAI_API_KEY`
 
 ---
 

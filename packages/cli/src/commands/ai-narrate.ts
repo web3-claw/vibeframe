@@ -31,7 +31,6 @@ import {
   openaiImageProvider,
   runwayProvider,
   klingProvider,
-  stabilityProvider,
   replicateProvider,
   GeminiProvider,
   OpenAIProvider,
@@ -259,7 +258,6 @@ ai
     providerRegistry.register(openaiImageProvider);
     providerRegistry.register(runwayProvider);
     providerRegistry.register(klingProvider);
-    providerRegistry.register(stabilityProvider);
     providerRegistry.register(replicateProvider);
 
     console.log();

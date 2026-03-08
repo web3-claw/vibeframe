@@ -28,11 +28,9 @@ export { RunwayProvider, runwayProvider } from "./runway/index.js";
 export { KlingProvider, klingProvider } from "./kling/index.js";
 export type { KlingVideoExtendOptions } from "./kling/index.js";
 export { GrokProvider, grokProvider } from "./grok/index.js";
-export type { GrokModel, GrokVideoOptions } from "./grok/index.js";
-export { StabilityProvider, stabilityProvider } from "./stability/index.js";
+export type { GrokModel, GrokVideoOptions, GrokImageOptions, GrokEditOptions } from "./grok/index.js";
 export { ReplicateProvider, replicateProvider } from "./replicate/index.js";
 export type { ReplicateUpscaleOptions, ReplicateUpscaleResult, ReplicateInpaintOptions, MusicGenerationOptions, MusicGenerationResult, AudioRestorationOptions, AudioRestorationResult } from "./replicate/index.js";
-export type { StabilityImageOptions, StabilityImageResult, StabilityImg2ImgOptions, StabilityUpscaleOptions, StabilitySearchReplaceOptions, StabilityOutpaintOptions } from "./stability/index.js";
 
 // Re-export commonly used types
 export type {

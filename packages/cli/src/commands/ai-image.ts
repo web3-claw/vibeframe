@@ -3,10 +3,8 @@
  * @description Image generation and editing commands for the VibeFrame CLI.
  *
  * ## Commands: vibe ai image, vibe ai thumbnail, vibe ai background,
- *             vibe ai sd, vibe ai sd-upscale, vibe ai sd-remove-bg,
- *             vibe ai sd-img2img, vibe ai sd-replace, vibe ai sd-outpaint,
  *             vibe ai gemini, vibe ai gemini-edit
- * ## Dependencies: OpenAI, Gemini, Stability, FFmpeg
+ * ## Dependencies: OpenAI, Gemini, FFmpeg
  *
  * Extracted from ai.ts as part of modularisation.
  * ai.ts calls registerImageCommands(aiCommand).
@@ -23,7 +21,6 @@ import ora from 'ora';
 import {
   GeminiProvider,
   OpenAIImageProvider,
-  StabilityProvider,
 } from '@vibeframe/ai-providers';
 import { getApiKey } from '../utils/api-key.js';
 import { execSafe, commandExists } from '../utils/exec-safe.js';
@@ -32,10 +29,10 @@ function _registerImageCommands(aiCommand: Command): void {
 
 aiCommand
   .command("image")
-  .description("Generate image using AI (Gemini, DALL-E, or Stability)")
+  .description("Generate image using AI (Gemini or DALL-E)")
   .argument("<prompt>", "Image description prompt")
-  .option("-p, --provider <provider>", "Provider: gemini, openai, stability, runway (dalle is deprecated)", "gemini")
-  .option("-k, --api-key <key>", "API key (or set env: OPENAI_API_KEY, GOOGLE_API_KEY, STABILITY_API_KEY)")
+  .option("-p, --provider <provider>", "Provider: gemini, openai, runway (dalle is deprecated)", "gemini")
+  .option("-k, --api-key <key>", "API key (or set env: OPENAI_API_KEY, GOOGLE_API_KEY)")
   .option("-o, --output <path>", "Output file path (downloads image)")
   .option("-s, --size <size>", "Image size (openai: 1024x1024, 1536x1024, 1024x1536)", "1024x1024")
   .option("-r, --ratio <ratio>", "Aspect ratio (gemini: 1:1, 1:4, 1:8, 4:1, 8:1, 16:9, 9:16, 3:4, 4:3, etc.)", "1:1")
@@ -46,10 +43,10 @@ aiCommand
   .action(async (prompt: string, options) => {
     try {
       const provider = options.provider.toLowerCase();
-      const validProviders = ["openai", "dalle", "gemini", "stability", "runway"];
+      const validProviders = ["openai", "dalle", "gemini", "runway"];
       if (!validProviders.includes(provider)) {
         console.error(chalk.red(`Invalid provider: ${provider}`));
-        console.error(chalk.dim(`Available providers: openai, gemini, stability, runway`));
+        console.error(chalk.dim(`Available providers: openai, gemini, runway`));
         process.exit(1);
       }
 
@@ -63,14 +60,12 @@ aiCommand
         openai: "OPENAI_API_KEY",
         dalle: "OPENAI_API_KEY", // backward compatibility
         gemini: "GOOGLE_API_KEY",
-        stability: "STABILITY_API_KEY",
         runway: "RUNWAY_API_SECRET",
       };
       const providerNameMap: Record<string, string> = {
         openai: "OpenAI",
         dalle: "OpenAI", // backward compatibility
         gemini: "Google",
-        stability: "Stability",
         runway: "Runway",
       };
       const envKey = envKeyMap[provider];
@@ -212,59 +207,6 @@ aiCommand
           const saveSpinner = ora("Saving image...").start();
           try {
             const img = result.images[0];
-            const buffer = Buffer.from(img.base64, "base64");
-            const outputPath = resolve(process.cwd(), options.output);
-            await mkdir(dirname(outputPath), { recursive: true });
-            await writeFile(outputPath, buffer);
-            saveSpinner.succeed(chalk.green(`Saved to: ${outputPath}`));
-          } catch (err) {
-            saveSpinner.fail(chalk.red(`Failed to save image: ${err instanceof Error ? err.message : err}`));
-          }
-        } else {
-          console.log(chalk.yellow("Use -o to save the generated image to a file"));
-        }
-      } else if (provider === "stability") {
-        const stability = new StabilityProvider();
-        await stability.initialize({ apiKey });
-
-        // Map size to Stability aspect ratio
-        const aspectRatioMap: Record<string, "16:9" | "1:1" | "9:16"> = {
-          "1024x1024": "1:1",
-          "1536x1024": "16:9",
-          "1024x1536": "9:16",
-        };
-
-        const result = await stability.generateImage(prompt, {
-          aspectRatio: aspectRatioMap[options.size] || "1:1",
-          count: parseInt(options.count),
-        });
-
-        if (!result.success || !result.images) {
-          spinner.fail(chalk.red(result.error || "Image generation failed"));
-          process.exit(1);
-        }
-
-        spinner.succeed(chalk.green(`Generated ${result.images.length} image(s) with Stability AI`));
-
-        console.log();
-        console.log(chalk.bold.cyan("Generated Images"));
-        console.log(chalk.dim("─".repeat(60)));
-
-        for (let i = 0; i < result.images.length; i++) {
-          console.log();
-          console.log(`${chalk.yellow(`[${i + 1}]`)} (base64 image)`);
-        }
-        console.log();
-
-        // Save if output specified
-        if (options.output && result.images.length > 0) {
-          const saveSpinner = ora("Saving image...").start();
-          try {
-            const img = result.images[0];
-            if (!img.base64) {
-              saveSpinner.fail(chalk.red("No image data returned"));
-              process.exit(1);
-            }
             const buffer = Buffer.from(img.base64, "base64");
             const outputPath = resolve(process.cwd(), options.output);
             await mkdir(dirname(outputPath), { recursive: true });
@@ -528,366 +470,6 @@ aiCommand
       process.exit(1);
     }
   });
-aiCommand
-  .command("sd")
-  .description("Generate image using Stable Diffusion (Stability AI)")
-  .argument("<prompt>", "Text prompt describing the image")
-  .option("-k, --api-key <key>", "Stability AI API key (or set STABILITY_API_KEY env)")
-  .option("-o, --output <path>", "Output file path", "output.png")
-  .option("-m, --model <model>", "Model: sd3.5-large, sd3.5-medium, stable-image-ultra", "sd3.5-large")
-  .option("-r, --ratio <ratio>", "Aspect ratio: 16:9, 1:1, 9:16, 21:9, etc.", "1:1")
-  .option("-n, --negative <prompt>", "Negative prompt (what to avoid)")
-  .option("-s, --seed <number>", "Random seed for reproducibility")
-  .option("--style <preset>", "Style preset: photographic, anime, digital-art, cinematic, etc.")
-  .option("-f, --format <format>", "Output format: png, jpeg, webp", "png")
-  .action(async (prompt: string, options) => {
-    try {
-      const apiKey = await getApiKey("STABILITY_API_KEY", "Stability AI", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("Stability AI API key required."));
-        console.error(chalk.dim("Use --api-key or set STABILITY_API_KEY environment variable"));
-        process.exit(1);
-      }
-
-      const spinner = ora("Generating image with Stable Diffusion...").start();
-
-      const stability = new StabilityProvider();
-      await stability.initialize({ apiKey });
-
-      const result = await stability.generateImage(prompt, {
-        model: options.model,
-        aspectRatio: options.ratio,
-        negativePrompt: options.negative,
-        seed: options.seed ? parseInt(options.seed) : undefined,
-        stylePreset: options.style,
-        outputFormat: options.format,
-      });
-
-      if (!result.success || !result.images || result.images.length === 0) {
-        spinner.fail(chalk.red(result.error || "Image generation failed"));
-        process.exit(1);
-      }
-
-      spinner.succeed(chalk.green("Image generated"));
-
-      const img = result.images[0];
-      if (img.seed) {
-        console.log(chalk.dim(`Seed: ${img.seed}`));
-      }
-
-      // Save the image
-      if (img.base64) {
-        const outputPath = resolve(process.cwd(), options.output);
-        await mkdir(dirname(outputPath), { recursive: true });
-        const buffer = Buffer.from(img.base64, "base64");
-        await writeFile(outputPath, buffer);
-        console.log(chalk.green(`Saved to: ${outputPath}`));
-      }
-    } catch (error) {
-      console.error(chalk.red("Image generation failed"));
-      console.error(error);
-      process.exit(1);
-    }
-  });
-
-aiCommand
-  .command("sd-upscale")
-  .description("Upscale image using Stability AI")
-  .argument("<image>", "Input image file path")
-  .option("-k, --api-key <key>", "Stability AI API key (or set STABILITY_API_KEY env)")
-  .option("-o, --output <path>", "Output file path", "upscaled.png")
-  .option("-t, --type <type>", "Upscale type: fast, conservative, creative", "fast")
-  .option("-c, --creativity <value>", "Creativity (0-0.35, for creative upscale)")
-  .option("-f, --format <format>", "Output format: png, jpeg, webp", "png")
-  .action(async (imagePath: string, options) => {
-    try {
-      const apiKey = await getApiKey("STABILITY_API_KEY", "Stability AI", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("Stability AI API key required"));
-        process.exit(1);
-      }
-
-      const spinner = ora("Reading image...").start();
-
-      const absPath = resolve(process.cwd(), imagePath);
-      const imageBuffer = await readFile(absPath);
-
-      spinner.text = "Upscaling image...";
-
-      const stability = new StabilityProvider();
-      await stability.initialize({ apiKey });
-
-      const result = await stability.upscaleImage(imageBuffer, {
-        type: options.type as "fast" | "conservative" | "creative",
-        creativity: options.creativity ? parseFloat(options.creativity) : undefined,
-        outputFormat: options.format,
-      });
-
-      if (!result.success || !result.images || result.images.length === 0) {
-        spinner.fail(chalk.red(result.error || "Upscale failed"));
-        process.exit(1);
-      }
-
-      spinner.succeed(chalk.green("Image upscaled"));
-
-      const img = result.images[0];
-      if (img.base64) {
-        const outputPath = resolve(process.cwd(), options.output);
-        await mkdir(dirname(outputPath), { recursive: true });
-        const buffer = Buffer.from(img.base64, "base64");
-        await writeFile(outputPath, buffer);
-        console.log(chalk.green(`Saved to: ${outputPath}`));
-      }
-    } catch (error) {
-      console.error(chalk.red("Upscale failed"));
-      console.error(error);
-      process.exit(1);
-    }
-  });
-
-aiCommand
-  .command("sd-remove-bg")
-  .description("Remove background from image using Stability AI")
-  .argument("<image>", "Input image file path")
-  .option("-k, --api-key <key>", "Stability AI API key (or set STABILITY_API_KEY env)")
-  .option("-o, --output <path>", "Output file path", "no-bg.png")
-  .option("-f, --format <format>", "Output format: png, webp", "png")
-  .action(async (imagePath: string, options) => {
-    try {
-      const apiKey = await getApiKey("STABILITY_API_KEY", "Stability AI", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("Stability AI API key required"));
-        process.exit(1);
-      }
-
-      const spinner = ora("Reading image...").start();
-
-      const absPath = resolve(process.cwd(), imagePath);
-      const imageBuffer = await readFile(absPath);
-
-      spinner.text = "Removing background...";
-
-      const stability = new StabilityProvider();
-      await stability.initialize({ apiKey });
-
-      const result = await stability.removeBackground(imageBuffer, options.format as "png" | "webp");
-
-      if (!result.success || !result.images || result.images.length === 0) {
-        spinner.fail(chalk.red(result.error || "Background removal failed"));
-        process.exit(1);
-      }
-
-      spinner.succeed(chalk.green("Background removed"));
-
-      const img = result.images[0];
-      if (img.base64) {
-        const outputPath = resolve(process.cwd(), options.output);
-        await mkdir(dirname(outputPath), { recursive: true });
-        const buffer = Buffer.from(img.base64, "base64");
-        await writeFile(outputPath, buffer);
-        console.log(chalk.green(`Saved to: ${outputPath}`));
-      }
-    } catch (error) {
-      console.error(chalk.red("Background removal failed"));
-      console.error(error);
-      process.exit(1);
-    }
-  });
-
-aiCommand
-  .command("sd-img2img")
-  .description("Transform image using Stable Diffusion (image-to-image)")
-  .argument("<image>", "Input image file path")
-  .argument("<prompt>", "Text prompt describing the transformation")
-  .option("-k, --api-key <key>", "Stability AI API key (or set STABILITY_API_KEY env)")
-  .option("-o, --output <path>", "Output file path", "transformed.png")
-  .option("-t, --strength <value>", "Transformation strength (0-1)", "0.35")
-  .option("-n, --negative <prompt>", "Negative prompt (what to avoid)")
-  .option("-s, --seed <number>", "Random seed for reproducibility")
-  .option("-f, --format <format>", "Output format: png, jpeg, webp", "png")
-  .action(async (imagePath: string, prompt: string, options) => {
-    try {
-      const apiKey = await getApiKey("STABILITY_API_KEY", "Stability AI", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("Stability AI API key required"));
-        process.exit(1);
-      }
-
-      const spinner = ora("Reading image...").start();
-
-      const absPath = resolve(process.cwd(), imagePath);
-      const imageBuffer = await readFile(absPath);
-
-      spinner.text = "Transforming image...";
-
-      const stability = new StabilityProvider();
-      await stability.initialize({ apiKey });
-
-      const result = await stability.imageToImage(imageBuffer, prompt, {
-        strength: parseFloat(options.strength),
-        negativePrompt: options.negative,
-        seed: options.seed ? parseInt(options.seed) : undefined,
-        outputFormat: options.format,
-      });
-
-      if (!result.success || !result.images || result.images.length === 0) {
-        spinner.fail(chalk.red(result.error || "Transformation failed"));
-        process.exit(1);
-      }
-
-      spinner.succeed(chalk.green("Image transformed"));
-
-      const img = result.images[0];
-      if (img.base64) {
-        const outputPath = resolve(process.cwd(), options.output);
-        await mkdir(dirname(outputPath), { recursive: true });
-        const buffer = Buffer.from(img.base64, "base64");
-        await writeFile(outputPath, buffer);
-        console.log(chalk.green(`Saved to: ${outputPath}`));
-      }
-    } catch (error) {
-      console.error(chalk.red("Transformation failed"));
-      console.error(error);
-      process.exit(1);
-    }
-  });
-
-aiCommand
-  .command("sd-replace")
-  .description("Search and replace objects in image using Stability AI")
-  .argument("<image>", "Input image file path")
-  .argument("<search>", "What to search for in the image")
-  .argument("<replace>", "What to replace it with")
-  .option("-k, --api-key <key>", "Stability AI API key (or set STABILITY_API_KEY env)")
-  .option("-o, --output <path>", "Output file path", "replaced.png")
-  .option("-n, --negative <prompt>", "Negative prompt (what to avoid)")
-  .option("-s, --seed <number>", "Random seed for reproducibility")
-  .option("-f, --format <format>", "Output format: png, jpeg, webp", "png")
-  .action(async (imagePath: string, search: string, replace: string, options) => {
-    try {
-      const apiKey = await getApiKey("STABILITY_API_KEY", "Stability AI", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("Stability AI API key required"));
-        process.exit(1);
-      }
-
-      const spinner = ora("Reading image...").start();
-
-      const absPath = resolve(process.cwd(), imagePath);
-      const imageBuffer = await readFile(absPath);
-
-      spinner.text = "Replacing objects...";
-
-      const stability = new StabilityProvider();
-      await stability.initialize({ apiKey });
-
-      const result = await stability.searchAndReplace(imageBuffer, search, replace, {
-        negativePrompt: options.negative,
-        seed: options.seed ? parseInt(options.seed) : undefined,
-        outputFormat: options.format,
-      });
-
-      if (!result.success || !result.images || result.images.length === 0) {
-        spinner.fail(chalk.red(result.error || "Search and replace failed"));
-        process.exit(1);
-      }
-
-      spinner.succeed(chalk.green("Objects replaced"));
-
-      const img = result.images[0];
-      if (img.seed) {
-        console.log(chalk.dim(`Seed: ${img.seed}`));
-      }
-      if (img.base64) {
-        const outputPath = resolve(process.cwd(), options.output);
-        await mkdir(dirname(outputPath), { recursive: true });
-        const buffer = Buffer.from(img.base64, "base64");
-        await writeFile(outputPath, buffer);
-        console.log(chalk.green(`Saved to: ${outputPath}`));
-      }
-    } catch (error) {
-      console.error(chalk.red("Search and replace failed"));
-      console.error(error);
-      process.exit(1);
-    }
-  });
-
-aiCommand
-  .command("sd-outpaint")
-  .description("Extend image canvas (outpainting) using Stability AI")
-  .argument("<image>", "Input image file path")
-  .option("-k, --api-key <key>", "Stability AI API key (or set STABILITY_API_KEY env)")
-  .option("-o, --output <path>", "Output file path", "outpainted.png")
-  .option("--left <pixels>", "Pixels to extend on the left (0-2000)")
-  .option("--right <pixels>", "Pixels to extend on the right (0-2000)")
-  .option("--up <pixels>", "Pixels to extend upward (0-2000)")
-  .option("--down <pixels>", "Pixels to extend downward (0-2000)")
-  .option("-p, --prompt <text>", "Prompt for the extended area")
-  .option("-c, --creativity <value>", "Creativity level (0-1, default: 0.5)")
-  .option("-f, --format <format>", "Output format: png, jpeg, webp", "png")
-  .action(async (imagePath: string, options) => {
-    try {
-      const apiKey = await getApiKey("STABILITY_API_KEY", "Stability AI", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("Stability AI API key required"));
-        process.exit(1);
-      }
-
-      const left = options.left ? parseInt(options.left) : 0;
-      const right = options.right ? parseInt(options.right) : 0;
-      const up = options.up ? parseInt(options.up) : 0;
-      const down = options.down ? parseInt(options.down) : 0;
-
-      if (left === 0 && right === 0 && up === 0 && down === 0) {
-        console.error(chalk.red("At least one direction (--left, --right, --up, --down) must be specified"));
-        process.exit(1);
-      }
-
-      const spinner = ora("Reading image...").start();
-
-      const absPath = resolve(process.cwd(), imagePath);
-      const imageBuffer = await readFile(absPath);
-
-      spinner.text = "Extending image...";
-
-      const stability = new StabilityProvider();
-      await stability.initialize({ apiKey });
-
-      const result = await stability.outpaint(imageBuffer, {
-        left,
-        right,
-        up,
-        down,
-        prompt: options.prompt,
-        creativity: options.creativity ? parseFloat(options.creativity) : undefined,
-        outputFormat: options.format,
-      });
-
-      if (!result.success || !result.images || result.images.length === 0) {
-        spinner.fail(chalk.red(result.error || "Outpainting failed"));
-        process.exit(1);
-      }
-
-      spinner.succeed(chalk.green("Image extended"));
-
-      const img = result.images[0];
-      if (img.seed) {
-        console.log(chalk.dim(`Seed: ${img.seed}`));
-      }
-      if (img.base64) {
-        const outputPath = resolve(process.cwd(), options.output);
-        await mkdir(dirname(outputPath), { recursive: true });
-        const buffer = Buffer.from(img.base64, "base64");
-        await writeFile(outputPath, buffer);
-        console.log(chalk.green(`Saved to: ${outputPath}`));
-      }
-    } catch (error) {
-      console.error(chalk.red("Outpainting failed"));
-      console.error(error);
-      process.exit(1);
-    }
-  });
-
 // Gemini (Nano Banana) commands
 aiCommand
   .command("gemini")

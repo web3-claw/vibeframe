@@ -54,7 +54,8 @@ export type AICapability =
   | "auto-shorts"
   | "object-tracking"
   | "audio-ducking"
-  | "vision";
+  | "vision"
+  | "image-editing";
 
 /**
  * Lifecycle status of an asynchronous generation job.

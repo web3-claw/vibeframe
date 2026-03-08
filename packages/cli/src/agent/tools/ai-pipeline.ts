@@ -41,7 +41,7 @@ function getTimestamp(): string {
 const scriptToVideoDef: ToolDefinition = {
   name: "pipeline_script_to_video",
   description:
-    "Generate complete video from text script. Full pipeline: storyboard (Claude/OpenAI/Gemini) → ElevenLabs TTS → Image gen (DALL-E/Stability/Gemini) → Video gen (Runway/Kling). Creates project file with all assets.",
+    "Generate complete video from text script. Full pipeline: storyboard (Claude/OpenAI/Gemini) → ElevenLabs TTS → Image gen (DALL-E/Gemini) → Video gen (Runway/Kling). Creates project file with all assets.",
   parameters: {
     type: "object",
     properties: {
@@ -69,7 +69,7 @@ const scriptToVideoDef: ToolDefinition = {
       imageProvider: {
         type: "string",
         description: "Image provider to use",
-        enum: ["openai", "stability", "gemini"],
+        enum: ["openai", "gemini", "grok"],
       },
       aspectRatio: {
         type: "string",
@@ -296,17 +296,17 @@ const analyzeDef: ToolDefinition = {
   },
 };
 
-const geminiEditDef: ToolDefinition = {
+const editImageDef: ToolDefinition = {
   name: "edit_image",
   description:
-    "Edit or compose multiple images using Gemini. Flash model supports up to 3 images, Pro model supports up to 14 images. Use for image editing, style transfer, or multi-image composition.",
+    "Edit images using AI. Supports Gemini (up to 14 images, default), OpenAI GPT Image 1.5 (up to 16 images), or Grok Imagine (1 image). Use for image editing, style transfer, or multi-image composition.",
   parameters: {
     type: "object",
     properties: {
       images: {
         type: "array",
         items: { type: "string", description: "Image file path" },
-        description: "Input image file paths (1-14 images depending on model)",
+        description: "Input image file paths",
       },
       prompt: {
         type: "string",
@@ -316,9 +316,14 @@ const geminiEditDef: ToolDefinition = {
         type: "string",
         description: "Output file path (default: edited-{timestamp}.png)",
       },
+      provider: {
+        type: "string",
+        description: "Provider: gemini (default, up to 14 images), openai (up to 16 images), grok (1 image)",
+        enum: ["gemini", "openai", "grok"],
+      },
       model: {
         type: "string",
-        description: "Model to use: flash (max 3 images, fast) or pro (max 14 images, higher quality)",
+        description: "Model to use (Gemini only): flash (max 3 images, fast) or pro (max 14 images, higher quality)",
         enum: ["flash", "pro"],
       },
       aspectRatio: {
@@ -328,7 +333,7 @@ const geminiEditDef: ToolDefinition = {
       },
       resolution: {
         type: "string",
-        description: "Output resolution (Pro model only): 1K, 2K, 4K",
+        description: "Output resolution (Gemini Pro model only): 1K, 2K, 4K",
         enum: ["1K", "2K", "4K"],
       },
     },
@@ -402,7 +407,7 @@ const scriptToVideoHandler: ToolHandler = async (args, context): Promise<ToolRes
       duration: args.duration as number | undefined,
       voice: args.voice as string | undefined,
       generator: args.generator as "runway" | "kling" | undefined,
-      imageProvider: args.imageProvider as "openai" | "stability" | "gemini" | undefined,
+      imageProvider: args.imageProvider as "openai" | "gemini" | undefined,
       aspectRatio: args.aspectRatio as "16:9" | "9:16" | "1:1" | undefined,
       imagesOnly: args.imagesOnly as boolean | undefined,
       noVoiceover: args.noVoiceover as boolean | undefined,
@@ -745,33 +750,63 @@ const analyzeHandler: ToolHandler = async (args, context): Promise<ToolResult> =
   }
 };
 
-const geminiEditHandler: ToolHandler = async (args, context): Promise<ToolResult> => {
+const editImageHandler: ToolHandler = async (args, context): Promise<ToolResult> => {
   const images = args.images as string[];
   const prompt = args.prompt as string;
   const output = (args.output as string) || `edited-${getTimestamp()}.png`;
+  const provider = (args.provider as "gemini" | "openai" | "grok") || "gemini";
   const model = (args.model as "flash" | "pro") || "flash";
   const aspectRatio = args.aspectRatio as string | undefined;
   const resolution = args.resolution as string | undefined;
 
   try {
-    const apiKey = await getApiKeyFromConfig("google");
+    // Provider-specific API key
+    const apiKeyMap: Record<string, string> = {
+      gemini: "google",
+      openai: "openai",
+      grok: "xai",
+    };
+    const apiKey = await getApiKeyFromConfig(apiKeyMap[provider] || "google");
     if (!apiKey) {
+      const keyNames: Record<string, string> = {
+        gemini: "Google (GOOGLE_API_KEY)",
+        openai: "OpenAI (OPENAI_API_KEY)",
+        grok: "xAI (XAI_API_KEY)",
+      };
       return {
         toolCallId: "",
         success: false,
         output: "",
-        error: "Google API key required. Configure via 'vibe setup'.",
+        error: `${keyNames[provider]} API key required. Configure via 'vibe setup'.`,
       };
     }
 
-    // Validate image count
-    const maxImages = model === "pro" ? 14 : 3;
-    if (images.length > maxImages) {
+    // Validate image count per provider
+    if (provider === "grok" && images.length > 1) {
       return {
         toolCallId: "",
         success: false,
         output: "",
-        error: `Too many images. ${model} model supports up to ${maxImages} images.`,
+        error: "Grok supports only 1 input image for editing. Use gemini (up to 14) or openai (up to 16) for multi-image editing.",
+      };
+    }
+    if (provider === "gemini") {
+      const maxImages = model === "pro" ? 14 : 3;
+      if (images.length > maxImages) {
+        return {
+          toolCallId: "",
+          success: false,
+          output: "",
+          error: `Too many images. Gemini ${model} model supports up to ${maxImages} images.`,
+        };
+      }
+    }
+    if (provider === "openai" && images.length > 16) {
+      return {
+        toolCallId: "",
+        success: false,
+        output: "",
+        error: "OpenAI supports up to 16 input images for editing.",
       };
     }
 
@@ -783,15 +818,32 @@ const geminiEditHandler: ToolHandler = async (args, context): Promise<ToolResult
       imageBuffers.push(buffer);
     }
 
-    const { GeminiProvider } = await import("@vibeframe/ai-providers");
-    const gemini = new GeminiProvider();
-    await gemini.initialize({ apiKey });
+    let result: import("@vibeframe/ai-providers").ImageResult;
+    let usedProvider = provider;
 
-    const result = await gemini.editImage(imageBuffers, prompt, {
-      model,
-      aspectRatio: aspectRatio as "1:1" | "16:9" | "9:16" | "3:4" | "4:3" | "3:2" | "2:3" | "21:9" | undefined,
-      resolution: resolution as "1K" | "2K" | "4K" | undefined,
-    });
+    if (provider === "openai") {
+      const { OpenAIImageProvider } = await import("@vibeframe/ai-providers");
+      const openai = new OpenAIImageProvider();
+      await openai.initialize({ apiKey });
+      result = await openai.editImage(imageBuffers, prompt);
+    } else if (provider === "grok") {
+      const { GrokProvider } = await import("@vibeframe/ai-providers");
+      const grok = new GrokProvider();
+      await grok.initialize({ apiKey });
+      result = await grok.editImage(imageBuffers[0], prompt, {
+        aspectRatio: aspectRatio,
+      });
+    } else {
+      const { GeminiProvider } = await import("@vibeframe/ai-providers");
+      const gemini = new GeminiProvider();
+      await gemini.initialize({ apiKey });
+      result = await gemini.editImage(imageBuffers, prompt, {
+        model,
+        aspectRatio: aspectRatio as "1:1" | "16:9" | "9:16" | "3:4" | "4:3" | "3:2" | "2:3" | "21:9" | undefined,
+        resolution: resolution as "1K" | "2K" | "4K" | undefined,
+      });
+      usedProvider = "gemini";
+    }
 
     if (!result.success || !result.images || result.images.length === 0) {
       return {
@@ -802,18 +854,22 @@ const geminiEditHandler: ToolHandler = async (args, context): Promise<ToolResult
       };
     }
 
-    // Save the edited image
+    // Save the edited image (handle both base64 and URL)
     const img = result.images[0];
+    const outputPath = resolve(context.workingDirectory, output);
     if (img.base64) {
-      const outputPath = resolve(context.workingDirectory, output);
       const buffer = Buffer.from(img.base64, "base64");
       await writeFile(outputPath, buffer);
+    } else if (img.url) {
+      const resp = await fetch(img.url);
+      const arrayBuf = await resp.arrayBuffer();
+      await writeFile(outputPath, Buffer.from(arrayBuf));
     }
 
     return {
       toolCallId: "",
       success: true,
-      output: `Image edited: ${output}\nInput images: ${images.length}\nModel: ${model}\nPrompt: ${prompt}`,
+      output: `Image edited: ${output}\nProvider: ${usedProvider}\nInput images: ${images.length}\nPrompt: ${prompt}`,
     };
   } catch (error) {
     return {
@@ -898,6 +954,6 @@ export function registerPipelineTools(registry: ToolRegistry): void {
   registry.register(autoShortsDef, autoShortsHandler);
   registry.register(geminiVideoDef, geminiVideoHandler);
   registry.register(analyzeDef, analyzeHandler);
-  registry.register(geminiEditDef, geminiEditHandler);
+  registry.register(editImageDef, editImageHandler);
   registry.register(regenerateSceneDef, regenerateSceneHandler);
 }

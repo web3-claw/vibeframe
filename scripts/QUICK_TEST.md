@@ -107,8 +107,8 @@ RUNWAY_API_SECRET=...
 > **Model**: Google Gemini Nano Banana (`gemini-2.5-flash-image`, default)
 > **How it works**: Text prompt → Gemini image generation API (Nano Banana) → Save PNG
 > **Gemini model options**: `-m flash` (default, fast, 1024px) / `-m pro` (Nano Banana Pro `gemini-3-pro-image-preview`, higher quality, up to 4K, Thinking mode)
-> **Other providers**: `--provider openai` (GPT Image 1.5), `--provider stability` (Stability AI SDXL), `--provider runway` (Runway image)
-> **Required API key**: `GOOGLE_API_KEY` — For other providers: openai → `OPENAI_API_KEY`, stability → `STABILITY_API_KEY`, runway → `RUNWAY_API_SECRET`
+> **Other providers**: `--provider openai` (GPT Image 1.5), `--provider runway` (Runway image)
+> **Required API key**: `GOOGLE_API_KEY` — For other providers: openai → `OPENAI_API_KEY`, runway → `RUNWAY_API_SECRET`
 
 ```bash
 vibe ai image "a golden retriever on a beach" -o test-results/dog.png --provider gemini
@@ -122,7 +122,7 @@ Pass: `dog.png` shows a dog on a beach
 > **Model**: Google Gemini Nano Banana (`gemini-2.5-flash-image`, default)
 > **How it works**: Original image + edit instruction text → Gemini multimodal editing API → Save modified PNG
 > **Model options**: `-m flash` (default, up to 3 input images) / `-m pro` (Nano Banana Pro `gemini-3-pro-image-preview`, up to 14 input images, up to 4K, Thinking mode, more precise editing)
-> **Note**: `gemini-edit` is Gemini-only. Stability AI's `ai sd-replace`/`ai sd-img2img` offer similar functionality.
+> **Note**: `gemini-edit` is Gemini-only. Use `vibe edit image` for editing with natural language instructions.
 > **Required API key**: `GOOGLE_API_KEY`
 
 ```bash

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.4] - 2026-03-08
+
+### Fixed
+- Runway error message: gen4.5 no longer incorrectly requires an input image (gen4_turbo still does)
+- "Runway Gen-3" display string updated to show actual model name (gen4.5/gen4_turbo)
+- Agent tool Kling image-to-video now auto-uploads base64 images to ImgBB (was failing with base64 error)
+- KlingProvider comments updated to reflect current v2.5+ models (removed stale v1/v1.5/v1.6/v2.0/v2.1 references)
+
+### Changed
+- MODELS.md Image-to-Video section rewritten with per-provider table (image input type, I2V support)
+- Removed outdated `kling-v1-5` reference from MODELS.md
+- Added `grok` provider to legacy `vibe ai video` command (was only in `vibe generate video`)
+- CLI reference updated with Image-to-Video examples for all providers
+
 ## [0.19.4] - 2026-02-24
 
 ### Security

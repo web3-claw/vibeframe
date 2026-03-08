@@ -60,6 +60,10 @@ export interface ImageEditOptions {
   size?: "1024x1024" | "512x512" | "256x256";
   /** Number of variations */
   n?: number;
+  /** Model for editing (default: gpt-image-1.5) */
+  model?: GPTImageModel;
+  /** Quality tier for editing */
+  quality?: GPTImageQuality;
 }
 
 /** Default model - GPT Image 1.5 is fastest and best quality */
@@ -72,7 +76,7 @@ export class OpenAIImageProvider implements AIProvider {
   id = "openai-image";
   name = "OpenAI GPT Image";
   description = "AI image generation with GPT Image 1.5 (fastest, best quality)";
-  capabilities: AICapability[] = ["text-to-image", "background-removal"];
+  capabilities: AICapability[] = ["text-to-image", "background-removal", "image-editing"];
   iconUrl = "/icons/openai.svg";
   isAvailable = true;
 
@@ -242,6 +246,97 @@ export class OpenAIImageProvider implements AIProvider {
       size: sizeMap[aspectRatio],
       quality: "high",
     });
+  }
+
+  /**
+   * Edit images using GPT Image 1.5
+   * Supports up to 16 input images with text instruction-based editing
+   */
+  async editImage(
+    imageBuffers: Buffer[],
+    prompt: string,
+    options: ImageEditOptions = {}
+  ): Promise<ImageResult> {
+    if (!this.apiKey) {
+      return {
+        success: false,
+        error: "OpenAI API key not configured",
+      };
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append("model", options.model || DEFAULT_MODEL);
+      formData.append("prompt", prompt);
+
+      // Add images (up to 16)
+      for (const buf of imageBuffers) {
+        const uint8Array = new Uint8Array(buf);
+        formData.append("image[]", new Blob([uint8Array]), "image.png");
+      }
+
+      if (options.mask) {
+        const maskUint8 = new Uint8Array(options.mask);
+        formData.append("mask", new Blob([maskUint8]), "mask.png");
+      }
+
+      if (options.quality) {
+        formData.append("quality", options.quality);
+      }
+
+      if (options.size) {
+        formData.append("size", options.size);
+      }
+
+      const response = await fetch(`${this.baseUrl}/images/edits`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = `API error: ${response.status}`;
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson.error?.message) {
+            errorMessage = errorJson.error.message;
+          }
+        } catch {
+          if (errorText) {
+            errorMessage = errorText.substring(0, 200);
+          }
+        }
+        return {
+          success: false,
+          error: errorMessage,
+        };
+      }
+
+      const data = (await response.json()) as {
+        data: Array<{
+          b64_json?: string;
+          url?: string;
+          revised_prompt?: string;
+        }>;
+      };
+
+      return {
+        success: true,
+        images: data.data.map((img) => ({
+          base64: img.b64_json,
+          url: img.url,
+          revisedPrompt: img.revised_prompt,
+        })),
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
   }
 
   /**

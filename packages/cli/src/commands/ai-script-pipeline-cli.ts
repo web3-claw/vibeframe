@@ -19,7 +19,7 @@ import {
   ElevenLabsProvider,
   KlingProvider,
   RunwayProvider,
-  StabilityProvider,
+  GrokProvider,
 } from "@vibeframe/ai-providers";
 import { getApiKey, loadEnv } from "../utils/api-key.js";
 import { getApiKeyFromConfig } from "../config/index.js";
@@ -50,7 +50,7 @@ aiCommand
   .option("-d, --duration <seconds>", "Target total duration in seconds")
   .option("-v, --voice <id>", "ElevenLabs voice ID for narration")
   .option("-g, --generator <engine>", "Video generator: kling | runway | veo", "kling")
-  .option("-i, --image-provider <provider>", "Image provider: gemini | openai | stability", "gemini")
+  .option("-i, --image-provider <provider>", "Image provider: gemini | openai | grok", "gemini")
   .option("-a, --aspect-ratio <ratio>", "Aspect ratio: 16:9 | 9:16 | 1:1", "16:9")
   .option("--images-only", "Generate images only, skip video generation")
   .option("--no-voiceover", "Skip voiceover generation")
@@ -106,20 +106,20 @@ aiCommand
           console.error(chalk.red("OpenAI API key required for DALL-E image generation"));
           process.exit(1);
         }
-      } else if (imageProvider === "stability") {
-        imageApiKey = (await getApiKey("STABILITY_API_KEY", "Stability AI")) ?? undefined;
-        if (!imageApiKey) {
-          console.error(chalk.red("Stability API key required for image generation"));
-          process.exit(1);
-        }
       } else if (imageProvider === "gemini") {
         imageApiKey = (await getApiKey("GOOGLE_API_KEY", "Google")) ?? undefined;
         if (!imageApiKey) {
           console.error(chalk.red("Google API key required for Gemini image generation"));
           process.exit(1);
         }
+      } else if (imageProvider === "grok") {
+        imageApiKey = (await getApiKey("XAI_API_KEY", "xAI")) ?? undefined;
+        if (!imageApiKey) {
+          console.error(chalk.red("xAI API key required for Grok image generation"));
+          process.exit(1);
+        }
       } else {
-        console.error(chalk.red(`Unknown image provider: ${imageProvider}. Use openai, stability, or gemini`));
+        console.error(chalk.red(`Unknown image provider: ${imageProvider}. Use openai, gemini, or grok`));
         process.exit(1);
       }
 
@@ -324,8 +324,8 @@ aiCommand
       const providerNames: Record<string, string> = {
         openai: "OpenAI GPT Image 1.5",
         dalle: "OpenAI GPT Image 1.5", // backward compatibility
-        stability: "Stability AI",
         gemini: "Gemini",
+        grok: "xAI Grok",
       };
       const imageSpinner = ora(`🎨 Generating visuals with ${providerNames[imageProvider]}...`).start();
 
@@ -335,13 +335,6 @@ aiCommand
         "9:16": "1024x1536",
         "1:1": "1024x1024",
       };
-      type StabilityAspectRatio = "16:9" | "1:1" | "21:9" | "2:3" | "3:2" | "4:5" | "5:4" | "9:16" | "9:21";
-      const stabilityAspectRatios: Record<string, StabilityAspectRatio> = {
-        "16:9": "16:9",
-        "9:16": "9:16",
-        "1:1": "1:1",
-      };
-
       const imagePaths: string[] = [];
 
       // Store first scene image for style continuity
@@ -349,18 +342,18 @@ aiCommand
 
       // Initialize the selected provider
       let openaiImageInstance: OpenAIImageProvider | undefined;
-      let stabilityInstance: StabilityProvider | undefined;
       let geminiInstance: GeminiProvider | undefined;
+      let grokInstance: GrokProvider | undefined;
 
       if (imageProvider === "openai" || imageProvider === "dalle") {
         openaiImageInstance = new OpenAIImageProvider();
         await openaiImageInstance.initialize({ apiKey: imageApiKey });
-      } else if (imageProvider === "stability") {
-        stabilityInstance = new StabilityProvider();
-        await stabilityInstance.initialize({ apiKey: imageApiKey });
       } else if (imageProvider === "gemini") {
         geminiInstance = new GeminiProvider();
         await geminiInstance.initialize({ apiKey: imageApiKey });
+      } else if (imageProvider === "grok") {
+        grokInstance = new GrokProvider();
+        await grokInstance.initialize({ apiKey: imageApiKey });
       }
 
       // Get character description from first segment (should be same across all)
@@ -383,7 +376,7 @@ aiCommand
           imagePrompt = `${imagePrompt}. STYLE: ${segment.visualStyle}`;
         }
 
-        // For scenes after the first, add extra continuity instruction (OpenAI/Stability)
+        // For scenes after the first, add extra continuity instruction (OpenAI)
         // Gemini uses editImage with reference instead
         if (i > 0 && firstSceneImage && imageProvider !== "gemini") {
           imagePrompt = `${imagePrompt}. CRITICAL: The character must look IDENTICAL to the first scene - same face, hair, clothing, accessories.`;
@@ -401,22 +394,6 @@ aiCommand
             });
             if (imageResult.success && imageResult.images && imageResult.images.length > 0) {
               // GPT Image 1.5 returns base64, DALL-E 3 returns URL
-              const img = imageResult.images[0];
-              if (img.base64) {
-                imageBuffer = Buffer.from(img.base64, "base64");
-              } else if (img.url) {
-                imageUrl = img.url;
-              }
-            } else {
-              imageError = imageResult.error;
-            }
-          } else if (imageProvider === "stability" && stabilityInstance) {
-            const imageResult = await stabilityInstance.generateImage(imagePrompt, {
-              aspectRatio: stabilityAspectRatios[options.aspectRatio] || "16:9",
-              model: "sd3.5-large",
-            });
-            if (imageResult.success && imageResult.images && imageResult.images.length > 0) {
-              // Stability returns base64 or URL
               const img = imageResult.images[0];
               if (img.base64) {
                 imageBuffer = Buffer.from(img.base64, "base64");
@@ -455,6 +432,20 @@ aiCommand
               } else {
                 imageError = imageResult.error;
               }
+            }
+          } else if (imageProvider === "grok" && grokInstance) {
+            const imageResult = await grokInstance.generateImage(imagePrompt, {
+              aspectRatio: options.aspectRatio || "16:9",
+            });
+            if (imageResult.success && imageResult.images && imageResult.images.length > 0) {
+              const img = imageResult.images[0];
+              if (img.base64) {
+                imageBuffer = Buffer.from(img.base64, "base64");
+              } else if (img.url) {
+                imageUrl = img.url;
+              }
+            } else {
+              imageError = imageResult.error;
             }
           }
 
@@ -1170,7 +1161,7 @@ aiCommand
   .option("--narration-only", "Only regenerate narration")
   .option("--image-only", "Only regenerate image")
   .option("-g, --generator <engine>", "Video generator: kling | runway | veo", "kling")
-  .option("-i, --image-provider <provider>", "Image provider: gemini | openai | stability", "gemini")
+  .option("-i, --image-provider <provider>", "Image provider: gemini | openai | grok", "gemini")
   .option("-v, --voice <id>", "ElevenLabs voice ID for narration")
   .option("-a, --aspect-ratio <ratio>", "Aspect ratio: 16:9 | 9:16 | 1:1", "16:9")
   .option("--retries <count>", "Number of retries for video generation failures", String(DEFAULT_VIDEO_RETRIES))
@@ -1238,16 +1229,16 @@ aiCommand
             console.error(chalk.red("OpenAI API key required for image generation"));
             process.exit(1);
           }
-        } else if (imageProvider === "stability") {
-          imageApiKey = (await getApiKey("STABILITY_API_KEY", "Stability AI")) ?? undefined;
-          if (!imageApiKey) {
-            console.error(chalk.red("Stability API key required for image generation"));
-            process.exit(1);
-          }
         } else if (imageProvider === "gemini") {
           imageApiKey = (await getApiKey("GOOGLE_API_KEY", "Google")) ?? undefined;
           if (!imageApiKey) {
             console.error(chalk.red("Google API key required for Gemini image generation"));
+            process.exit(1);
+          }
+        } else if (imageProvider === "grok") {
+          imageApiKey = (await getApiKey("XAI_API_KEY", "xAI")) ?? undefined;
+          if (!imageApiKey) {
+            console.error(chalk.red("xAI API key required for Grok image generation"));
             process.exit(1);
           }
         }
@@ -1366,13 +1357,6 @@ aiCommand
           "9:16": "1024x1536",
           "1:1": "1024x1024",
         };
-        type StabilityAspectRatio = "16:9" | "1:1" | "21:9" | "2:3" | "3:2" | "4:5" | "5:4" | "9:16" | "9:21";
-        const stabilityAspectRatios: Record<string, StabilityAspectRatio> = {
-          "16:9": "16:9",
-          "9:16": "9:16",
-          "1:1": "1:1",
-        };
-
         let imageBuffer: Buffer | undefined;
         let imageUrl: string | undefined;
         let imageError: string | undefined;
@@ -1386,23 +1370,6 @@ aiCommand
           });
           if (imageResult.success && imageResult.images && imageResult.images.length > 0) {
             imageUrl = imageResult.images[0].url;
-          } else {
-            imageError = imageResult.error;
-          }
-        } else if (imageProvider === "stability") {
-          const stability = new StabilityProvider();
-          await stability.initialize({ apiKey: imageApiKey });
-          const imageResult = await stability.generateImage(imagePrompt, {
-            aspectRatio: stabilityAspectRatios[options.aspectRatio] || "16:9",
-            model: "sd3.5-large",
-          });
-          if (imageResult.success && imageResult.images && imageResult.images.length > 0) {
-            const img = imageResult.images[0];
-            if (img.base64) {
-              imageBuffer = Buffer.from(img.base64, "base64");
-            } else if (img.url) {
-              imageUrl = img.url;
-            }
           } else {
             imageError = imageResult.error;
           }
@@ -1458,6 +1425,23 @@ Generate the single-person scene image now.`;
             } else {
               imageError = imageResult.error;
             }
+          }
+        } else if (imageProvider === "grok") {
+          const { GrokProvider } = await import("@vibeframe/ai-providers");
+          const grok = new GrokProvider();
+          await grok.initialize({ apiKey: imageApiKey });
+          const imageResult = await grok.generateImage(imagePrompt, {
+            aspectRatio: options.aspectRatio || "16:9",
+          });
+          if (imageResult.success && imageResult.images && imageResult.images.length > 0) {
+            const img = imageResult.images[0];
+            if (img.base64) {
+              imageBuffer = Buffer.from(img.base64, "base64");
+            } else if (img.url) {
+              imageUrl = img.url;
+            }
+          } else {
+            imageError = imageResult.error;
           }
         }
 

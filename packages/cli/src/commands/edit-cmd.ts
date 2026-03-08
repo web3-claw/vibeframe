@@ -14,16 +14,12 @@
  *   edit text-overlay   - Text overlays (FFmpeg drawtext)
  *   edit speed-ramp     - Speed ramping (Whisper + Claude + FFmpeg)
  *   edit reframe        - Reframe aspect ratio (Claude Vision + FFmpeg)
- *   edit image          - Multi-image editing (Gemini)
- *   edit upscale        - Image upscaling (Stability AI)
- *   edit remove-bg      - Background removal (Stability AI)
- *   edit outpaint       - Outpainting (Stability AI)
- *   edit replace        - Search and replace in images (Stability AI)
+ *   edit image          - Image editing (Gemini/OpenAI/Grok)
  *   edit interpolate    - Frame interpolation / slow motion (FFmpeg)
  *   edit upscale-video  - Video upscaling (FFmpeg / Replicate)
  *   edit fill-gaps      - Fill timeline gaps with AI video (Kling)
  *
- * @dependencies Whisper, Claude, Gemini, Stability, Kling, Replicate, FFmpeg
+ * @dependencies Whisper, Claude, Gemini, Kling, Replicate, FFmpeg
  */
 
 import { Command } from "commander";
@@ -35,7 +31,8 @@ import {
   WhisperProvider,
   ClaudeProvider,
   GeminiProvider,
-  StabilityProvider,
+  OpenAIImageProvider,
+  GrokProvider,
 } from "@vibeframe/ai-providers";
 import { getApiKey } from "../utils/api-key.js";
 import { execSafe, commandExists } from "../utils/exec-safe.js";
@@ -632,13 +629,14 @@ editCommand
 
 editCommand
   .command("image")
-  .description("Edit image(s) using Gemini (Nano Banana)")
+  .description("Edit image(s) using AI (Gemini/OpenAI/Grok)")
   .argument("<images...>", "Input image file(s) followed by edit prompt")
-  .option("-k, --api-key <key>", "Google API key (or set GOOGLE_API_KEY env)")
+  .option("-p, --provider <provider>", "Provider: gemini (default), openai, grok", "gemini")
+  .option("-k, --api-key <key>", "API key (or set env variable)")
   .option("-o, --output <path>", "Output file path", "edited.png")
-  .option("-m, --model <model>", "Model: flash (max 3 images), 3.1-flash / latest (max 3 images), pro (max 14 images)", "flash")
+  .option("-m, --model <model>", "Model: flash/3.1-flash/latest/pro (Gemini only)", "flash")
   .option("-r, --ratio <ratio>", "Output aspect ratio")
-  .option("-s, --size <resolution>", "Resolution: 1K, 2K, 4K (Pro model only)")
+  .option("-s, --size <resolution>", "Resolution: 1K, 2K, 4K (Gemini Pro only)")
   .option("--dry-run", "Preview parameters without executing")
   .action(async (args: string[], options) => {
     try {
@@ -651,6 +649,14 @@ editCommand
       const prompt = args[args.length - 1];
       rejectControlChars(prompt);
       const imagePaths = args.slice(0, -1);
+      const provider = options.provider as string;
+
+      // Grok only supports 1 image
+      if (provider === "grok" && imagePaths.length > 1) {
+        console.error(chalk.red("Grok supports only 1 input image for editing."));
+        console.log(chalk.dim("Use -p gemini (up to 14 images) or -p openai (up to 16 images) for multi-image editing."));
+        process.exit(1);
+      }
 
       if (options.dryRun) {
         outputResult({
@@ -659,6 +665,7 @@ editCommand
           params: {
             imagePaths: imagePaths.map((p: string) => resolve(process.cwd(), p)),
             prompt,
+            provider,
             model: options.model,
             ratio: options.ratio,
             size: options.size,
@@ -667,9 +674,16 @@ editCommand
         return;
       }
 
-      const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
+      // Provider-specific API key resolution
+      const apiKeyMap: Record<string, { envVar: string; label: string }> = {
+        gemini: { envVar: "GOOGLE_API_KEY", label: "Google" },
+        openai: { envVar: "OPENAI_API_KEY", label: "OpenAI" },
+        grok: { envVar: "XAI_API_KEY", label: "xAI" },
+      };
+      const keyInfo = apiKeyMap[provider] || apiKeyMap.gemini;
+      const apiKey = await getApiKey(keyInfo.envVar, keyInfo.label, options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("Google API key required."));
+        console.error(chalk.red(`${keyInfo.label} API key required.`));
         process.exit(1);
       }
 
@@ -683,33 +697,50 @@ editCommand
         imageBuffers.push(buffer);
       }
 
-      const editModelNames: Record<string, string> = {
-        flash: "gemini-2.5-flash-image",
-        "3.1-flash": "gemini-3.1-flash-image-preview",
-        latest: "gemini-3.1-flash-image-preview",
-        pro: "gemini-3-pro-image-preview",
-      };
-      const editModelName = editModelNames[options.model] || editModelNames.flash;
-      spinner.text = `Editing with ${editModelName}...`;
+      let result: import("@vibeframe/ai-providers").ImageResult;
 
-      const gemini = new GeminiProvider();
-      await gemini.initialize({ apiKey });
+      if (provider === "openai") {
+        spinner.text = "Editing with GPT Image 1.5...";
+        const openaiImage = new OpenAIImageProvider();
+        await openaiImage.initialize({ apiKey });
+        result = await openaiImage.editImage(imageBuffers, prompt);
+      } else if (provider === "grok") {
+        spinner.text = "Editing with Grok Imagine...";
+        const grok = new GrokProvider();
+        await grok.initialize({ apiKey });
+        result = await grok.editImage(imageBuffers[0], prompt, {
+          aspectRatio: options.ratio,
+        });
+      } else {
+        // Gemini (default)
+        const editModelNames: Record<string, string> = {
+          flash: "gemini-2.5-flash-image",
+          "3.1-flash": "gemini-3.1-flash-image-preview",
+          latest: "gemini-3.1-flash-image-preview",
+          pro: "gemini-3-pro-image-preview",
+        };
+        const editModelName = editModelNames[options.model] || editModelNames.flash;
+        spinner.text = `Editing with ${editModelName}...`;
 
-      let result = await gemini.editImage(imageBuffers, prompt, {
-        model: options.model,
-        aspectRatio: options.ratio,
-        resolution: options.size,
-      });
+        const gemini = new GeminiProvider();
+        await gemini.initialize({ apiKey });
 
-      // Auto-fallback: if latest/3.1-flash fails, retry with flash
-      const fallbackModels = ["latest", "3.1-flash"];
-      if (!result.success && fallbackModels.includes(options.model)) {
-        spinner.text = `${chalk.dim(result.error || `${editModelName} failed`)} — retrying with flash...`;
         result = await gemini.editImage(imageBuffers, prompt, {
-          model: "flash",
+          model: options.model,
           aspectRatio: options.ratio,
           resolution: options.size,
         });
+
+        // Auto-fallback: if latest/3.1-flash fails, retry with flash
+        const fallbackModels = ["latest", "3.1-flash"];
+        if (!result.success && fallbackModels.includes(options.model)) {
+          spinner.text = `${chalk.dim(result.error || `${editModelName} failed`)} — retrying with flash...`;
+          result = await gemini.editImage(imageBuffers, prompt, {
+            model: "flash",
+            aspectRatio: options.ratio,
+            resolution: options.size,
+          });
+        }
       }
 
       if (!result.success || !result.images || result.images.length === 0) {
@@ -719,412 +750,44 @@ editCommand
 
       spinner.succeed(chalk.green("Image edited"));
 
+      // Save image — handle both base64 and URL responses
+      const img = result.images[0];
+      const outputPath = resolve(process.cwd(), options.output);
+
+      const saveImage = async () => {
+        await mkdir(dirname(outputPath), { recursive: true });
+        if (img.base64) {
+          const buffer = Buffer.from(img.base64, "base64");
+          await writeFile(outputPath, buffer);
+        } else if (img.url) {
+          const resp = await fetch(img.url);
+          const arrayBuf = await resp.arrayBuffer();
+          await writeFile(outputPath, Buffer.from(arrayBuf));
+        }
+      };
+
+      // Gemini results may include a `model` field
+      const resultModel = (result as { model?: string }).model;
+
       if (isJsonMode()) {
         outputResult({
           success: true,
-          model: result.model || options.model,
-          outputPath: resolve(process.cwd(), options.output),
+          provider,
+          model: resultModel || options.model,
+          outputPath,
         });
-        // Still save the file before returning
-        const img = result.images![0];
-        if (img.base64) {
-          const outputPath = resolve(process.cwd(), options.output);
-          await mkdir(dirname(outputPath), { recursive: true });
-          const buffer = Buffer.from(img.base64, "base64");
-          await writeFile(outputPath, buffer);
-        }
+        await saveImage();
         return;
       }
 
-      if (result.model) {
-        console.log(chalk.dim(`Model: ${result.model}`));
+      if (resultModel) {
+        console.log(chalk.dim(`Model: ${resultModel}`));
       }
 
-      const img = result.images[0];
-      if (img.base64) {
-        const outputPath = resolve(process.cwd(), options.output);
-        await mkdir(dirname(outputPath), { recursive: true });
-        const buffer = Buffer.from(img.base64, "base64");
-        await writeFile(outputPath, buffer);
-        console.log(chalk.green(`Saved to: ${outputPath}`));
-      }
+      await saveImage();
+      console.log(chalk.green(`Saved to: ${outputPath}`));
     } catch (error) {
       console.error(chalk.red("Image editing failed"));
-      console.error(error);
-      process.exit(1);
-    }
-  });
-
-// ── edit upscale (Stability AI image upscale) ───────────────────────────
-
-editCommand
-  .command("upscale")
-  .description("Upscale image using Stability AI")
-  .argument("<image>", "Input image file path")
-  .option("-k, --api-key <key>", "Stability AI API key (or set STABILITY_API_KEY env)")
-  .option("-o, --output <path>", "Output file path", "upscaled.png")
-  .option("-t, --type <type>", "Upscale type: fast, conservative, creative", "fast")
-  .option("-c, --creativity <value>", "Creativity (0-0.35, for creative upscale)")
-  .option("-f, --format <format>", "Output format: png, jpeg, webp", "png")
-  .option("--dry-run", "Preview parameters without executing")
-  .action(async (imagePath: string, options) => {
-    try {
-      if (options.dryRun) {
-        outputResult({
-          dryRun: true,
-          command: "edit upscale",
-          params: {
-            imagePath: resolve(process.cwd(), imagePath),
-            type: options.type,
-            creativity: options.creativity ? parseFloat(options.creativity) : undefined,
-            format: options.format,
-          },
-        });
-        return;
-      }
-
-      const apiKey = await getApiKey("STABILITY_API_KEY", "Stability AI", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("Stability AI API key required"));
-        process.exit(1);
-      }
-
-      const spinner = ora("Reading image...").start();
-
-      const absPath = resolve(process.cwd(), imagePath);
-      const imageBuffer = await readFile(absPath);
-
-      spinner.text = "Upscaling image...";
-
-      const stability = new StabilityProvider();
-      await stability.initialize({ apiKey });
-
-      const result = await stability.upscaleImage(imageBuffer, {
-        type: options.type as "fast" | "conservative" | "creative",
-        creativity: options.creativity ? parseFloat(options.creativity) : undefined,
-        outputFormat: options.format,
-      });
-
-      if (!result.success || !result.images || result.images.length === 0) {
-        spinner.fail(chalk.red(result.error || "Upscale failed"));
-        process.exit(1);
-      }
-
-      spinner.succeed(chalk.green("Image upscaled"));
-
-      if (isJsonMode()) {
-        const img = result.images[0];
-        if (img.base64) {
-          const outputPath = resolve(process.cwd(), options.output);
-          await mkdir(dirname(outputPath), { recursive: true });
-          const buffer = Buffer.from(img.base64, "base64");
-          await writeFile(outputPath, buffer);
-        }
-        outputResult({
-          success: true,
-          outputPath: resolve(process.cwd(), options.output),
-        });
-        return;
-      }
-
-      const img = result.images[0];
-      if (img.base64) {
-        const outputPath = resolve(process.cwd(), options.output);
-        await mkdir(dirname(outputPath), { recursive: true });
-        const buffer = Buffer.from(img.base64, "base64");
-        await writeFile(outputPath, buffer);
-        console.log(chalk.green(`Saved to: ${outputPath}`));
-      }
-    } catch (error) {
-      console.error(chalk.red("Upscale failed"));
-      console.error(error);
-      process.exit(1);
-    }
-  });
-
-// ── edit remove-bg (Stability AI background removal) ────────────────────
-
-editCommand
-  .command("remove-bg")
-  .description("Remove background from image using Stability AI")
-  .argument("<image>", "Input image file path")
-  .option("-k, --api-key <key>", "Stability AI API key (or set STABILITY_API_KEY env)")
-  .option("-o, --output <path>", "Output file path", "no-bg.png")
-  .option("-f, --format <format>", "Output format: png, webp", "png")
-  .option("--dry-run", "Preview parameters without executing")
-  .action(async (imagePath: string, options) => {
-    try {
-      if (options.dryRun) {
-        outputResult({
-          dryRun: true,
-          command: "edit remove-bg",
-          params: {
-            imagePath: resolve(process.cwd(), imagePath),
-            format: options.format,
-          },
-        });
-        return;
-      }
-
-      const apiKey = await getApiKey("STABILITY_API_KEY", "Stability AI", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("Stability AI API key required"));
-        process.exit(1);
-      }
-
-      const spinner = ora("Reading image...").start();
-
-      const absPath = resolve(process.cwd(), imagePath);
-      const imageBuffer = await readFile(absPath);
-
-      spinner.text = "Removing background...";
-
-      const stability = new StabilityProvider();
-      await stability.initialize({ apiKey });
-
-      const result = await stability.removeBackground(imageBuffer, options.format as "png" | "webp");
-
-      if (!result.success || !result.images || result.images.length === 0) {
-        spinner.fail(chalk.red(result.error || "Background removal failed"));
-        process.exit(1);
-      }
-
-      spinner.succeed(chalk.green("Background removed"));
-
-      if (isJsonMode()) {
-        const img = result.images[0];
-        if (img.base64) {
-          const outputPath = resolve(process.cwd(), options.output);
-          await mkdir(dirname(outputPath), { recursive: true });
-          const buffer = Buffer.from(img.base64, "base64");
-          await writeFile(outputPath, buffer);
-        }
-        outputResult({
-          success: true,
-          outputPath: resolve(process.cwd(), options.output),
-        });
-        return;
-      }
-
-      const img = result.images[0];
-      if (img.base64) {
-        const outputPath = resolve(process.cwd(), options.output);
-        await mkdir(dirname(outputPath), { recursive: true });
-        const buffer = Buffer.from(img.base64, "base64");
-        await writeFile(outputPath, buffer);
-        console.log(chalk.green(`Saved to: ${outputPath}`));
-      }
-    } catch (error) {
-      console.error(chalk.red("Background removal failed"));
-      console.error(error);
-      process.exit(1);
-    }
-  });
-
-// ── edit outpaint (Stability AI outpainting) ────────────────────────────
-
-editCommand
-  .command("outpaint")
-  .description("Extend image canvas (outpainting) using Stability AI")
-  .argument("<image>", "Input image file path")
-  .option("-k, --api-key <key>", "Stability AI API key (or set STABILITY_API_KEY env)")
-  .option("-o, --output <path>", "Output file path", "outpainted.png")
-  .option("--left <pixels>", "Pixels to extend on the left (0-2000)")
-  .option("--right <pixels>", "Pixels to extend on the right (0-2000)")
-  .option("--up <pixels>", "Pixels to extend upward (0-2000)")
-  .option("--down <pixels>", "Pixels to extend downward (0-2000)")
-  .option("--prompt <text>", "Prompt for the extended area")
-  .option("-c, --creativity <value>", "Creativity level (0-1, default: 0.5)")
-  .option("-f, --format <format>", "Output format: png, jpeg, webp", "png")
-  .option("--dry-run", "Preview parameters without executing")
-  .action(async (imagePath: string, options) => {
-    try {
-      const left = options.left ? parseInt(options.left) : 0;
-      const right = options.right ? parseInt(options.right) : 0;
-      const up = options.up ? parseInt(options.up) : 0;
-      const down = options.down ? parseInt(options.down) : 0;
-
-      if (options.dryRun) {
-        outputResult({
-          dryRun: true,
-          command: "edit outpaint",
-          params: {
-            imagePath: resolve(process.cwd(), imagePath),
-            left,
-            right,
-            up,
-            down,
-            prompt: options.prompt,
-            creativity: options.creativity ? parseFloat(options.creativity) : undefined,
-          },
-        });
-        return;
-      }
-
-      if (left === 0 && right === 0 && up === 0 && down === 0) {
-        console.error(chalk.red("At least one direction (--left, --right, --up, --down) must be specified"));
-        process.exit(1);
-      }
-
-      const apiKey = await getApiKey("STABILITY_API_KEY", "Stability AI", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("Stability AI API key required"));
-        process.exit(1);
-      }
-
-      const spinner = ora("Reading image...").start();
-
-      const absPath = resolve(process.cwd(), imagePath);
-      const imageBuffer = await readFile(absPath);
-
-      spinner.text = "Extending image...";
-
-      const stability = new StabilityProvider();
-      await stability.initialize({ apiKey });
-
-      const result = await stability.outpaint(imageBuffer, {
-        left,
-        right,
-        up,
-        down,
-        prompt: options.prompt,
-        creativity: options.creativity ? parseFloat(options.creativity) : undefined,
-        outputFormat: options.format,
-      });
-
-      if (!result.success || !result.images || result.images.length === 0) {
-        spinner.fail(chalk.red(result.error || "Outpainting failed"));
-        process.exit(1);
-      }
-
-      spinner.succeed(chalk.green("Image extended"));
-
-      if (isJsonMode()) {
-        const img = result.images![0];
-        if (img.base64) {
-          const outputPath = resolve(process.cwd(), options.output);
-          await mkdir(dirname(outputPath), { recursive: true });
-          const buffer = Buffer.from(img.base64, "base64");
-          await writeFile(outputPath, buffer);
-        }
-        outputResult({
-          success: true,
-          seed: result.images![0]?.seed,
-          outputPath: resolve(process.cwd(), options.output),
-        });
-        return;
-      }
-
-      const img = result.images[0];
-      if (img.seed) {
-        console.log(chalk.dim(`Seed: ${img.seed}`));
-      }
-      if (img.base64) {
-        const outputPath = resolve(process.cwd(), options.output);
-        await mkdir(dirname(outputPath), { recursive: true });
-        const buffer = Buffer.from(img.base64, "base64");
-        await writeFile(outputPath, buffer);
-        console.log(chalk.green(`Saved to: ${outputPath}`));
-      }
-    } catch (error) {
-      console.error(chalk.red("Outpainting failed"));
-      console.error(error);
-      process.exit(1);
-    }
-  });
-
-// ── edit replace (Stability AI search and replace) ──────────────────────
-
-editCommand
-  .command("replace")
-  .description("Search and replace objects in image using Stability AI")
-  .argument("<image>", "Input image file path")
-  .argument("<search>", "What to search for in the image")
-  .argument("<replace>", "What to replace it with")
-  .option("-k, --api-key <key>", "Stability AI API key (or set STABILITY_API_KEY env)")
-  .option("-o, --output <path>", "Output file path", "replaced.png")
-  .option("-n, --negative <prompt>", "Negative prompt (what to avoid)")
-  .option("-s, --seed <number>", "Random seed for reproducibility")
-  .option("-f, --format <format>", "Output format: png, jpeg, webp", "png")
-  .option("--dry-run", "Preview parameters without executing")
-  .action(async (imagePath: string, search: string, replaceText: string, options) => {
-    try {
-      rejectControlChars(search);
-      rejectControlChars(replaceText);
-
-      if (options.dryRun) {
-        outputResult({
-          dryRun: true,
-          command: "edit replace",
-          params: {
-            imagePath: resolve(process.cwd(), imagePath),
-            search,
-            replace: replaceText,
-            negative: options.negative,
-            seed: options.seed ? parseInt(options.seed) : undefined,
-          },
-        });
-        return;
-      }
-
-      const apiKey = await getApiKey("STABILITY_API_KEY", "Stability AI", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("Stability AI API key required"));
-        process.exit(1);
-      }
-
-      const spinner = ora("Reading image...").start();
-
-      const absPath = resolve(process.cwd(), imagePath);
-      const imageBuffer = await readFile(absPath);
-
-      spinner.text = "Replacing objects...";
-
-      const stability = new StabilityProvider();
-      await stability.initialize({ apiKey });
-
-      const result = await stability.searchAndReplace(imageBuffer, search, replaceText, {
-        negativePrompt: options.negative,
-        seed: options.seed ? parseInt(options.seed) : undefined,
-        outputFormat: options.format,
-      });
-
-      if (!result.success || !result.images || result.images.length === 0) {
-        spinner.fail(chalk.red(result.error || "Search and replace failed"));
-        process.exit(1);
-      }
-
-      spinner.succeed(chalk.green("Objects replaced"));
-
-      if (isJsonMode()) {
-        const img = result.images![0];
-        if (img.base64) {
-          const outputPath = resolve(process.cwd(), options.output);
-          await mkdir(dirname(outputPath), { recursive: true });
-          const buffer = Buffer.from(img.base64, "base64");
-          await writeFile(outputPath, buffer);
-        }
-        outputResult({
-          success: true,
-          seed: result.images![0]?.seed,
-          outputPath: resolve(process.cwd(), options.output),
-        });
-        return;
-      }
-
-      const img = result.images[0];
-      if (img.seed) {
-        console.log(chalk.dim(`Seed: ${img.seed}`));
-      }
-      if (img.base64) {
-        const outputPath = resolve(process.cwd(), options.output);
-        await mkdir(dirname(outputPath), { recursive: true });
-        const buffer = Buffer.from(img.base64, "base64");
-        await writeFile(outputPath, buffer);
-        console.log(chalk.green(`Saved to: ${outputPath}`));
-      }
-    } catch (error) {
-      console.error(chalk.red("Search and replace failed"));
       console.error(error);
       process.exit(1);
     }

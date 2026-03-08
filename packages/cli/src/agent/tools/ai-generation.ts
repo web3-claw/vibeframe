@@ -5,7 +5,7 @@
  * async polling -- tool returns immediately with task status.
  *
  * ## Tools: generate_image, generate_video, generate_speech, generate_sound_effect, generate_music, generate_storyboard, generate_motion
- * ## Dependencies: OpenAI, Gemini, Stability, Runway, Kling, ElevenLabs, Replicate, Claude, Remotion
+ * ## Dependencies: OpenAI, Gemini, Runway, Kling, ElevenLabs, Replicate, Claude, Remotion
  * @see MODELS.md for the Single Source of Truth (SSOT) on supported providers/models
  */
 
@@ -28,7 +28,7 @@ function getTimestamp(): string {
 
 const imageDef: ToolDefinition = {
   name: "generate_image",
-  description: "Generate an image using AI (OpenAI GPT Image 1.5, Gemini, or Stability)",
+  description: "Generate an image using AI (OpenAI GPT Image 1.5, Gemini, or xAI Grok)",
   parameters: {
     type: "object",
     properties: {
@@ -42,8 +42,8 @@ const imageDef: ToolDefinition = {
       },
       provider: {
         type: "string",
-        description: "Provider to use: openai (GPT Image 1.5), gemini (Nano Banana), stability (SDXL). 'dalle' is deprecated, use 'openai' instead.",
-        enum: ["openai", "dalle", "gemini", "stability"],
+        description: "Provider to use: openai (GPT Image 1.5), gemini (Nano Banana), grok (Grok Imagine). 'dalle' is deprecated, use 'openai' instead.",
+        enum: ["openai", "dalle", "gemini", "grok"],
       },
       size: {
         type: "string",
@@ -57,7 +57,7 @@ const imageDef: ToolDefinition = {
 
 const videoDef: ToolDefinition = {
   name: "generate_video",
-  description: "Generate video using AI. Supports Grok Imagine (default, native audio), Runway (image-to-video), Kling (text/image-to-video), and Veo (text/image-to-video) via provider selection.",
+  description: "Generate video using AI. Supports Grok Imagine (default, native audio), Runway Gen-4.5 (text/image-to-video) and gen4_turbo (image-to-video), Kling (text/image-to-video), and Veo (text/image-to-video) via provider selection.",
   parameters: {
     type: "object",
     properties: {
@@ -72,7 +72,12 @@ const videoDef: ToolDefinition = {
       },
       image: {
         type: "string",
-        description: "Input image path. REQUIRED for runway, optional for kling and veo.",
+        description: "Input image path. Required for runway gen4_turbo, optional for runway gen4.5/kling/veo.",
+      },
+      runwayModel: {
+        type: "string",
+        description: "Runway model: gen4.5 (default, text+image-to-video) or gen4_turbo (image-to-video only)",
+        enum: ["gen4.5", "gen4_turbo"],
       },
       output: {
         type: "string",
@@ -257,12 +262,12 @@ const generateImage: ToolHandler = async (args, context): Promise<ToolResult> =>
       case "gemini":
         providerKey = "google";
         break;
-      case "stability":
-        providerKey = "stability";
-        break;
       case "openai":
       case "dalle": // backward compatibility
         providerKey = "openai";
+        break;
+      case "grok":
+        providerKey = "xai";
         break;
       default:
         providerKey = "openai";
@@ -337,12 +342,12 @@ const generateImage: ToolHandler = async (args, context): Promise<ToolResult> =>
         const buffer = Buffer.from(image.base64, "base64");
         await writeFile(outputPath, buffer);
       }
-    } else if (provider === "stability") {
-      const { StabilityProvider } = await import("@vibeframe/ai-providers");
-      const stability = new StabilityProvider();
-      await stability.initialize({ apiKey });
+    } else if (provider === "grok") {
+      const { GrokProvider } = await import("@vibeframe/ai-providers");
+      const grok = new GrokProvider();
+      await grok.initialize({ apiKey });
 
-      const result = await stability.generateImage(prompt);
+      const result = await grok.generateImage(prompt);
 
       if (!result.success || !result.images || result.images.length === 0) {
         return {
@@ -353,8 +358,13 @@ const generateImage: ToolHandler = async (args, context): Promise<ToolResult> =>
         };
       }
 
+      // Grok returns URLs
       const image = result.images[0];
-      if (image.base64) {
+      if (image.url) {
+        const response = await fetch(image.url);
+        const buffer = Buffer.from(await response.arrayBuffer());
+        await writeFile(outputPath, buffer);
+      } else if (image.base64) {
         const buffer = Buffer.from(image.base64, "base64");
         await writeFile(outputPath, buffer);
       }
@@ -382,13 +392,15 @@ const generateVideo: ToolHandler = async (args, context): Promise<ToolResult> =>
   const output = (args.output as string) || `${provider}-${getTimestamp()}.mp4`;
   const duration = (args.duration as number) || (provider === "veo" ? 6 : 5);
 
-  // Validate: Runway requires an image
-  if (provider === "runway" && !imagePath) {
+  const runwayModel = (args.runwayModel as string) || "gen4.5";
+
+  // Validate: Runway gen4_turbo requires an image; gen4.5 supports text-to-video
+  if (provider === "runway" && !imagePath && runwayModel !== "gen4.5") {
     return {
       toolCallId: "",
       success: false,
       output: "",
-      error: "Runway requires an input image. Provide 'image' parameter or use provider 'kling' or 'veo' for text-to-video.",
+      error: `Runway ${runwayModel} requires an input image. Provide 'image' parameter, use 'gen4.5' model, or use provider 'kling'/'veo' for text-to-video.`,
     };
   }
 
@@ -422,7 +434,8 @@ const generateVideo: ToolHandler = async (args, context): Promise<ToolResult> =>
 
       const result = await runway.generateVideo(prompt, {
         prompt,
-        duration: duration as 5 | 10,
+        model: runwayModel,
+        duration,
         referenceImage,
       });
 
@@ -610,8 +623,34 @@ const generateVideo: ToolHandler = async (args, context): Promise<ToolResult> =>
       const kling = new KlingProvider();
       await kling.initialize({ apiKey });
 
-      const referenceImage = imagePath ? await prepareReferenceImage(imagePath) : undefined;
+      let referenceImage = imagePath ? await prepareReferenceImage(imagePath) : undefined;
       const mode = (args.mode as "std" | "pro") || "std";
+
+      // Kling v2.5+ requires image URL, not base64 — auto-upload to ImgBB
+      if (referenceImage && referenceImage.startsWith("data:")) {
+        const imgbbKey = await getApiKeyFromConfig("imgbb") || process.env.IMGBB_API_KEY;
+        if (!imgbbKey) {
+          return {
+            toolCallId: "",
+            success: false,
+            output: "",
+            error: "Kling requires image URL for image-to-video. Set IMGBB_API_KEY for auto-upload via 'vibe setup'.",
+          };
+        }
+        const { uploadToImgbb } = await import("../../commands/ai-script-pipeline.js");
+        const base64Data = referenceImage.split(",")[1];
+        const imageBuffer = Buffer.from(base64Data, "base64");
+        const uploadResult = await uploadToImgbb(imageBuffer, imgbbKey);
+        if (!uploadResult.success || !uploadResult.url) {
+          return {
+            toolCallId: "",
+            success: false,
+            output: "",
+            error: `ImgBB upload failed: ${uploadResult.error || "Unknown error"}`,
+          };
+        }
+        referenceImage = uploadResult.url;
+      }
 
       const result = await kling.generateVideo(prompt, {
         prompt,

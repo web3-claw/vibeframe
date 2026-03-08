@@ -27,7 +27,7 @@ def text_to_speech(
     text: str,
     output_path: str,
     voice_id: str = "EXAVITQu4vr4xnSDxMaL",
-    model: str = "eleven_multilingual_v2",
+    model: str = "eleven_v3",
     stability: float = 0.5,
     similarity_boost: float = 0.75,
     api_key: str | None = None,
@@ -91,7 +91,7 @@ def main():
     parser.add_argument("text", help="Text to convert to speech")
     parser.add_argument("-o", "--output", required=True, help="Output file path")
     parser.add_argument("-v", "--voice", default="bella", help="Voice ID or name (default: bella)")
-    parser.add_argument("-m", "--model", default="eleven_multilingual_v2", help="Model ID")
+    parser.add_argument("-m", "--model", default="eleven_v3", help="Model ID")
     parser.add_argument("--stability", type=float, default=0.5, help="Stability (0-1)")
     parser.add_argument("--similarity", type=float, default=0.75, help="Similarity boost (0-1)")
     parser.add_argument("-k", "--api-key", help="API key (or set ELEVENLABS_API_KEY)")

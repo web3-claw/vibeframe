@@ -4,7 +4,7 @@
  *
  * This file is a thin wiring layer. Each command group lives in its own module:
  * - ai-audio.ts       — TTS, SFX, music generation
- * - ai-image.ts       — Image generation (OpenAI, Gemini, Stability)
+ * - ai-image.ts       — Image generation (OpenAI, Gemini)
  * - ai-edit.ts        — Post-production editing (silence-cut, caption, etc.)
  * - ai-video.ts       — Video generation (Runway, Kling, Grok)
  * - ai-analyze.ts     — Unified media analysis

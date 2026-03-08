@@ -358,7 +358,6 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
           enum?: string[];
         };
         expect(imageProvider.enum).toContain("openai");
-        expect(imageProvider.enum).toContain("stability");
         expect(imageProvider.enum).toContain("gemini");
       });
 

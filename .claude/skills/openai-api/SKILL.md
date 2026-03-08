@@ -22,7 +22,7 @@ Header: `Authorization: Bearer $OPENAI_API_KEY`
 
 | API | Endpoint | Description |
 |-----|----------|-------------|
-| Chat Completions | `/v1/chat/completions` | GPT-4o, GPT-4o-mini |
+| Chat Completions | `/v1/chat/completions` | GPT-5-mini, GPT-5.4 |
 | Images | `/v1/images/generations` | DALL-E 3 |
 | Audio Transcription | `/v1/audio/transcriptions` | Whisper |
 | Audio Speech | `/v1/audio/speech` | Text-to-Speech |
@@ -38,7 +38,7 @@ POST https://api.openai.com/v1/chat/completions
 ### Request
 ```json
 {
-  "model": "gpt-4o-mini",
+  "model": "gpt-5-mini",
   "messages": [
     {"role": "system", "content": "You are a helpful assistant."},
     {"role": "user", "content": "Hello!"}
@@ -54,7 +54,7 @@ curl -X POST "https://api.openai.com/v1/chat/completions" \
   -H "Authorization: Bearer $OPENAI_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "gpt-4o-mini",
+    "model": "gpt-5-mini",
     "messages": [{"role": "user", "content": "Parse this video edit command: trim first 10 seconds"}],
     "temperature": 0
   }'
@@ -82,9 +82,8 @@ curl -X POST "https://api.openai.com/v1/chat/completions" \
 ### Models
 | Model | Context | Best For |
 |-------|---------|----------|
-| `gpt-4o` | 128K | Complex reasoning |
-| `gpt-4o-mini` | 128K | Fast, cost-effective |
-| `gpt-4-turbo` | 128K | Balance of speed/quality |
+| `gpt-5-mini` | 128K | **Default**. Fast, cost-effective ($0.25/M input) |
+| `gpt-5.4` | 1M | Frontier model, complex reasoning ($2.50/M input) |
 
 ## DALL-E Image Generation
 
@@ -250,8 +249,8 @@ vibe ai tts "Welcome to my channel" -o intro.mp3
 
 | API | Rate Limit | Price |
 |-----|------------|-------|
-| GPT-4o | 10K TPM | $2.50/1M input, $10/1M output |
-| GPT-4o-mini | 200K TPM | $0.15/1M input, $0.60/1M output |
+| GPT-5-mini | 200K TPM | $0.25/1M input, $2/1M output |
+| GPT-5.4 | 30K TPM | $2.50/1M input, $20/1M output |
 | DALL-E 3 | 5 img/min | $0.04-0.12/image |
 | Whisper | 50 req/min | $0.006/minute |
 | TTS | 50 req/min | $0.015/1K chars |

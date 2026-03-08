@@ -108,7 +108,6 @@ export async function getApiKey(
     RUNWAY_API_SECRET: "runway",
     KLING_API_KEY: "kling",
     IMGBB_API_KEY: "imgbb",
-    STABILITY_API_KEY: "stability",
     REPLICATE_API_TOKEN: "replicate",
   };
   const providerKey = providerKeyMap[envVar];

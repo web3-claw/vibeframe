@@ -89,7 +89,7 @@ vibe agent -i "query" -v       # Non-interactive mode with verbose output
 
 ## Package Structure
 
-- **.claude/skills/** - Claude Code Skills. Each skill has `SKILL.md` (API docs) + `scripts/` (Python helpers). Providers: openai-api, claude-api, gemini-image, gemini-video, elevenlabs-tts, stability-image, replicate-ai, runway-video, kling-video, remotion-motion.
+- **.claude/skills/** - Claude Code Skills. Each skill has `SKILL.md` (API docs) + `scripts/` (Python helpers). Providers: openai-api, claude-api, gemini-image, gemini-video, elevenlabs-tts, replicate-ai, runway-video, kling-video, remotion-motion.
 - **packages/cli** - Main CLI interface. Entry: `src/index.ts`. Commands in `src/commands/`. Agent in `src/agent/`. REPL in `src/repl/` (deprecated). Config schema in `src/config/schema.ts`.
 - **packages/core** - Timeline data structures (`src/timeline/`), effects (`src/effects/`), FFmpeg export (`src/export/`). State managed with Zustand + Immer.
 - **packages/ai-providers** - Pluggable AI providers. Abstract interface in `src/interface/`. Registry for capability matching. Each provider in its own directory.

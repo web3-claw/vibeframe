@@ -1173,7 +1173,7 @@ export async function executeTranslateSrt(options: TranslateSrtOptions): Promise
             Authorization: `Bearer ${openaiKey}`,
           },
           body: JSON.stringify({
-            model: "gpt-4o-mini",
+            model: "gpt-5-mini",
             messages: [{ role: "user", content: translatePrompt }],
             temperature: 0.3,
           }),

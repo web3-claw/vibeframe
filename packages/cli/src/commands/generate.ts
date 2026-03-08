@@ -4,7 +4,7 @@
  * Top-level `vibe generate` command group for AI asset generation.
  *
  * Commands:
- *   generate image          - Generate image (Gemini, OpenAI, Stability, Runway)
+ *   generate image          - Generate image (Gemini, OpenAI, Grok, Runway)
  *   generate video          - Generate video (Kling, Runway, Veo, Grok)
  *   generate speech         - Text-to-speech (ElevenLabs)
  *   generate sound-effect   - Sound effects (ElevenLabs)
@@ -18,7 +18,7 @@
  *   generate video-cancel   - Cancel video generation (Grok/Runway)
  *   generate video-extend   - Extend video (Kling/Veo)
  *
- * @dependencies OpenAI, Gemini, Stability, Runway, Kling, ElevenLabs, Replicate, Claude, FFmpeg
+ * @dependencies OpenAI, Gemini, Runway, Kling, ElevenLabs, Replicate, Claude, FFmpeg
  */
 
 import { Command } from "commander";
@@ -31,7 +31,6 @@ import ora from "ora";
 import {
   GeminiProvider,
   OpenAIImageProvider,
-  StabilityProvider,
   KlingProvider,
   RunwayProvider,
   ElevenLabsProvider,
@@ -80,10 +79,10 @@ export const generateCommand = new Command("generate").description(
 
 generateCommand
   .command("image")
-  .description("Generate image using AI (Gemini, DALL-E, Stability, or Runway)")
+  .description("Generate image using AI (Gemini, DALL-E, or Runway)")
   .argument("<prompt>", "Image description prompt")
-  .option("-p, --provider <provider>", "Provider: gemini, openai, stability, runway (dalle is deprecated)", "gemini")
-  .option("-k, --api-key <key>", "API key (or set env: OPENAI_API_KEY, GOOGLE_API_KEY, STABILITY_API_KEY)")
+  .option("-p, --provider <provider>", "Provider: gemini, openai, grok, runway (dalle is deprecated)", "gemini")
+  .option("-k, --api-key <key>", "API key (or set env: OPENAI_API_KEY, GOOGLE_API_KEY)")
   .option("-o, --output <path>", "Output file path (downloads image)")
   .option("-s, --size <size>", "Image size (openai: 1024x1024, 1536x1024, 1024x1536)", "1024x1024")
   .option("-r, --ratio <ratio>", "Aspect ratio (gemini: 1:1, 1:4, 1:8, 4:1, 8:1, 16:9, 9:16, 3:4, 4:3, etc.)", "1:1")
@@ -97,10 +96,10 @@ generateCommand
       rejectControlChars(prompt);
 
       const provider = options.provider.toLowerCase();
-      const validProviders = ["openai", "dalle", "gemini", "stability", "runway"];
+      const validProviders = ["openai", "dalle", "gemini", "grok", "runway"];
       if (!validProviders.includes(provider)) {
         console.error(chalk.red(`Invalid provider: ${provider}`));
-        console.error(chalk.dim(`Available providers: openai, gemini, stability, runway`));
+        console.error(chalk.dim(`Available providers: openai, gemini, grok, runway`));
         process.exit(1);
       }
 
@@ -120,14 +119,14 @@ generateCommand
         openai: "OPENAI_API_KEY",
         dalle: "OPENAI_API_KEY",
         gemini: "GOOGLE_API_KEY",
-        stability: "STABILITY_API_KEY",
+        grok: "XAI_API_KEY",
         runway: "RUNWAY_API_SECRET",
       };
       const providerNameMap: Record<string, string> = {
         openai: "OpenAI",
         dalle: "OpenAI",
         gemini: "Google",
-        stability: "Stability",
+        grok: "xAI Grok",
         runway: "Runway",
       };
       const envKey = envKeyMap[provider];
@@ -310,20 +309,20 @@ generateCommand
         } else {
           console.log(chalk.yellow("Use -o to save the generated image to a file"));
         }
-      } else if (provider === "stability") {
-        const stability = new StabilityProvider();
-        await stability.initialize({ apiKey });
+      } else if (provider === "grok") {
+        const grok = new GrokProvider();
+        await grok.initialize({ apiKey });
 
-        // Map size to Stability aspect ratio
-        const aspectRatioMap: Record<string, "16:9" | "1:1" | "9:16"> = {
-          "1024x1024": "1:1",
-          "1536x1024": "16:9",
-          "1024x1536": "9:16",
-        };
+        // Validate aspect ratio for Grok
+        const validGrokRatios = ["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "2:1", "1:2", "19.5:9", "9:19.5", "20:9", "9:20", "auto"];
+        if (options.ratio && !validGrokRatios.includes(options.ratio)) {
+          console.warn(chalk.yellow(`Unknown ratio "${options.ratio}" for Grok, using 1:1. Valid: ${validGrokRatios.join(", ")}`));
+          options.ratio = "1:1";
+        }
 
-        const result = await stability.generateImage(prompt, {
-          aspectRatio: aspectRatioMap[options.size] || "1:1",
-          count: parseInt(options.count),
+        const result = await grok.generateImage(prompt, {
+          aspectRatio: options.ratio || "1:1",
+          n: parseInt(options.count),
         });
 
         if (!result.success || !result.images) {
@@ -331,19 +330,25 @@ generateCommand
           process.exit(1);
         }
 
-        spinner.succeed(chalk.green(`Generated ${result.images.length} image(s) with Stability AI`));
+        spinner.succeed(chalk.green(`Generated ${result.images.length} image(s) with xAI Grok`));
 
         if (isJsonMode()) {
           const outputPath = options.output ? resolve(process.cwd(), options.output) : undefined;
           if (outputPath && result.images.length > 0) {
             const img = result.images[0];
-            if (img.base64) {
-              const buffer = Buffer.from(img.base64, "base64");
-              await mkdir(dirname(outputPath), { recursive: true });
-              await writeFile(outputPath, buffer);
+            let buffer: Buffer;
+            if (img.url) {
+              const response = await fetch(img.url);
+              buffer = Buffer.from(await response.arrayBuffer());
+            } else if (img.base64) {
+              buffer = Buffer.from(img.base64, "base64");
+            } else {
+              throw new Error("No image data available");
             }
+            await mkdir(dirname(outputPath), { recursive: true });
+            await writeFile(outputPath, buffer);
           }
-          outputResult({ success: true, provider: "stability", images: result.images.map(() => ({ format: "base64" })), outputPath });
+          outputResult({ success: true, provider: "grok", images: result.images.map(img => ({ url: img.url })), outputPath });
           return;
         }
 
@@ -352,21 +357,30 @@ generateCommand
         console.log(chalk.dim("─".repeat(60)));
 
         for (let i = 0; i < result.images.length; i++) {
+          const img = result.images[i];
           console.log();
-          console.log(`${chalk.yellow(`[${i + 1}]`)} (base64 image)`);
+          if (img.url) {
+            console.log(`${chalk.yellow(`[${i + 1}]`)} ${img.url}`);
+          } else if (img.base64) {
+            console.log(`${chalk.yellow(`[${i + 1}]`)} (base64 image data)`);
+          }
         }
         console.log();
 
         // Save if output specified
         if (options.output && result.images.length > 0) {
+          const img = result.images[0];
           const saveSpinner = ora("Saving image...").start();
           try {
-            const img = result.images[0];
-            if (!img.base64) {
-              saveSpinner.fail(chalk.red("No image data returned"));
-              process.exit(1);
+            let buffer: Buffer;
+            if (img.url) {
+              const response = await fetch(img.url);
+              buffer = Buffer.from(await response.arrayBuffer());
+            } else if (img.base64) {
+              buffer = Buffer.from(img.base64, "base64");
+            } else {
+              throw new Error("No image data available");
             }
-            const buffer = Buffer.from(img.base64, "base64");
             const outputPath = resolve(process.cwd(), options.output);
             await mkdir(dirname(outputPath), { recursive: true });
             await writeFile(outputPath, buffer);
@@ -374,8 +388,6 @@ generateCommand
           } catch (err) {
             saveSpinner.fail(chalk.red(`Failed to save image: ${err instanceof Error ? err.message : err}`));
           }
-        } else {
-          console.log(chalk.yellow("Use -o to save the generated image to a file"));
         }
       } else if (provider === "runway") {
         const { spawn } = await import("child_process");
@@ -461,6 +473,7 @@ generateCommand
   .option("--ref-images <paths...>", "Reference images for character consistency (Veo 3.1 only, max 3)")
   .option("--person <mode>", "Person generation: allow_all, allow_adult (Veo only)")
   .option("--veo-model <model>", "Veo model: 3.0, 3.1, 3.1-fast (default: 3.1-fast)", "3.1-fast")
+  .option("--runway-model <model>", "Runway model: gen4.5 (default, text+image-to-video), gen4_turbo (image-to-video only)", "gen4.5")
   .option("--no-wait", "Start generation and return task ID without waiting")
   .option("--dry-run", "Preview parameters without executing")
   .action(async (prompt: string, options) => {
@@ -504,9 +517,10 @@ generateCommand
         process.exit(1);
       }
 
-      // Runway Gen-4 requires an input image
-      if (provider === "runway" && !options.image) {
-        console.error(chalk.red("Runway Gen-4 requires an input image. Use -i <image> to specify."));
+      // Runway gen4_turbo requires an input image; gen4.5 supports text-to-video
+      const runwayModel = (options.runwayModel as string) || "gen4.5";
+      if (provider === "runway" && !options.image && runwayModel !== "gen4.5") {
+        console.error(chalk.red(`Runway ${runwayModel} requires an input image. Use -i <image> or use gen4.5 for text-to-video.`));
         console.error(chalk.dim("Example: vibe generate video \"prompt\" -p runway -i image.png -o out.mp4"));
         process.exit(1);
       }
@@ -544,7 +558,8 @@ generateCommand
         result = await runway.generateVideo(prompt, {
           prompt,
           referenceImage,
-          duration: parseInt(options.duration) as 5 | 10,
+          model: runwayModel,
+          duration: parseInt(options.duration),
           aspectRatio: options.ratio as "16:9" | "9:16",
           seed: options.seed ? parseInt(options.seed) : undefined,
         });
@@ -557,7 +572,7 @@ generateCommand
         console.log();
         console.log(chalk.bold.cyan("Video Generation Started"));
         console.log(chalk.dim("─".repeat(60)));
-        console.log(`Provider: ${chalk.bold("Runway Gen-4.5")}`);
+        console.log(`Provider: ${chalk.bold(`Runway ${runwayModel}`)}`);
         console.log(`Task ID: ${chalk.bold(result.id)}`);
 
         if (!options.wait) {

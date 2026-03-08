@@ -531,7 +531,6 @@ describe.skipIf(!RUN_E2E)("E2E Summary", () => {
       { name: "ELEVENLABS_API_KEY", desc: "TTS, SFX" },
       { name: "RUNWAY_API_SECRET", desc: "Video generation" },
       { name: "KLING_API_KEY", desc: "Video generation" },
-      { name: "STABILITY_API_KEY", desc: "Stable Diffusion" },
     ];
 
     for (const key of keys) {
