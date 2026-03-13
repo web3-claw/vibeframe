@@ -43,9 +43,32 @@ import { registerFillGapsCommand } from "./ai-fill-gaps.js";
 import { isJsonMode, outputResult } from "./output.js";
 import { rejectControlChars } from "./validate.js";
 
-export const editCommand = new Command("edit").description(
-  "Edit and post-process media (silence-cut, caption, grade, reframe, upscale...)"
-);
+export const editCommand = new Command("edit")
+  .description(
+    "Edit and post-process media (silence-cut, caption, grade, reframe, upscale...)"
+  )
+  .addHelpText(
+    "after",
+    `
+Examples:
+  $ vibe edit silence-cut interview.mp4 -o clean.mp4
+  $ vibe edit caption video.mp4 -o captioned.mp4 -s bold
+  $ vibe edit grade video.mp4 -o graded.mp4 --preset cinematic-warm
+  $ vibe edit reframe landscape.mp4 -o vertical.mp4 -a 9:16
+  $ vibe edit image photo.png "add sunset background" -o edited.png
+  $ vibe edit text-overlay video.mp4 -t "Title" -s center-bold -o out.mp4
+  $ vibe edit noise-reduce noisy.mp4 -o clean.mp4 -s high
+  $ vibe edit fade video.mp4 -o faded.mp4 --fade-in 1 --fade-out 1
+
+API Keys (varies by subcommand):
+  No key needed       silence-cut, noise-reduce, fade, interpolate, text-overlay
+  OPENAI_API_KEY      caption, jump-cut (Whisper transcription)
+  ANTHROPIC_API_KEY   grade, speed-ramp, reframe (Claude analysis)
+  GOOGLE_API_KEY      image editing (Gemini, default)
+
+Run 'vibe schema edit.<command>' for structured parameter info.
+`
+  );
 
 // ── edit silence-cut, jump-cut, caption, noise-reduce, fade, translate-srt ──
 

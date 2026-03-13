@@ -27,9 +27,26 @@ import { isJsonMode, outputResult } from "./output.js";
 import { sanitizeLLMResponse } from "./sanitize.js";
 import { rejectControlChars } from "./validate.js";
 
-export const analyzeCommand = new Command("analyze").description(
-  "Analyze media using AI (images, videos, YouTube URLs)"
-);
+export const analyzeCommand = new Command("analyze")
+  .description("Analyze media using AI (images, videos, YouTube URLs)")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  $ vibe analyze media image.png "Describe this image"
+  $ vibe analyze media video.mp4 "Summarize this video"
+  $ vibe analyze media "https://youtube.com/watch?v=..." "Key takeaways"
+  $ vibe analyze video video.mp4 "List all scene changes" --low-res
+  $ vibe analyze review video.mp4 --auto-apply -o fixed.mp4
+  $ vibe analyze suggest project.vibe.json "make it more dramatic"
+
+API Keys:
+  GOOGLE_API_KEY  Required for all analyze commands (Gemini)
+
+Use '--fields response,model' to limit output size.
+Run 'vibe schema analyze.<command>' for structured parameter info.
+`
+  );
 
 // ── analyze media ──────────────────────────────────────────────────────
 

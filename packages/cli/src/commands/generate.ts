@@ -69,9 +69,36 @@ function getStatusColor(status: string): string {
 
 // ── Command group ────────────────────────────────────────────────────────────
 
-export const generateCommand = new Command("generate").description(
-  "Generate assets using AI (images, videos, speech, music, motion)"
-);
+export const generateCommand = new Command("generate")
+  .description(
+    "Generate assets using AI (images, videos, speech, music, motion)"
+  )
+  .addHelpText(
+    "after",
+    `
+Examples:
+  $ vibe generate image "a sunset over the ocean" -o sunset.png
+  $ vibe generate image "logo design" -o logo.png -p openai
+  $ vibe generate video "dancing cat" -o cat.mp4                  # Grok (default, native audio)
+  $ vibe generate video "city timelapse" -o city.mp4 -p kling     # Kling
+  $ vibe generate video "epic scene" -i frame.png -o out.mp4 -p runway  # Image-to-video
+  $ vibe generate speech "Hello world" -o hello.mp3
+  $ vibe generate music "upbeat jazz" -o jazz.mp3 -d 30
+  $ vibe generate motion "animated logo intro" -o intro.mp4 --render
+
+API Keys (per provider):
+  GOOGLE_API_KEY     Image (default), Veo video
+  OPENAI_API_KEY     Image (-p openai)
+  XAI_API_KEY        Grok image/video (default video)
+  KLING_API_KEY      Kling video (-p kling)
+  RUNWAY_API_SECRET  Runway video (-p runway)
+  ELEVENLABS_API_KEY Speech, sound effects, music
+  ANTHROPIC_API_KEY  Storyboard, motion graphics
+
+Run 'vibe setup --show' to check API key status.
+Run 'vibe schema generate.<command>' for structured parameter info.
+`
+  );
 
 // ============================================================================
 // 1. Image

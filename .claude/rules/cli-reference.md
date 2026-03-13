@@ -1,6 +1,8 @@
 # VibeFrame CLI Reference
 
-> Use these commands directly — no need to run `--help` first.
+> **Note**: This file supplements `vibe --help` and `vibe schema <command>`.
+> The CLI is designed to be self-discoverable — run `--help` on any command for examples, API key requirements, and usage.
+> This file provides workflow examples and cross-command patterns that go beyond single-command help.
 
 ## Top-Level Commands
 

@@ -39,7 +39,16 @@ program
   .name("vibe")
   .description("VibeFrame CLI - AI-First Video Editor")
   .version(pkg.version)
-  .option("--json", "Output in JSON format");
+  .option("--json", "Output in JSON format")
+  .addHelpText(
+    "after",
+    `
+Tips:
+  vibe schema <command>    Show JSON schema for any command (e.g., vibe schema generate.image)
+  vibe setup --show        Check which API keys are configured
+  vibe                     Start interactive Agent mode (no args)
+`
+  );
 
 // Set JSON mode env var before subcommand parsing
 program.hook("preAction", () => {

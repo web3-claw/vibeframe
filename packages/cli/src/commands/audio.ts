@@ -32,9 +32,29 @@ import { formatTime } from "./ai-helpers.js";
 import { isJsonMode, outputResult } from "./output.js";
 import { rejectControlChars } from "./validate.js";
 
-export const audioCommand = new Command("audio").description(
-  "Audio operations (transcribe, TTS, voice clone, ducking)"
-);
+export const audioCommand = new Command("audio")
+  .description("Audio operations (transcribe, TTS, voice clone, ducking)")
+  .addHelpText(
+    "after",
+    `
+Examples:
+  $ vibe audio transcribe interview.mp3 -o transcript.srt -f srt
+  $ vibe audio transcribe video.mp4 -l ko                  # Specify language
+  $ vibe audio voices                                       # List available voices
+  $ vibe audio isolate song.mp3 -o vocals.mp3
+  $ vibe audio voice-clone sample.mp3 -n "my-voice"
+  $ vibe audio dub video.mp4 -l ko -o dubbed.mp4
+  $ vibe audio duck music.mp3 --voice narration.mp3 -o ducked.mp3
+
+API Keys:
+  OPENAI_API_KEY      transcribe (Whisper)
+  ELEVENLABS_API_KEY  voices, isolate, voice-clone
+  OPENAI_API_KEY + ANTHROPIC_API_KEY + ELEVENLABS_API_KEY  dub (full pipeline)
+  No key needed       duck (FFmpeg only)
+
+Run 'vibe schema audio.<command>' for structured parameter info.
+`
+  );
 
 // ── audio transcribe ───────────────────────────────────────────────────
 
