@@ -28,6 +28,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import chalk from "chalk";
 import ora from "ora";
+import imageSize from "image-size";
 import {
   GeminiProvider,
   OpenAIImageProvider,
@@ -491,7 +492,7 @@ generateCommand
   .option("-o, --output <path>", "Output file path (downloads video)")
   .option("-i, --image <path>", "Reference image for image-to-video")
   .option("-d, --duration <sec>", "Duration: 5 or 10 seconds", "5")
-  .option("-r, --ratio <ratio>", "Aspect ratio: 16:9, 9:16, or 1:1", "16:9")
+  .option("-r, --ratio <ratio>", "Aspect ratio: 16:9, 9:16, or 1:1 (auto-detected from image if omitted)")
   .option("-s, --seed <number>", "Random seed for reproducibility (Runway only)")
   .option("-m, --mode <mode>", "Generation mode: std or pro (Kling only)", "std")
   .option("-n, --negative <prompt>", "Negative prompt - what to avoid (Kling/Veo)")
@@ -513,6 +514,46 @@ generateCommand
         console.error(chalk.red(`Invalid provider: ${provider}`));
         console.error(chalk.dim(`Available providers: ${validProviders.join(", ")}`));
         process.exit(1);
+      }
+
+      // Read image early so we can auto-detect aspect ratio before dry-run
+      let referenceImage: string | undefined;
+      let isImageToVideo = false;
+      if (options.image) {
+        const imagePath = resolve(process.cwd(), options.image);
+        const imageBuffer = await readFile(imagePath);
+        const ext = options.image.toLowerCase().split(".").pop();
+        const mimeTypes: Record<string, string> = {
+          jpg: "image/jpeg",
+          jpeg: "image/jpeg",
+          png: "image/png",
+          gif: "image/gif",
+          webp: "image/webp",
+        };
+        const mimeType = mimeTypes[ext || "png"] || "image/png";
+        referenceImage = `data:${mimeType};base64,${imageBuffer.toString("base64")}`;
+        isImageToVideo = true;
+
+        // Auto-detect aspect ratio from image dimensions when not explicitly set
+        if (!options.ratio) {
+          const dimensions = imageSize(imageBuffer);
+          if (dimensions.width && dimensions.height) {
+            const ratio = dimensions.width / dimensions.height;
+            if (ratio > 1.2) {
+              options.ratio = "16:9";
+            } else if (ratio < 0.8) {
+              options.ratio = "9:16";
+            } else {
+              options.ratio = "1:1";
+            }
+            log(`Auto-detected aspect ratio: ${options.ratio} (${dimensions.width}x${dimensions.height})`);
+          }
+        }
+      }
+
+      // Default to 16:9 when no image and no explicit ratio
+      if (!options.ratio) {
+        options.ratio = "16:9";
       }
 
       if (options.dryRun) {
@@ -553,25 +594,6 @@ generateCommand
       }
 
       const spinner = ora(`Initializing ${providerName}...`).start();
-
-      let referenceImage: string | undefined;
-      let isImageToVideo = false;
-      if (options.image) {
-        spinner.text = "Reading reference image...";
-        const imagePath = resolve(process.cwd(), options.image);
-        const imageBuffer = await readFile(imagePath);
-        const ext = options.image.toLowerCase().split(".").pop();
-        const mimeTypes: Record<string, string> = {
-          jpg: "image/jpeg",
-          jpeg: "image/jpeg",
-          png: "image/png",
-          gif: "image/gif",
-          webp: "image/webp",
-        };
-        const mimeType = mimeTypes[ext || "png"] || "image/png";
-        referenceImage = `data:${mimeType};base64,${imageBuffer.toString("base64")}`;
-        isImageToVideo = true;
-      }
 
       spinner.text = "Starting video generation...";
 
