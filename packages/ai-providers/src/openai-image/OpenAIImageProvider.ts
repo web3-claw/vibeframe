@@ -272,12 +272,12 @@ export class OpenAIImageProvider implements AIProvider {
       // Add images (up to 16)
       for (const buf of imageBuffers) {
         const uint8Array = new Uint8Array(buf);
-        formData.append("image[]", new Blob([uint8Array]), "image.png");
+        formData.append("image[]", new Blob([uint8Array], { type: "image/png" }), "image.png");
       }
 
       if (options.mask) {
         const maskUint8 = new Uint8Array(options.mask);
-        formData.append("mask", new Blob([maskUint8]), "mask.png");
+        formData.append("mask", new Blob([maskUint8], { type: "image/png" }), "mask.png");
       }
 
       if (options.quality) {
@@ -356,7 +356,7 @@ export class OpenAIImageProvider implements AIProvider {
     try {
       const formData = new FormData();
       const uint8Array = new Uint8Array(imageBuffer);
-      formData.append("image", new Blob([uint8Array]), "image.png");
+      formData.append("image", new Blob([uint8Array], { type: "image/png" }), "image.png");
       formData.append("model", "dall-e-2");
       formData.append("n", String(options.n || 1));
       formData.append("size", options.size || "1024x1024");

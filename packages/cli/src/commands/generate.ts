@@ -556,6 +556,12 @@ generateCommand
         options.ratio = "16:9";
       }
 
+      // Veo and Runway only support 16:9 and 9:16 — clamp 1:1 to 16:9
+      if ((provider === "veo" || provider === "runway") && options.ratio === "1:1") {
+        log(`${provider} does not support 1:1 — falling back to 16:9`);
+        options.ratio = "16:9";
+      }
+
       if (options.dryRun) {
         outputResult({ dryRun: true, command: "generate video", params: { prompt, provider, duration: options.duration, ratio: options.ratio, image: options.image, mode: options.mode, negative: options.negative, resolution: options.resolution, veoModel: options.veoModel } });
         return;
