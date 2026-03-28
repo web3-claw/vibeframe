@@ -10,7 +10,7 @@
  * @see MODELS.md for AI model configuration
  */
 
-import { resolve, dirname, basename, extname } from "node:path";
+import { resolve, dirname, basename } from "node:path";
 import { writeFile, mkdir, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -46,7 +46,6 @@ export type AnimatedCaptionStyle =
   | "typewriter";
 
 const ASS_STYLES: AnimatedCaptionStyle[] = ["karaoke-sweep", "typewriter"];
-const REMOTION_STYLES: AnimatedCaptionStyle[] = ["highlight", "bounce", "pop-in", "neon"];
 
 export interface AnimatedCaptionOptions {
   videoPath: string;
@@ -299,7 +298,7 @@ export async function executeAnimatedCaption(
     const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
     if (!apiKey) {
       await rm(tmpAudioDir, { recursive: true, force: true }).catch(() => {});
-      return { success: false, error: "OPENAI_API_KEY required for Whisper transcription" };
+      return { success: false, error: "OPENAI_API_KEY required for Whisper transcription. Run 'vibe setup' or set OPENAI_API_KEY in .env" };
     }
 
     const transcript = await transcribeWithWords(audioPath, apiKey, language);

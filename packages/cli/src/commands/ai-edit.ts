@@ -146,7 +146,7 @@ async function detectSilencePeriodsWithGemini(
 
   const geminiApiKey = options.apiKey || await getApiKey("GOOGLE_API_KEY", "Google");
   if (!geminiApiKey) {
-    throw new Error("Google API key required for Gemini Video Understanding. Set GOOGLE_API_KEY or use --api-key");
+    throw new Error("Google API key required for Gemini Video Understanding. Run 'vibe setup' or set GOOGLE_API_KEY in .env");
   }
 
   const gemini = new GeminiProvider();
@@ -524,7 +524,7 @@ export async function executeJumpCut(options: JumpCutOptions): Promise<JumpCutRe
 
   const openaiKey = apiKey || process.env.OPENAI_API_KEY;
   if (!openaiKey) {
-    return { success: false, error: "OpenAI API key required for Whisper transcription." };
+    return { success: false, error: "OpenAI API key required for Whisper transcription. Run 'vibe setup' or set OPENAI_API_KEY in .env" };
   }
 
   try {
@@ -728,7 +728,7 @@ export async function executeCaption(options: CaptionOptions): Promise<CaptionRe
 
   const openaiKey = apiKey || process.env.OPENAI_API_KEY;
   if (!openaiKey) {
-    return { success: false, error: "OpenAI API key required for Whisper transcription." };
+    return { success: false, error: "OpenAI API key required for Whisper transcription. Run 'vibe setup' or set OPENAI_API_KEY in .env" };
   }
 
   try {
@@ -1164,7 +1164,7 @@ export async function executeTranslateSrt(options: TranslateSrtOptions): Promise
       if (provider === "openai") {
         const openaiKey = apiKey || process.env.OPENAI_API_KEY;
         if (!openaiKey) {
-          return { success: false, error: "OpenAI API key required for translation." };
+          return { success: false, error: "OpenAI API key required for translation. Run 'vibe setup' or set OPENAI_API_KEY in .env" };
         }
         const response = await fetch("https://api.openai.com/v1/chat/completions", {
           method: "POST",
@@ -1186,7 +1186,7 @@ export async function executeTranslateSrt(options: TranslateSrtOptions): Promise
       } else {
         const claudeKey = apiKey || process.env.ANTHROPIC_API_KEY;
         if (!claudeKey) {
-          return { success: false, error: "Anthropic API key required for translation." };
+          return { success: false, error: "Anthropic API key required for translation. Run 'vibe setup' or set ANTHROPIC_API_KEY in .env" };
         }
         const response = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",

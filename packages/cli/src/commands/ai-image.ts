@@ -73,7 +73,7 @@ aiCommand
 
       const apiKey = await getApiKey(envKey, providerName, options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red(`${providerName} API key required.`));
+        console.error(chalk.red(`${providerName} API key required. Set ${envKey} in .env or run: vibe setup`));
         console.error(chalk.dim(`Use --api-key or set ${envKey} environment variable`));
         process.exit(1);
       }
@@ -304,7 +304,7 @@ aiCommand
 
         const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Google API key required for Gemini video analysis."));
+          console.error(chalk.red("Google API key required for Gemini video analysis. Set GOOGLE_API_KEY in .env or run: vibe setup"));
           console.error(chalk.dim("Use --api-key or set GOOGLE_API_KEY"));
           process.exit(1);
         }
@@ -348,7 +348,7 @@ aiCommand
 
       const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("OpenAI API key required. Use --api-key or set OPENAI_API_KEY"));
+        console.error(chalk.red("OpenAI API key required. Set OPENAI_API_KEY in .env or run: vibe setup"));
         process.exit(1);
       }
 
@@ -415,7 +415,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("OpenAI API key required. Use --api-key or set OPENAI_API_KEY"));
+        console.error(chalk.red("OpenAI API key required. Set OPENAI_API_KEY in .env or run: vibe setup"));
         process.exit(1);
       }
 
@@ -487,7 +487,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("Google API key required."));
+        console.error(chalk.red("Google API key required. Set GOOGLE_API_KEY in .env or run: vibe setup"));
         console.error(chalk.dim("Use --api-key or set GOOGLE_API_KEY environment variable"));
         process.exit(1);
       }
@@ -572,7 +572,7 @@ aiCommand
 
       const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("Google API key required."));
+        console.error(chalk.red("Google API key required. Set GOOGLE_API_KEY in .env or run: vibe setup"));
         process.exit(1);
       }
 
@@ -685,7 +685,7 @@ export async function executeThumbnailBestFrame(options: ThumbnailBestFrameOptio
 
   const googleKey = apiKey || process.env.GOOGLE_API_KEY;
   if (!googleKey) {
-    return { success: false, error: "Google API key required for Gemini video analysis." };
+    return { success: false, error: "Google API key required for Gemini video analysis. Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
   }
 
   try {

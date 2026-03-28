@@ -195,13 +195,13 @@ ai
 
       const openaiApiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
       if (!openaiApiKey) {
-        console.error(chalk.red("OpenAI API key required for Whisper transcription."));
+        console.error(chalk.red("OpenAI API key required for Whisper transcription. Set OPENAI_API_KEY in .env or run: vibe setup"));
         process.exit(1);
       }
 
       const claudeApiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic", options.apiKey);
       if (!claudeApiKey) {
-        console.error(chalk.red("Anthropic API key required for speed analysis."));
+        console.error(chalk.red("Anthropic API key required for speed analysis. Set ANTHROPIC_API_KEY in .env or run: vibe setup"));
         process.exit(1);
       }
 

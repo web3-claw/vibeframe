@@ -43,6 +43,7 @@ export function registerScriptPipelineCommands(aiCommand: Command): void {
 // Script-to-Video command
 aiCommand
   .command("script-to-video")
+  .alias("s2v")
   .description("Generate complete video from text script using AI pipeline")
   .argument("<script>", "Script text or file path (use -f for file)")
   .option("-f, --file", "Treat script argument as file path")
@@ -76,19 +77,19 @@ aiCommand
       if (storyboardProvider === "openai") {
         storyboardApiKey = (await getApiKey("OPENAI_API_KEY", "OpenAI")) ?? undefined;
         if (!storyboardApiKey) {
-          console.error(chalk.red("OpenAI API key required for storyboard generation (-s openai)"));
+          console.error(chalk.red("OpenAI API key required for storyboard generation (-s openai). Set OPENAI_API_KEY in .env or run: vibe setup"));
           process.exit(1);
         }
       } else if (storyboardProvider === "gemini") {
         storyboardApiKey = (await getApiKey("GOOGLE_API_KEY", "Google")) ?? undefined;
         if (!storyboardApiKey) {
-          console.error(chalk.red("Google API key required for storyboard generation (-s gemini)"));
+          console.error(chalk.red("Google API key required for storyboard generation (-s gemini). Set GOOGLE_API_KEY in .env or run: vibe setup"));
           process.exit(1);
         }
       } else if (storyboardProvider === "claude") {
         storyboardApiKey = (await getApiKey("ANTHROPIC_API_KEY", "Anthropic")) ?? undefined;
         if (!storyboardApiKey) {
-          console.error(chalk.red("Anthropic API key required for storyboard generation"));
+          console.error(chalk.red("Anthropic API key required for storyboard generation. Set ANTHROPIC_API_KEY in .env or run: vibe setup"));
           process.exit(1);
         }
       } else {
@@ -103,19 +104,19 @@ aiCommand
       if (imageProvider === "openai" || imageProvider === "dalle") {
         imageApiKey = (await getApiKey("OPENAI_API_KEY", "OpenAI")) ?? undefined;
         if (!imageApiKey) {
-          console.error(chalk.red("OpenAI API key required for DALL-E image generation"));
+          console.error(chalk.red("OpenAI API key required for DALL-E image generation. Set OPENAI_API_KEY in .env or run: vibe setup"));
           process.exit(1);
         }
       } else if (imageProvider === "gemini") {
         imageApiKey = (await getApiKey("GOOGLE_API_KEY", "Google")) ?? undefined;
         if (!imageApiKey) {
-          console.error(chalk.red("Google API key required for Gemini image generation"));
+          console.error(chalk.red("Google API key required for Gemini image generation. Set GOOGLE_API_KEY in .env or run: vibe setup"));
           process.exit(1);
         }
       } else if (imageProvider === "grok") {
         imageApiKey = (await getApiKey("XAI_API_KEY", "xAI")) ?? undefined;
         if (!imageApiKey) {
-          console.error(chalk.red("xAI API key required for Grok image generation"));
+          console.error(chalk.red("xAI API key required for Grok image generation. Set XAI_API_KEY in .env or run: vibe setup"));
           process.exit(1);
         }
       } else {
@@ -127,7 +128,7 @@ aiCommand
       if (options.voiceover !== false) {
         const key = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs");
         if (!key) {
-          console.error(chalk.red("ElevenLabs API key required for voiceover (or use --no-voiceover)"));
+          console.error(chalk.red("ElevenLabs API key required for voiceover (or use --no-voiceover). Set ELEVENLABS_API_KEY in .env or run: vibe setup"));
           process.exit(1);
         }
         elevenlabsApiKey = key;
@@ -138,14 +139,14 @@ aiCommand
         if (options.generator === "kling") {
           const key = await getApiKey("KLING_API_KEY", "Kling");
           if (!key) {
-            console.error(chalk.red("Kling API key required (or use --images-only)"));
+            console.error(chalk.red("Kling API key required (or use --images-only). Set KLING_API_KEY in .env or run: vibe setup"));
             process.exit(1);
           }
           videoApiKey = key;
         } else {
           const key = await getApiKey("RUNWAY_API_SECRET", "Runway");
           if (!key) {
-            console.error(chalk.red("Runway API key required (or use --images-only)"));
+            console.error(chalk.red("Runway API key required (or use --images-only). Set RUNWAY_API_SECRET in .env or run: vibe setup"));
             process.exit(1);
           }
           videoApiKey = key;
@@ -1226,19 +1227,19 @@ aiCommand
         if (imageProvider === "openai" || imageProvider === "dalle") {
           imageApiKey = (await getApiKey("OPENAI_API_KEY", "OpenAI")) ?? undefined;
           if (!imageApiKey) {
-            console.error(chalk.red("OpenAI API key required for image generation"));
+            console.error(chalk.red("OpenAI API key required for image generation. Set OPENAI_API_KEY in .env or run: vibe setup"));
             process.exit(1);
           }
         } else if (imageProvider === "gemini") {
           imageApiKey = (await getApiKey("GOOGLE_API_KEY", "Google")) ?? undefined;
           if (!imageApiKey) {
-            console.error(chalk.red("Google API key required for Gemini image generation"));
+            console.error(chalk.red("Google API key required for Gemini image generation. Set GOOGLE_API_KEY in .env or run: vibe setup"));
             process.exit(1);
           }
         } else if (imageProvider === "grok") {
           imageApiKey = (await getApiKey("XAI_API_KEY", "xAI")) ?? undefined;
           if (!imageApiKey) {
-            console.error(chalk.red("xAI API key required for Grok image generation"));
+            console.error(chalk.red("xAI API key required for Grok image generation. Set XAI_API_KEY in .env or run: vibe setup"));
             process.exit(1);
           }
         }
@@ -1248,14 +1249,14 @@ aiCommand
         if (options.generator === "kling") {
           const key = await getApiKey("KLING_API_KEY", "Kling");
           if (!key) {
-            console.error(chalk.red("Kling API key required"));
+            console.error(chalk.red("Kling API key required. Set KLING_API_KEY in .env or run: vibe setup"));
             process.exit(1);
           }
           videoApiKey = key;
         } else {
           const key = await getApiKey("RUNWAY_API_SECRET", "Runway");
           if (!key) {
-            console.error(chalk.red("Runway API key required"));
+            console.error(chalk.red("Runway API key required. Set RUNWAY_API_SECRET in .env or run: vibe setup"));
             process.exit(1);
           }
           videoApiKey = key;
@@ -1265,7 +1266,7 @@ aiCommand
       if (regenerateNarration) {
         const key = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs");
         if (!key) {
-          console.error(chalk.red("ElevenLabs API key required for narration"));
+          console.error(chalk.red("ElevenLabs API key required for narration. Set ELEVENLABS_API_KEY in .env or run: vibe setup"));
           process.exit(1);
         }
         elevenlabsApiKey = key;

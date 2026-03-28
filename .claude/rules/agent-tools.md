@@ -1,6 +1,5 @@
 ---
-description: CLI to Agent tool synchronization rules and current tool registry
-globs:
+paths:
   - "packages/cli/src/agent/**"
   - "packages/cli/src/commands/**"
 ---

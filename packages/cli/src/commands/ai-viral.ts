@@ -103,14 +103,14 @@ export function registerViralCommand(ai: Command): void {
         // Validate API keys
         const openaiApiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
         if (!openaiApiKey) {
-          console.error(chalk.red("OpenAI API key required for Whisper transcription."));
+          console.error(chalk.red("OpenAI API key required for Whisper transcription. Set OPENAI_API_KEY in .env or run: vibe setup"));
           console.error(chalk.dim("Set OPENAI_API_KEY environment variable"));
           process.exit(1);
         }
 
         const claudeApiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic");
         if (!claudeApiKey) {
-          console.error(chalk.red("Anthropic API key required for viral analysis."));
+          console.error(chalk.red("Anthropic API key required for viral analysis. Set ANTHROPIC_API_KEY in .env or run: vibe setup"));
           console.error(chalk.dim("Set ANTHROPIC_API_KEY environment variable"));
           process.exit(1);
         }

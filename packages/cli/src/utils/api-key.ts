@@ -154,6 +154,68 @@ export async function getApiKey(
 }
 
 /**
+ * Error thrown when a required API key is missing (non-interactive mode)
+ */
+export class ApiKeyError extends Error {
+  public envVar: string;
+  public providerName: string;
+
+  constructor(envVar: string, providerName: string) {
+    super(
+      `${providerName} API key required.\n` +
+        `  Set ${envVar} in .env, or run: vibe setup`
+    );
+    this.name = "ApiKeyError";
+    this.envVar = envVar;
+    this.providerName = providerName;
+  }
+
+  toStructured(): {
+    success: false;
+    error: string;
+    code: string;
+    exitCode: number;
+    suggestion: string;
+    retryable: false;
+  } {
+    return {
+      success: false as const,
+      error: `${this.providerName} API key required.`,
+      code: "API_KEY_MISSING",
+      exitCode: 4,
+      suggestion: `Set ${this.envVar} in .env, or run: vibe setup`,
+      retryable: false as const,
+    };
+  }
+}
+
+/**
+ * Check if an API key is available without prompting or side effects.
+ */
+export function hasApiKey(envVar: string): boolean {
+  loadEnv();
+  if (process.env[envVar]) return true;
+  const key = getApiKeyFromConfig(envVar);
+  return !!key;
+}
+
+/**
+ * Get API key or throw ApiKeyError if not found.
+ * Use this instead of getApiKey() + manual null check.
+ */
+export async function requireApiKey(
+  envVar: string,
+  providerName: string,
+  cliOverride?: string
+): Promise<string> {
+  const key = await getApiKey(envVar, providerName, cliOverride);
+  if (!key) {
+    throw new ApiKeyError(envVar, providerName);
+  }
+  return key;
+}
+
+/**
  * Save API key to .env file
  */
 async function saveApiKeyToEnv(envVar: string, apiKey: string): Promise<void> {

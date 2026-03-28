@@ -78,8 +78,15 @@ export function createTTYInterface(options?: {
 
 /**
  * Prompt for input (single line)
+ * Throws in non-TTY environments to prevent hanging.
  */
 export async function prompt(question: string): Promise<string> {
+  if (!hasTTY()) {
+    throw new Error(
+      "Interactive input required but no TTY available. " +
+        "Use command flags to provide values non-interactively."
+    );
+  }
   const input = getTTYInputStream();
   const rl = createInterface({
     input,

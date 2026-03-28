@@ -210,3 +210,95 @@ export REPLICATE_API_TOKEN="..."      # Replicate (music)
 | `vibe generate video -p kling` | `KLING_API_KEY` | Kling v2.5-turbo |
 | `vibe generate image -p grok` | `XAI_API_KEY` | Grok Imagine |
 | `vibe generate video -p veo` | `GOOGLE_API_KEY` | Veo 3.1 |
+
+---
+
+## Benchmark Rankings (Artificial Analysis, March 2026)
+
+> Source: [artificialanalysis.ai](https://artificialanalysis.ai/) — ELO scores from blind side-by-side user voting.
+
+### Text-to-Image (Top 15 of 119 models)
+
+| Rank | Model | ELO | VibeFrame |
+|------|-------|-----|-----------|
+| **1** | **GPT Image 1.5 (high)** | **1,266** | `vibe gen img -p openai` |
+| **2** | **Nano Banana 2 (Gemini 3.1 Flash)** | **1,258** | `vibe gen img -m 3.1-flash` |
+| 3 | Riverflow 2.0 | 1,254 | - |
+| **4** | **Nano Banana Pro (Gemini 3 Pro)** | **1,214** | `vibe gen img -m pro` |
+| 5 | FLUX.2 [max] | 1,200 | - |
+| 6 | Seedream 4.0 | 1,185 | - |
+| 7 | FLUX.2 [pro] | 1,181 | - |
+| 8 | FLUX.2 [flex] | 1,180 | - |
+| 9 | Imagen 4 Ultra Preview | 1,175 | - |
+| 10 | Seedream 4.5 | 1,172 | - |
+| **11** | **Grok Imagine** | **1,171** | `vibe gen img -p grok` |
+| 12 | Imagen 4 Preview | 1,171 | - |
+| 13 | Imagen 4 Ultra | 1,169 | - |
+| 14 | FLUX.2 [dev] Turbo | 1,164 | - |
+| **15** | **Nano Banana (Gemini 2.5 Flash)** | **1,164** | `vibe gen img` (default) |
+
+### Image Editing (Top 10 of 53 models)
+
+| Rank | Model | ELO | VibeFrame |
+|------|-------|-----|-----------|
+| 1 | Riverflow 2.0 | 1,283 | - |
+| **2** | **GPT Image 1.5 (high)** | **1,271** | `vibe ed image -p openai` |
+| **3** | **Nano Banana Pro** | **1,250** | `vibe ed image -m pro` |
+| **4** | **Nano Banana 2** | **1,244** | `vibe ed image -m 3.1-flash` |
+| **5** | **Grok Imagine** | **1,225** | `vibe ed image -p grok` |
+| 6 | HunyuanImage 3.0 Instruct | 1,223 | - |
+| 7 | Grok Imagine Pro | 1,214 | - |
+| 8 | Kling Image 3.0 | 1,205 | - |
+| 9 | Wan 2.6 Image | 1,197 | - |
+| 10 | Seedream 4.5 | 1,196 | - |
+
+### Text-to-Video (Top 15 of 79 models)
+
+| Rank | Model | ELO | $/min | VibeFrame |
+|------|-------|-----|-------|-----------|
+| 1 | Seedance 2.0 | 1,273 | No API | - |
+| 2 | SkyReels V4 | 1,245 | $7.20 | - |
+| **3** | **Kling 3.0 Pro** | **1,241** | **$13.44** | `vibe gen vid -p kling -m v3` |
+| 4 | PixVerse V6 | 1,239 | No API | - |
+| **5** | **Kling 3.0 Omni Pro** | **1,232** | **$13.44** | `vibe gen vid -p kling -m v3-omni` |
+| **6** | **Veo 3.1 Preview** | **1,230** | **$12.00** | `vibe gen vid -p veo --veo-model 3.1` |
+| **7** | **Grok Imagine Video** | **1,229** | **$4.20** | `vibe gen vid` (default) |
+| 8 | PixVerse V5.6 | 1,228 | $9.00 | - |
+| **9** | **Runway Gen-4.5** | **1,227** | API | `vibe gen vid -p runway` |
+| 10 | Vidu Q3 Pro | 1,223 | $9.60 | - |
+| 11 | Veo 3 | 1,221 | $12.00 | - |
+| **12** | **Kling 3.0 Std** | **1,220** | **$10.08** | `vibe gen vid -p kling -m v3` |
+| 13 | Kling 3.0 Omni Std | 1,219 | $10.08 | - |
+| **14** | **Veo 3.1 Fast** | **1,218** | **$6.00** | `vibe gen vid -p veo` (default Veo) |
+| 15 | Veo 3.1 Fast Preview | 1,215 | $6.00 | - |
+
+### Image-to-Video (Top 15 of 73 models)
+
+| Rank | Model | ELO | $/min | VibeFrame |
+|------|-------|-----|-------|-----------|
+| 1 | Seedance 2.0 | 1,352 | No API | - |
+| 2 | PixVerse V6 | 1,344 | No API | - |
+| **3** | **Grok Imagine Video** | **1,334** | **$4.20** | `vibe gen vid -i img.png` (default) |
+| 4 | GenFlare 2.0 | 1,326 | No API | - |
+| **5** | **Kling 3.0 Omni Pro** | **1,298** | **$13.44** | `vibe gen vid -i img.png -p kling -m v3-omni` |
+| **6** | **Kling 2.5 Turbo** | **1,296** | **$4.20** | `vibe gen vid -i img.png -p kling` |
+| 7 | PixVerse V5.6 | 1,291 | $9.00 | - |
+| **8** | **Veo 3.1 Fast** | **1,291** | **$6.00** | `vibe gen vid -i img.png -p veo` |
+| 9 | SkyReels V4 | 1,289 | $7.20 | - |
+| **10** | **Veo 3.1 Preview** | **1,289** | **$12.00** | `vibe gen vid -i img.png -p veo --veo-model 3.1` |
+| 11 | Vidu Q3 Pro | 1,288 | $9.60 | - |
+| 12 | Hailuo 02 0616 | 1,286 | $4.90 | - |
+| 13 | Veo 3.1 Fast Preview | 1,285 | $6.00 | - |
+| 14 | Kling 2.6 Std | 1,282 | No API | - |
+| **15** | **Kling 3.0 Pro** | **1,278** | **$13.44** | `vibe gen vid -i img.png -p kling -m v3` |
+
+### Coverage Summary
+
+| Category | Models (total) | VibeFrame supported | Top 10 coverage |
+|----------|---------------|--------------------|-----------------|
+| Text-to-Image | 119 | 5 | 3 of top 5 (1st, 2nd, 4th) |
+| Image Editing | 53 | 4 | 4 of top 5 (2nd-5th) |
+| Text-to-Video | 79 | 6 | 6 of top 15 (3rd, 5th, 6th, 7th, 9th, 14th) |
+| Image-to-Video | 73 | 5 | 5 of top 15 (3rd, 5th, 6th, 8th, 10th) |
+
+> VibeFrame focuses on top-ranked models with public APIs. Models without API access (Seedance, PixVerse, GenFlare) are excluded. Default providers (Gemini for image, Grok for video) rank in the top tier of each category.

@@ -1,6 +1,5 @@
 ---
-description: MCP server setup, bundling, and publishing
-globs:
+paths:
   - "packages/mcp-server/**"
 ---
 

@@ -25,7 +25,7 @@ import {
   ElevenLabsProvider,
   ClaudeProvider,
 } from "@vibeframe/ai-providers";
-import { getApiKey } from "../utils/api-key.js";
+import { getApiKey, requireApiKey } from "../utils/api-key.js";
 import { execSafe, commandExists, execSafeSync } from "../utils/exec-safe.js";
 import { detectFormat, formatTranscript } from "../utils/subtitle.js";
 import { formatTime } from "./ai-helpers.js";
@@ -33,6 +33,7 @@ import { isJsonMode, outputResult } from "./output.js";
 import { rejectControlChars } from "./validate.js";
 
 export const audioCommand = new Command("audio")
+  .alias("au")
   .description("Audio operations (transcribe, TTS, voice clone, ducking)")
   .addHelpText(
     "after",
@@ -68,11 +69,7 @@ audioCommand
   .option("-f, --format <format>", "Output format: json, srt, vtt (auto-detected from extension)")
   .action(async (audioPath: string, options) => {
     try {
-      const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("OpenAI API key required. Use --api-key or set OPENAI_API_KEY"));
-        process.exit(1);
-      }
+      const apiKey = await requireApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
 
       const spinner = ora("Initializing Whisper...").start();
 
@@ -137,11 +134,7 @@ audioCommand
   .option("-k, --api-key <key>", "ElevenLabs API key (or set ELEVENLABS_API_KEY env)")
   .action(async (options) => {
     try {
-      const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("ElevenLabs API key required"));
-        process.exit(1);
-      }
+      const apiKey = await requireApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
 
       const spinner = ora("Fetching voices...").start();
       const elevenlabs = new ElevenLabsProvider();
@@ -188,11 +181,7 @@ audioCommand
         return;
       }
 
-      const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("ElevenLabs API key required. Use --api-key or set ELEVENLABS_API_KEY"));
-        process.exit(1);
-      }
+      const apiKey = await requireApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
 
       const spinner = ora("Reading audio file...").start();
 
@@ -250,11 +239,7 @@ audioCommand
         return;
       }
 
-      const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("ElevenLabs API key required. Use --api-key or set ELEVENLABS_API_KEY"));
-        process.exit(1);
-      }
+      const apiKey = await requireApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
 
       const elevenlabs = new ElevenLabsProvider();
       await elevenlabs.initialize({ apiKey });
@@ -377,25 +362,11 @@ audioCommand
       }
 
       // Check required API keys
-      const openaiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", undefined);
-      const anthropicKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic", undefined);
-      const elevenlabsKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", undefined);
-
-      if (!openaiKey) {
-        console.error(chalk.red("OpenAI API key required for transcription. Set OPENAI_API_KEY"));
-        process.exit(1);
-      }
-
-      if (!anthropicKey) {
-        console.error(chalk.red("Anthropic API key required for translation. Set ANTHROPIC_API_KEY"));
-        process.exit(1);
-      }
-
-      if (!options.analyzeOnly && !elevenlabsKey) {
-        console.error(chalk.red("ElevenLabs API key required for TTS. Set ELEVENLABS_API_KEY"));
-        console.error(chalk.dim("Or use --analyze-only to preview timing without generating audio"));
-        process.exit(1);
-      }
+      const openaiKey = await requireApiKey("OPENAI_API_KEY", "OpenAI");
+      const anthropicKey = await requireApiKey("ANTHROPIC_API_KEY", "Anthropic");
+      const elevenlabsKey = options.analyzeOnly
+        ? await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", undefined)
+        : await requireApiKey("ELEVENLABS_API_KEY", "ElevenLabs");
 
       const spinner = ora("Extracting audio...").start();
 

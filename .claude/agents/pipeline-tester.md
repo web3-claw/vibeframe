@@ -6,6 +6,8 @@ model: sonnet
 memory: project
 maxTurns: 40
 permissionMode: bypassPermissions
+skills:
+  - sync-check
 ---
 
 You are a pipeline tester for VibeFrame, an AI-native video editing CLI tool.

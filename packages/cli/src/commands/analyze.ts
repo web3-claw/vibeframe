@@ -19,15 +19,16 @@ import chalk from "chalk";
 import ora from "ora";
 import { GeminiProvider } from "@vibeframe/ai-providers";
 import { Project, type ProjectFile } from "../engine/index.js";
-import { getApiKey } from "../utils/api-key.js";
+import { requireApiKey } from "../utils/api-key.js";
 import { applySuggestion } from "./ai-helpers.js";
 import { executeAnalyze, executeGeminiVideo } from "./ai-analyze.js";
 import { registerReviewCommand } from "./ai-review.js";
-import { isJsonMode, outputResult } from "./output.js";
+import { isJsonMode, outputResult, exitWithError, apiError } from "./output.js";
 import { sanitizeLLMResponse } from "./sanitize.js";
 import { rejectControlChars } from "./validate.js";
 
 export const analyzeCommand = new Command("analyze")
+  .alias("az")
   .description("Analyze media using AI (images, videos, YouTube URLs)")
   .addHelpText(
     "after",
@@ -70,12 +71,7 @@ analyzeCommand
       if (options.apiKey) {
         process.env.GOOGLE_API_KEY = options.apiKey;
       } else {
-        const apiKey = await getApiKey("GOOGLE_API_KEY", "Google");
-        if (!apiKey) {
-          console.error(chalk.red("Google API key required."));
-          console.error(chalk.dim("Use --api-key or set GOOGLE_API_KEY environment variable"));
-          process.exit(1);
-        }
+        await requireApiKey("GOOGLE_API_KEY", "Google");
       }
 
       const spinner = ora("Analyzing source...").start();
@@ -128,9 +124,7 @@ analyzeCommand
         console.log(chalk.dim(`Total tokens: ${result.totalTokens.toLocaleString()}`));
       }
     } catch (error) {
-      console.error(chalk.red("Analysis failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Analysis failed: ${(error as Error).message}`));
     }
   });
 
@@ -156,12 +150,7 @@ analyzeCommand
       if (options.apiKey) {
         process.env.GOOGLE_API_KEY = options.apiKey;
       } else {
-        const apiKey = await getApiKey("GOOGLE_API_KEY", "Google");
-        if (!apiKey) {
-          console.error(chalk.red("Google API key required."));
-          console.error(chalk.dim("Use --api-key or set GOOGLE_API_KEY environment variable"));
-          process.exit(1);
-        }
+        await requireApiKey("GOOGLE_API_KEY", "Google");
       }
 
       const spinner = ora("Analyzing video...").start();
@@ -213,9 +202,7 @@ analyzeCommand
         console.log(chalk.dim(`Total tokens: ${result.totalTokens.toLocaleString()}`));
       }
     } catch (error) {
-      console.error(chalk.red("Video analysis failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Video analysis failed: ${(error as Error).message}`));
     }
   });
 
@@ -236,11 +223,7 @@ analyzeCommand
     try {
       rejectControlChars(instruction);
 
-      const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("Google API key required. Use --api-key or set GOOGLE_API_KEY"));
-        process.exit(1);
-      }
+      const apiKey = await requireApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
 
       const spinner = ora("Initializing Gemini...").start();
 
@@ -294,8 +277,6 @@ analyzeCommand
 
       console.log();
     } catch (error) {
-      console.error(chalk.red("AI suggestion failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`AI suggestion failed: ${(error as Error).message}`));
     }
   });

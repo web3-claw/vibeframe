@@ -43,7 +43,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("OpenAI API key required. Use --api-key or set OPENAI_API_KEY"));
+        console.error(chalk.red("OpenAI API key required. Set OPENAI_API_KEY in .env or run: vibe setup"));
         process.exit(1);
       }
 
@@ -109,7 +109,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("ElevenLabs API key required. Use --api-key or set ELEVENLABS_API_KEY"));
+        console.error(chalk.red("ElevenLabs API key required. Set ELEVENLABS_API_KEY in .env or run: vibe setup"));
         process.exit(1);
       }
 
@@ -175,7 +175,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("ElevenLabs API key required"));
+        console.error(chalk.red("ElevenLabs API key required. Set ELEVENLABS_API_KEY in .env or run: vibe setup"));
         process.exit(1);
       }
 
@@ -215,7 +215,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("ElevenLabs API key required. Use --api-key or set ELEVENLABS_API_KEY"));
+        console.error(chalk.red("ElevenLabs API key required. Set ELEVENLABS_API_KEY in .env or run: vibe setup"));
         process.exit(1);
       }
 
@@ -257,7 +257,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("ElevenLabs API key required. Use --api-key or set ELEVENLABS_API_KEY"));
+        console.error(chalk.red("ElevenLabs API key required. Set ELEVENLABS_API_KEY in .env or run: vibe setup"));
         process.exit(1);
       }
 
@@ -306,7 +306,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("ElevenLabs API key required. Use --api-key or set ELEVENLABS_API_KEY"));
+        console.error(chalk.red("ElevenLabs API key required. Set ELEVENLABS_API_KEY in .env or run: vibe setup"));
         process.exit(1);
       }
 
@@ -406,7 +406,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("Replicate API token required. Use --api-key or set REPLICATE_API_TOKEN"));
+        console.error(chalk.red("Replicate API token required. Set REPLICATE_API_TOKEN in .env or run: vibe setup"));
         process.exit(1);
       }
 
@@ -495,7 +495,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("Replicate API token required. Use --api-key or set REPLICATE_API_TOKEN"));
+        console.error(chalk.red("Replicate API token required. Set REPLICATE_API_TOKEN in .env or run: vibe setup"));
         process.exit(1);
       }
 
@@ -595,7 +595,7 @@ aiCommand
       // Replicate AI mode
       const apiKey = await getApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("Replicate API token required. Use --api-key or set REPLICATE_API_TOKEN"));
+        console.error(chalk.red("Replicate API token required. Set REPLICATE_API_TOKEN in .env or run: vibe setup"));
         console.error(chalk.dim("Or use --ffmpeg for free FFmpeg-based restoration"));
         process.exit(1);
       }
@@ -646,17 +646,17 @@ aiCommand
       const elevenlabsKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", undefined);
 
       if (!openaiKey) {
-        console.error(chalk.red("OpenAI API key required for transcription. Set OPENAI_API_KEY"));
+        console.error(chalk.red("OpenAI API key required for transcription. Set OPENAI_API_KEY in .env or run: vibe setup"));
         process.exit(1);
       }
 
       if (!anthropicKey) {
-        console.error(chalk.red("Anthropic API key required for translation. Set ANTHROPIC_API_KEY"));
+        console.error(chalk.red("Anthropic API key required for translation. Set ANTHROPIC_API_KEY in .env or run: vibe setup"));
         process.exit(1);
       }
 
       if (!options.analyzeOnly && !elevenlabsKey) {
-        console.error(chalk.red("ElevenLabs API key required for TTS. Set ELEVENLABS_API_KEY"));
+        console.error(chalk.red("ElevenLabs API key required for TTS. Set ELEVENLABS_API_KEY in .env or run: vibe setup"));
         console.error(chalk.dim("Or use --analyze-only to preview timing without generating audio"));
         process.exit(1);
       }

@@ -1,6 +1,5 @@
 ---
-description: Version management and documentation update rules
-globs:
+paths:
   - "package.json"
   - "packages/*/package.json"
   - "apps/*/package.json"
@@ -14,6 +13,8 @@ All packages share the same version number. Update versions when making signific
 - `patch` (0.1.0 → 0.1.1): Bug fixes, minor improvements
 - `minor` (0.1.0 → 0.2.0): New features, new commands
 - `major` (0.1.0 → 1.0.0): Breaking changes, major milestones
+
+**Quick bump:** Use `/release patch`, `/release minor`, or `/release major` skill to automate the full workflow.
 
 **Auto-bump rule for Claude Code:**
 After committing `feat:` or `fix:` changes, bump the version before pushing:
@@ -62,9 +63,8 @@ git tag vX.Y.Z
 A `PreToolUse` hook (`.claude/hooks/pre-push-validate.sh`) automatically validates before `git push`. Manual checks:
 
 1. **Version**: `grep '"version"' package.json packages/*/package.json apps/*/package.json | cut -d: -f2 | sort -u` → should show only 1 version
-2. **Model IDs**: `grep -rn "claude-opus-4-5\|claude-sonnet-4-20\|kling-v1" .claude/skills/` → should return nothing
-3. **Landing page**: `apps/web/app/page.tsx` version badge, tool counts match actual
-4. **README.md**: test count, provider count, CLI command list are current
+2. **Landing page**: `apps/web/app/page.tsx` version badge, tool counts match actual
+3. **README.md**: test count, provider count, CLI command list are current
 
 > Use `version-checker` agent for comprehensive automated report, or `/sync-check` for quick inline check.
 

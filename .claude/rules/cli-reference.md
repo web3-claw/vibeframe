@@ -1,8 +1,25 @@
+---
+paths:
+  - "packages/cli/**"
+---
+
 # VibeFrame CLI Reference
 
 > **Note**: This file supplements `vibe --help` and `vibe schema <command>`.
 > The CLI is designed to be self-discoverable — run `--help` on any command for examples, API key requirements, and usage.
 > This file provides workflow examples and cross-command patterns that go beyond single-command help.
+
+## Command Group Aliases
+
+| Full | Alias | Example |
+|------|-------|---------|
+| `generate` | `gen` | `vibe gen img "prompt"` |
+| `edit` | `ed` | `vibe ed sc video.mp4` |
+| `analyze` | `az` | `vibe az media img.png` |
+| `audio` | `au` | `vibe au transcribe audio.mp3` |
+| `pipeline` | `pipe` | `vibe pipe s2v "script"` |
+
+Subcommand aliases: `image`→`img`, `video`→`vid`, `speech`→`tts`, `caption`→`cap`, `silence-cut`→`sc`, `script-to-video`→`s2v`, `auto-shorts`→`shorts`
 
 ## Top-Level Commands
 
@@ -211,14 +228,10 @@ vibe pipeline highlights <video> --project project.vibe.json
 # Auto-generate shorts
 vibe pipeline auto-shorts <video> -o shorts/ -n 3 -d 60 --add-captions
 
-# Viral optimization (multi-platform export)
-vibe pipeline viral <project> --platforms youtube,tiktok,instagram-reels -o viral/
-
-# B-roll generation
-vibe pipeline b-roll <video> -o broll/
-
-# AI narration for video
-vibe pipeline narrate <video> -o narration/ -v rachel -s energetic
+# Deprecated commands (still functional, will be removed)
+# vibe pipeline viral    → use individual commands instead
+# vibe pipeline b-roll   → use individual commands instead
+# vibe pipeline narrate  → use individual commands instead
 ```
 
 ## Common Workflows

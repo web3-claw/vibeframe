@@ -237,7 +237,7 @@ aiCommand
       // Get Kling API key
       const apiKey = await getApiKey("KLING_API_KEY", "Kling", undefined);
       if (!apiKey) {
-        console.error(chalk.red("Kling API key required for AI video generation."));
+        console.error(chalk.red("Kling API key required for AI video generation. Set KLING_API_KEY in .env or run: vibe setup"));
         console.error(chalk.dim("Format: ACCESS_KEY:SECRET_KEY"));
         console.error(chalk.dim("Set KLING_API_KEY environment variable"));
         process.exit(1);

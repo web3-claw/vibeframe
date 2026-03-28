@@ -116,7 +116,7 @@ export default function LandingPage() {
               Every edit is a command
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              43 AI commands for video editing, generation, and post-production.
+              50+ commands for video editing, generation, and post-production.
               No GUI required — just your terminal.
             </p>
           </div>
@@ -129,17 +129,17 @@ export default function LandingPage() {
               <span className="ml-2 text-sm text-muted-foreground">terminal</span>
             </div>
             <pre className="p-4 sm:p-6 text-xs sm:text-sm overflow-x-auto">
-              <code className="text-muted-foreground"># Remove silence from an interview{"\n"}</code>
-              <code className="text-foreground">vibe edit silence-cut interview.mp4 -o clean.mp4{"\n"}</code>
-              <code className="text-green-400">{"✓ Removed 12 silent segments (saved 47s)\n\n"}</code>
+              <code className="text-muted-foreground"># Generate an image, then animate it{"\n"}</code>
+              <code className="text-foreground">vibe gen img "sunset over mountains" -o sunset.png{"\n"}</code>
+              <code className="text-green-400">{"✓ Generated with Gemini (Nano Banana)\n\n"}</code>
 
-              <code className="text-muted-foreground"># Add captions with auto-transcription{"\n"}</code>
-              <code className="text-foreground">vibe edit caption video.mp4 -o captioned.mp4{"\n"}</code>
+              <code className="text-muted-foreground"># Image-to-video (recommended workflow){"\n"}</code>
+              <code className="text-foreground">vibe gen vid "camera zooms in slowly" -i sunset.png -o scene.mp4{"\n"}</code>
+              <code className="text-green-400">{"✓ Generated 5s video with Grok (native audio)\n\n"}</code>
+
+              <code className="text-muted-foreground"># Add captions and remove silence{"\n"}</code>
+              <code className="text-foreground">vibe ed cap video.mp4 -o captioned.mp4{"\n"}</code>
               <code className="text-green-400">{"✓ Transcribed 3:24, burned 156 caption segments\n\n"}</code>
-
-              <code className="text-muted-foreground"># Generate a thumbnail{"\n"}</code>
-              <code className="text-foreground">vibe generate thumbnail video.mp4 -o thumb.png{"\n"}</code>
-              <code className="text-green-400">{"✓ Generated thumbnail (1280x720)\n\n"}</code>
 
               <code className="text-muted-foreground"># Export final video{"\n"}</code>
               <code className="text-foreground">vibe export project.vibe.json -o final.mp4{"\n"}</code>
@@ -202,7 +202,7 @@ export default function LandingPage() {
                 <div>
                   <h2 className="text-2xl sm:text-3xl font-bold mb-2">MCP Ready <span className="text-sm font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full align-middle">beta</span></h2>
                   <p className="text-muted-foreground">
-                    27 tools in Claude Desktop and Cursor — add one JSON config and go
+                    43 tools in Claude Desktop and Cursor — add one JSON config and go
                   </p>
                 </div>
               </div>
@@ -222,7 +222,7 @@ export default function LandingPage() {
                   </span>
                 ))}
                 <span className="text-xs bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-full text-primary">
-                  +22 more tools
+                  +37 more tools
                 </span>
               </div>
             </div>
@@ -243,7 +243,7 @@ export default function LandingPage() {
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
               No Claude Code or MCP? Type <code className="text-primary bg-primary/10 px-2 py-0.5 rounded">vibe</code> for a built-in natural language session.
-              5 LLM providers, 58 tools, fully autonomous.
+              5 LLM providers, 58 tools, command aliases, fully autonomous.
             </p>
           </div>
 
@@ -359,7 +359,7 @@ export default function LandingPage() {
             <FeatureCard
               icon={<Terminal className="w-6 h-6" />}
               title="CLI-First"
-              description="Full video editing from the command line. 43 AI commands. Zero GUI required."
+              description="Full video editing from the command line. 50+ commands with short aliases. Zero GUI required."
               gradient="from-blue-500 to-cyan-500"
             />
             <FeatureCard
@@ -371,13 +371,13 @@ export default function LandingPage() {
             <FeatureCard
               icon={<MessageSquare className="w-6 h-6" />}
               title="MCP Native (beta)"
-              description="27 tools in Claude Desktop and Cursor. Let AI control your edits."
+              description="43 tools in Claude Desktop and Cursor. Let AI control your edits."
               gradient="from-purple-500 to-pink-500"
             />
             <FeatureCard
               icon={<Layers className="w-6 h-6" />}
-              title="11 AI Providers"
-              description="OpenAI, Claude, Gemini, ElevenLabs, Runway, Kling, Veo, Stability, Replicate, xAI Grok, Ollama."
+              title="10 AI Providers"
+              description="OpenAI, Claude, Gemini, ElevenLabs, Runway, Kling, Veo, Replicate, xAI Grok, Ollama."
               gradient="from-green-500 to-emerald-500"
             />
           </div>
@@ -528,7 +528,7 @@ function TerminalAnimation() {
         VibeFrame
       </div>
       <div className="text-muted-foreground text-xs mb-4">
-        58 tools · openai<br/>
+        58 tools · openai · aliases: gen, ed, az, au, pipe<br/>
         Commands: exit · reset · tools · context
       </div>
 

@@ -85,7 +85,7 @@ export function registerVideoCommands(aiCommand: Command): void {
         const providerName = providerNameMap[provider];
         const apiKey = await getApiKey(envKey, providerName, options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red(`${providerName} API key required.`));
+          console.error(chalk.red(`${providerName} API key required. Set ${envKey} in .env or run: vibe setup`));
           if (provider === "kling") {
             console.error(chalk.dim("Format: ACCESS_KEY:SECRET_KEY"));
           }
@@ -403,7 +403,7 @@ export function registerVideoCommands(aiCommand: Command): void {
       try {
         const apiKey = await getApiKey("RUNWAY_API_SECRET", "Runway", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Runway API key required"));
+          console.error(chalk.red("Runway API key required. Set RUNWAY_API_SECRET in .env or run: vibe setup"));
           process.exit(1);
         }
 
@@ -471,7 +471,7 @@ export function registerVideoCommands(aiCommand: Command): void {
       try {
         const apiKey = await getApiKey("RUNWAY_API_SECRET", "Runway", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Runway API key required"));
+          console.error(chalk.red("Runway API key required. Set RUNWAY_API_SECRET in .env or run: vibe setup"));
           process.exit(1);
         }
 
@@ -511,7 +511,7 @@ export function registerVideoCommands(aiCommand: Command): void {
       try {
         const apiKey = await getApiKey("KLING_API_KEY", "Kling", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Kling API key required."));
+          console.error(chalk.red("Kling API key required. Set KLING_API_KEY in .env or run: vibe setup"));
           console.error(chalk.dim("Format: ACCESS_KEY:SECRET_KEY"));
           console.error(chalk.dim("Use --api-key or set KLING_API_KEY environment variable"));
           process.exit(1);
@@ -655,7 +655,7 @@ export function registerVideoCommands(aiCommand: Command): void {
       try {
         const apiKey = await getApiKey("KLING_API_KEY", "Kling", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Kling API key required"));
+          console.error(chalk.red("Kling API key required. Set KLING_API_KEY in .env or run: vibe setup"));
           process.exit(1);
         }
 
@@ -729,7 +729,7 @@ export function registerVideoCommands(aiCommand: Command): void {
       try {
         const apiKey = await getApiKey("KLING_API_KEY", "Kling", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Kling API key required."));
+          console.error(chalk.red("Kling API key required. Set KLING_API_KEY in .env or run: vibe setup"));
           console.error(chalk.dim("Format: ACCESS_KEY:SECRET_KEY"));
           console.error(chalk.dim("Use --api-key or set KLING_API_KEY environment variable"));
           process.exit(1);
@@ -830,7 +830,7 @@ export function registerVideoCommands(aiCommand: Command): void {
       try {
         const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Google API key required."));
+          console.error(chalk.red("Google API key required. Set GOOGLE_API_KEY in .env or run: vibe setup"));
           console.error(chalk.dim("Use --api-key or set GOOGLE_API_KEY environment variable"));
           process.exit(1);
         }

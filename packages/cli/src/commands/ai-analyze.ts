@@ -72,7 +72,7 @@ export async function executeGeminiVideo(
   try {
     const apiKey = await getApiKey("GOOGLE_API_KEY", "Google");
     if (!apiKey) {
-      return { success: false, error: "Google API key required" };
+      return { success: false, error: "Google API key required. Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
     }
 
     const isYouTube = options.source.includes("youtube.com") || options.source.includes("youtu.be");
@@ -179,7 +179,7 @@ export async function executeAnalyze(
   try {
     const apiKey = await getApiKey("GOOGLE_API_KEY", "Google");
     if (!apiKey) {
-      return { success: false, error: "Google API key required" };
+      return { success: false, error: "Google API key required. Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
     }
 
     const source = options.source;
@@ -317,7 +317,7 @@ export function registerAnalyzeCommands(aiCommand: Command): void {
         } else {
           const apiKey = await getApiKey("GOOGLE_API_KEY", "Google");
           if (!apiKey) {
-            console.error(chalk.red("Google API key required."));
+            console.error(chalk.red("Google API key required. Set GOOGLE_API_KEY in .env or run: vibe setup"));
             console.error(chalk.dim("Use --api-key or set GOOGLE_API_KEY environment variable"));
             process.exit(1);
           }
@@ -381,7 +381,7 @@ export function registerAnalyzeCommands(aiCommand: Command): void {
         } else {
           const apiKey = await getApiKey("GOOGLE_API_KEY", "Google");
           if (!apiKey) {
-            console.error(chalk.red("Google API key required."));
+            console.error(chalk.red("Google API key required. Set GOOGLE_API_KEY in .env or run: vibe setup"));
             console.error(chalk.dim("Use --api-key or set GOOGLE_API_KEY environment variable"));
             process.exit(1);
           }

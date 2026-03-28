@@ -76,10 +76,10 @@ export async function executeMotion(options: MotionCommandOptions): Promise<Moti
   let apiKey: string | null;
   if (useGemini) {
     apiKey = await getApiKey("GOOGLE_API_KEY", "Google");
-    if (!apiKey) return { success: false, error: "GOOGLE_API_KEY required for Gemini motion generation" };
+    if (!apiKey) return { success: false, error: "GOOGLE_API_KEY required for Gemini motion generation. Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
   } else {
     apiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic");
-    if (!apiKey) return { success: false, error: "ANTHROPIC_API_KEY required for Claude motion generation" };
+    if (!apiKey) return { success: false, error: "ANTHROPIC_API_KEY required for Claude motion generation. Run 'vibe setup' or set ANTHROPIC_API_KEY in .env" };
   }
 
   // Step 0 (optional): Analyze image with Gemini, inject into description
@@ -87,7 +87,7 @@ export async function executeMotion(options: MotionCommandOptions): Promise<Moti
   if (options.image) {
     const geminiApiKey = await getApiKey("GOOGLE_API_KEY", "Google");
     if (!geminiApiKey) {
-      return { success: false, error: "GOOGLE_API_KEY required for image analysis (--image)" };
+      return { success: false, error: "GOOGLE_API_KEY required for image analysis (--image). Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
     }
 
     const imagePath = resolve(process.cwd(), options.image);

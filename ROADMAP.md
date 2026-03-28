@@ -34,6 +34,7 @@ Unified interface for AI services.
   - Gemini video-aware motion: analyzes base video for style/layout context before code generation
   - Long-form content analysis & storyboarding (`vibe generate storyboard`)
   - Timeline planning with AI suggestions
+- [x] **xAI Grok** - Agent LLM (`vibe agent -p xai`) + Grok Imagine image/video generation
 - [x] **Ollama** - Local LLM for natural language commands (no API key required)
   - Default: llama3.2 (2GB), also supports mistral (4GB), phi (1.6GB), tinyllama (0.6GB)
   - Offline-capable natural language timeline control
@@ -48,14 +49,16 @@ Unified interface for AI services.
 - [x] Beat detection & silence detection (`vibe detect beats/silence`)
 
 ### Image
-- [x] **OpenAI GPT Image 1.5** - Image generation (`vibe generate image --provider openai`)
-- [x] **Gemini Nano Banana** - Image generation (`vibe generate image`, default provider)
+- [x] **OpenAI GPT Image 1.5** - Image generation (`vibe gen img -p openai`)
+- [x] **Gemini Nano Banana** - Image generation (`vibe gen img`, default provider)
+- [x] **Grok Imagine** - Image generation (`vibe gen img -p grok`)
 
 ### Video
 - [x] Scene detection & auto-cutting (`vibe detect scenes`)
-- [x] **Runway Gen-4** - Video generation (`vibe generate video`, default provider)
-- [x] **Kling v2.5** - Video generation (`vibe generate video --provider kling`)
-- [x] **Veo 3.1** - Video generation (`vibe generate video --provider veo`)
+- [x] **Grok Imagine Video** - Video generation with native audio (`vibe gen vid`, default provider)
+- [x] **Runway Gen-4.5** - Video generation (`vibe gen vid -p runway`)
+- [x] **Kling v2.5/v3** - Video generation (`vibe gen vid -p kling`)
+- [x] **Veo 3.1** - Video generation (`vibe gen vid -p veo`)
 
 ---
 
@@ -179,6 +182,34 @@ Intelligence built into every interaction.
 - [x] **Config System** - YAML config at `~/.vibeframe/config.yaml`
 - [x] **CLI Guide** - CLI reference in README.md + per-command `--help`
 
+### CLI UX Improvements
+- [x] **Command Aliases** - Short aliases for all command groups (`gen`, `ed`, `az`, `au`, `pipe`) and subcommands (`img`, `vid`, `tts`, `cap`, `sc`, `s2v`, `shorts`)
+- [x] **Structured Errors** - Exit codes (0-6) with machine-readable JSON errors (`ExitCode` enum, `StructuredError` interface)
+- [x] **Auto-JSON** - Automatic JSON output when stdout is not a TTY (piped/scripted usage)
+- [x] **`--quiet` Mode** - Output only the primary result value (path, URL, or ID)
+- [x] **`--fields` Filter** - Limit JSON output to specific fields for context window discipline
+- [x] **Provider Auto-Fallback** - If default provider's API key is missing, auto-select an available one
+- [x] **Doctor Command** - System health check showing configured providers and available commands (`vibe doctor`)
+- [x] **First-Run Banner** - Welcome banner for new users, guides to setup/doctor
+- [x] **Post-Setup Suggestions** - "Try it" command suggestion after `vibe setup` based on configured providers
+- [x] **Concise Error Output** - Missing argument shows brief error + "--help" hint instead of full help
+- [x] **Non-TTY Prompt Bypass** - Throws error instead of hanging when prompts are used in non-interactive mode
+
+### Claude Code Harness
+- [x] **Path-Scoped Rules** - All 7 rules load on-demand via `paths:` frontmatter (no global loading)
+- [x] **PostToolUse Lint Hook** - Auto-runs ESLint on edited TypeScript files
+- [x] **Improved Pre-Push Hook** - Added lint check, better error messages with fix commands
+- [x] **Workflow Skills** - `/test`, `/release`, `/sync-check` as user-invocable skills
+- [x] **Agent Memory** - `code-reviewer` agent with persistent project memory
+- [x] **Lint-Fixer Agent** - Dedicated agent for fixing ESLint errors
+- [x] **Harness Documentation** - `.claude/README.md` documenting full harness structure
+
+### Demo & Showcase
+- [ ] **Self-demo Video** - Use `pipeline script-to-video` to create VibeFrame intro video (dogfooding)
+- [ ] **Terminal Recording** - VHS/asciinema recordings of CLI workflows for README
+- [ ] **Output Gallery** - Static page showcasing generated images/videos with the CLI commands used
+- [ ] **Interactive Web Demo** - Browser-based CLI playground (`apps/web`)
+
 ---
 
 ## Phase 5: Server Infrastructure 📋
@@ -193,6 +224,7 @@ Overcome browser memory limits for AI-generated content.
 - [ ] Project state persistence (Supabase/Postgres)
 - [ ] **Live Link**: CLI ↔ Web UI sync via WebSocket
   - CLI commands trigger real-time UI preview updates
+- [ ] **Demo UI** - Visual showcase of CLI outputs (images, videos, audio) with command reference
 
 > **Note**: AI video outputs (Runway, Kling, etc.) require server-side processing due to file size.
 

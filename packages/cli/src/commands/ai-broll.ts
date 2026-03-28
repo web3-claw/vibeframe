@@ -122,14 +122,14 @@ export function registerBrollCommand(ai: Command): void {
         // Check API keys
         const openaiApiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
         if (!openaiApiKey) {
-          console.error(chalk.red("OpenAI API key required for Whisper transcription."));
+          console.error(chalk.red("OpenAI API key required for Whisper transcription. Set OPENAI_API_KEY in .env or run: vibe setup"));
           console.error(chalk.dim("Set OPENAI_API_KEY environment variable"));
           process.exit(1);
         }
 
         const claudeApiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic");
         if (!claudeApiKey) {
-          console.error(chalk.red("Anthropic API key required for B-roll analysis."));
+          console.error(chalk.red("Anthropic API key required for B-roll analysis. Set ANTHROPIC_API_KEY in .env or run: vibe setup"));
           console.error(chalk.dim("Set ANTHROPIC_API_KEY environment variable"));
           process.exit(1);
         }

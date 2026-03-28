@@ -97,7 +97,7 @@ export async function executeReview(options: ReviewOptions): Promise<ReviewResul
 
   const apiKey = process.env.GOOGLE_API_KEY || (await getApiKey("GOOGLE_API_KEY", "Google"));
   if (!apiKey) {
-    return { success: false, error: "Google API key required for Gemini video review" };
+    return { success: false, error: "Google API key required for Gemini video review. Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
   }
 
   let storyboardContext = "";

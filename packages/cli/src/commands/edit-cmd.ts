@@ -34,16 +34,17 @@ import {
   OpenAIImageProvider,
   GrokProvider,
 } from "@vibeframe/ai-providers";
-import { getApiKey } from "../utils/api-key.js";
+import { requireApiKey } from "../utils/api-key.js";
 import { execSafe, commandExists } from "../utils/exec-safe.js";
 import { formatTime } from "./ai-helpers.js";
 import { applyTextOverlays, type TextOverlayStyle } from "./ai-edit.js";
 import { registerEditCommands } from "./ai-edit-cli.js";
 import { registerFillGapsCommand } from "./ai-fill-gaps.js";
-import { isJsonMode, outputResult } from "./output.js";
+import { isJsonMode, outputResult, exitWithError, usageError, notFoundError, apiError } from "./output.js";
 import { rejectControlChars } from "./validate.js";
 
 export const editCommand = new Command("edit")
+  .alias("ed")
   .description(
     "Edit and post-process media (silence-cut, caption, grade, reframe, upscale...)"
   )
@@ -95,17 +96,15 @@ editCommand
       if (options.style) rejectControlChars(options.style);
 
       if (!options.style && !options.preset) {
-        console.error(chalk.red("Either --style or --preset is required"));
-        console.log(chalk.dim("Examples:"));
-        console.log(chalk.dim('  pnpm vibe edit grade video.mp4 --style "warm sunset"'));
-        console.log(chalk.dim("  pnpm vibe edit grade video.mp4 --preset cinematic-warm"));
-        process.exit(1);
+        exitWithError(usageError(
+          "Either --style or --preset is required",
+          'Examples: vibe edit grade video.mp4 --style "warm sunset" or --preset cinematic-warm',
+        ));
       }
 
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
-        console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-        process.exit(1);
+        exitWithError(notFoundError("FFmpeg not found. Install with: brew install ffmpeg"));
       }
 
       if (options.dryRun) {
@@ -130,9 +129,15 @@ editCommand
         const claude = new ClaudeProvider();
         gradeResult = await claude.analyzeColorGrade("", options.preset);
       } else {
-        const apiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic", options.apiKey);
+        let apiKey: string;
+        try {
+          apiKey = await requireApiKey("ANTHROPIC_API_KEY", "Anthropic", options.apiKey);
+        } catch (err) {
+          spinner.fail((err as Error).message);
+          return;
+        }
         const claude = new ClaudeProvider();
-        await claude.initialize({ apiKey: apiKey || undefined });
+        await claude.initialize({ apiKey });
         gradeResult = await claude.analyzeColorGrade(options.style);
       }
 
@@ -181,9 +186,7 @@ editCommand
       console.log(chalk.green(`Output: ${outputPath}`));
       console.log();
     } catch (error) {
-      console.error(chalk.red("Color grading failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Color grading failed: ${(error as Error).message}`));
     }
   });
 
@@ -324,17 +327,8 @@ editCommand
         return;
       }
 
-      const openaiApiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
-      if (!openaiApiKey) {
-        console.error(chalk.red("OpenAI API key required for Whisper transcription."));
-        process.exit(1);
-      }
-
-      const claudeApiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic", options.apiKey);
-      if (!claudeApiKey) {
-        console.error(chalk.red("Anthropic API key required for speed analysis."));
-        process.exit(1);
-      }
+      const openaiApiKey = await requireApiKey("OPENAI_API_KEY", "OpenAI");
+      const claudeApiKey = await requireApiKey("ANTHROPIC_API_KEY", "Anthropic", options.apiKey);
 
       const absPath = resolve(process.cwd(), videoPath);
 
@@ -520,9 +514,15 @@ editCommand
       await execSafe("ffmpeg", ["-i", absPath, "-vf", `fps=1/${keyframeInterval}`, "-frame_pts", "1", `${tempDir}/frame-%04d.jpg`, "-y"]);
 
       // Get API key
-      const apiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic", options.apiKey);
+      let apiKey: string;
+      try {
+        apiKey = await requireApiKey("ANTHROPIC_API_KEY", "Anthropic", options.apiKey);
+      } catch (err) {
+        spinner.fail((err as Error).message);
+        return;
+      }
       const claude = new ClaudeProvider();
-      await claude.initialize({ apiKey: apiKey || undefined });
+      await claude.initialize({ apiKey });
 
       // Analyze keyframes
       spinner.text = "Analyzing frames for subject tracking...";
@@ -704,11 +704,7 @@ editCommand
         grok: { envVar: "XAI_API_KEY", label: "xAI" },
       };
       const keyInfo = apiKeyMap[provider] || apiKeyMap.gemini;
-      const apiKey = await getApiKey(keyInfo.envVar, keyInfo.label, options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red(`${keyInfo.label} API key required.`));
-        process.exit(1);
-      }
+      const apiKey = await requireApiKey(keyInfo.envVar, keyInfo.label, options.apiKey);
 
       const spinner = ora(`Reading ${imagePaths.length} image(s)...`).start();
 
@@ -990,13 +986,7 @@ editCommand
       }
 
       // Use Replicate API
-      const apiKey = await getApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("Replicate API token required for AI upscaling."));
-        console.error(chalk.dim("Use --api-key or set REPLICATE_API_TOKEN"));
-        console.error(chalk.dim("Or use --ffmpeg for free FFmpeg upscaling"));
-        process.exit(1);
-      }
+      const apiKey = await requireApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
 
       const spinner = ora("Initializing Replicate...").start();
 

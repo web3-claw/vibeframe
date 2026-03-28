@@ -109,7 +109,7 @@ export async function autoNarrate(options: AutoNarrateOptions): Promise<AutoNarr
   // Validate API keys
   const geminiApiKey = await getApiKey("GOOGLE_API_KEY", "Google");
   if (!geminiApiKey) {
-    return { success: false, error: "GOOGLE_API_KEY required for video analysis" };
+    return { success: false, error: "GOOGLE_API_KEY required for video analysis. Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
   }
 
   let claudeApiKey: string | null = null;
@@ -117,18 +117,18 @@ export async function autoNarrate(options: AutoNarrateOptions): Promise<AutoNarr
   if (scriptProvider === "openai") {
     openaiScriptApiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
     if (!openaiScriptApiKey) {
-      return { success: false, error: "OPENAI_API_KEY required for script generation" };
+      return { success: false, error: "OPENAI_API_KEY required for script generation. Run 'vibe setup' or set OPENAI_API_KEY in .env" };
     }
   } else {
     claudeApiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic");
     if (!claudeApiKey) {
-      return { success: false, error: "ANTHROPIC_API_KEY required for script generation" };
+      return { success: false, error: "ANTHROPIC_API_KEY required for script generation. Run 'vibe setup' or set ANTHROPIC_API_KEY in .env" };
     }
   }
 
   const elevenlabsApiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs");
   if (!elevenlabsApiKey) {
-    return { success: false, error: "ELEVENLABS_API_KEY required for TTS" };
+    return { success: false, error: "ELEVENLABS_API_KEY required for TTS. Run 'vibe setup' or set ELEVENLABS_API_KEY in .env" };
   }
 
   try {

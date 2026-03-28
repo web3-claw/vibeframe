@@ -663,7 +663,7 @@ export function generateAnimatedCaptionComponent(options: GenerateAnimatedCaptio
   code: string;
   name: string;
 } {
-  const { groups, style, highlightColor, fontSize, position, width, height, fps, videoFileName } = options;
+  const { groups, style, highlightColor, fontSize, position, width, fps, videoFileName } = options;
   const name = videoFileName ? "VideoAnimatedCaption" : "AnimatedCaptionOverlay";
 
   const groupsJSON = JSON.stringify(

@@ -1,5 +1,6 @@
 #!/bin/bash
 # Claude Code PreToolUse hook — blocks git push if SSOT checks fail
+set -uo pipefail
 
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
@@ -17,7 +18,7 @@ ROOT_VERSION=$(jq -r '.version' "$PROJECT_DIR/package.json")
 for pkg in packages/cli packages/core packages/ai-providers packages/mcp-server packages/ui apps/web; do
   PKG_VERSION=$(jq -r '.version' "$PROJECT_DIR/$pkg/package.json" 2>/dev/null)
   if [ -n "$PKG_VERSION" ] && [ "$PKG_VERSION" != "$ROOT_VERSION" ]; then
-    ERRORS+=("Version mismatch: $pkg has $PKG_VERSION, root has $ROOT_VERSION")
+    ERRORS+=("Version mismatch: $pkg has $PKG_VERSION, root has $ROOT_VERSION. Fix: npm version $ROOT_VERSION --no-git-tag-version in $pkg/")
   fi
 done
 
@@ -25,17 +26,22 @@ done
 STALE=$(grep -rn --exclude-dir=sync-check "claude-opus-4-5\|claude-sonnet-4-20\|claude-3-5-haiku\|kling-v1-5" \
   "$PROJECT_DIR/.claude/skills/" 2>/dev/null || true)
 if [ -n "$STALE" ]; then
-  ERRORS+=("Stale model IDs in .claude/skills/: $STALE")
+  ERRORS+=("Stale model IDs in .claude/skills/. Update to match MODELS.md: $STALE")
 fi
 
-# 3. Build check
+# 3. Lint check
+if ! (cd "$PROJECT_DIR" && pnpm lint > /dev/null 2>&1); then
+  ERRORS+=("Lint failed. Fix: pnpm lint")
+fi
+
+# 4. Build check
 if ! (cd "$PROJECT_DIR" && pnpm build > /dev/null 2>&1); then
-  ERRORS+=("Build failed — run 'pnpm build' to see errors")
+  ERRORS+=("Build failed. Fix: pnpm build")
 fi
 
 # Report
 if [ ${#ERRORS[@]} -gt 0 ]; then
-  echo "Pre-push SSOT validation failed:" >&2
+  echo "Pre-push validation failed:" >&2
   for err in "${ERRORS[@]}"; do
     echo "  - $err" >&2
   done

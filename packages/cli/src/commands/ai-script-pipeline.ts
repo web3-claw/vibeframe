@@ -516,18 +516,18 @@ export async function executeScriptToVideo(
     if (storyboardProvider === "openai") {
       storyboardApiKey = (await getApiKey("OPENAI_API_KEY", "OpenAI")) ?? undefined;
       if (!storyboardApiKey) {
-        return { success: false, outputDir, scenes: 0, error: "OpenAI API key required for storyboard generation (--storyboard-provider openai)" };
+        return { success: false, outputDir, scenes: 0, error: "OpenAI API key required for storyboard generation (--storyboard-provider openai). Run 'vibe setup' or set OPENAI_API_KEY in .env" };
       }
     } else if (storyboardProvider === "gemini") {
       storyboardApiKey = (await getApiKey("GOOGLE_API_KEY", "Google")) ?? undefined;
       if (!storyboardApiKey) {
-        return { success: false, outputDir, scenes: 0, error: "Google API key required for storyboard generation (--storyboard-provider gemini)" };
+        return { success: false, outputDir, scenes: 0, error: "Google API key required for storyboard generation (--storyboard-provider gemini). Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
       }
     } else {
       // Default: Claude
       storyboardApiKey = (await getApiKey("ANTHROPIC_API_KEY", "Anthropic")) ?? undefined;
       if (!storyboardApiKey) {
-        return { success: false, outputDir, scenes: 0, error: "Anthropic API key required for storyboard generation" };
+        return { success: false, outputDir, scenes: 0, error: "Anthropic API key required for storyboard generation. Run 'vibe setup' or set ANTHROPIC_API_KEY in .env" };
       }
     }
 
@@ -538,17 +538,17 @@ export async function executeScriptToVideo(
     if (imageProvider === "openai" || imageProvider === "dalle") {
       imageApiKey = (await getApiKey("OPENAI_API_KEY", "OpenAI")) ?? undefined;
       if (!imageApiKey) {
-        return { success: false, outputDir, scenes: 0, error: "OpenAI API key required for image generation" };
+        return { success: false, outputDir, scenes: 0, error: "OpenAI API key required for image generation. Run 'vibe setup' or set OPENAI_API_KEY in .env" };
       }
     } else if (imageProvider === "gemini") {
       imageApiKey = (await getApiKey("GOOGLE_API_KEY", "Google")) ?? undefined;
       if (!imageApiKey) {
-        return { success: false, outputDir, scenes: 0, error: "Google API key required for Gemini image generation" };
+        return { success: false, outputDir, scenes: 0, error: "Google API key required for Gemini image generation. Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
       }
     } else if (imageProvider === "grok") {
       imageApiKey = (await getApiKey("XAI_API_KEY", "xAI")) ?? undefined;
       if (!imageApiKey) {
-        return { success: false, outputDir, scenes: 0, error: "xAI API key required for Grok image generation" };
+        return { success: false, outputDir, scenes: 0, error: "xAI API key required for Grok image generation. Run 'vibe setup' or set XAI_API_KEY in .env" };
       }
     }
 
@@ -556,7 +556,7 @@ export async function executeScriptToVideo(
     if (!options.noVoiceover) {
       elevenlabsApiKey = (await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs")) ?? undefined;
       if (!elevenlabsApiKey) {
-        return { success: false, outputDir, scenes: 0, error: "ElevenLabs API key required for voiceover (or use noVoiceover option)" };
+        return { success: false, outputDir, scenes: 0, error: "ElevenLabs API key required for voiceover (or use noVoiceover option). Run 'vibe setup' or set ELEVENLABS_API_KEY in .env" };
       }
     }
 
@@ -565,17 +565,17 @@ export async function executeScriptToVideo(
       if (options.generator === "kling") {
         videoApiKey = (await getApiKey("KLING_API_KEY", "Kling")) ?? undefined;
         if (!videoApiKey) {
-          return { success: false, outputDir, scenes: 0, error: "Kling API key required (or use imagesOnly option)" };
+          return { success: false, outputDir, scenes: 0, error: "Kling API key required (or use imagesOnly option). Run 'vibe setup' or set KLING_API_KEY in .env" };
         }
       } else if (options.generator === "veo") {
         videoApiKey = (await getApiKey("GOOGLE_API_KEY", "Google")) ?? undefined;
         if (!videoApiKey) {
-          return { success: false, outputDir, scenes: 0, error: "Google API key required for Veo video generation (or use imagesOnly option)" };
+          return { success: false, outputDir, scenes: 0, error: "Google API key required for Veo video generation (or use imagesOnly option). Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
         }
       } else {
         videoApiKey = (await getApiKey("RUNWAY_API_SECRET", "Runway")) ?? undefined;
         if (!videoApiKey) {
-          return { success: false, outputDir, scenes: 0, error: "Runway API key required (or use imagesOnly option)" };
+          return { success: false, outputDir, scenes: 0, error: "Runway API key required (or use imagesOnly option). Run 'vibe setup' or set RUNWAY_API_SECRET in .env" };
         }
       }
     }
@@ -1216,12 +1216,12 @@ export async function executeRegenerateScene(
       if (options.generator === "kling" || !options.generator) {
         videoApiKey = (await getApiKey("KLING_API_KEY", "Kling")) ?? undefined;
         if (!videoApiKey) {
-          return { ...result, error: "Kling API key required" };
+          return { ...result, error: "Kling API key required. Run 'vibe setup' or set KLING_API_KEY in .env" };
         }
       } else {
         videoApiKey = (await getApiKey("RUNWAY_API_SECRET", "Runway")) ?? undefined;
         if (!videoApiKey) {
-          return { ...result, error: "Runway API key required" };
+          return { ...result, error: "Runway API key required. Run 'vibe setup' or set RUNWAY_API_SECRET in .env" };
         }
       }
     }

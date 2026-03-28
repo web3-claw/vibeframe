@@ -3,7 +3,8 @@ name: code-reviewer
 description: Reviews code changes for quality, security, and consistency with project patterns. Use proactively after code changes.
 tools: Read, Grep, Glob, Bash
 model: haiku
-maxTurns: 15
+maxTurns: 20
+memory: project
 ---
 
 You are a code reviewer for VibeFrame, an AI-native video editing CLI monorepo.

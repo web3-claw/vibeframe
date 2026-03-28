@@ -34,6 +34,7 @@ import { executeAnimatedCaption, type AnimatedCaptionStyle } from "./ai-animated
 import { isJsonMode, outputResult } from "./output.js";
 
 export const pipelineCommand = new Command("pipeline")
+  .alias("pipe")
   .description(
     "AI video pipelines (script-to-video, highlights, shorts, animated-caption)"
   )

@@ -1,6 +1,5 @@
 ---
-description: Invariant rules for AI agents invoking VibeFrame CLI commands
-globs:
+paths:
   - "packages/cli/src/agent/**"
   - "packages/mcp-server/src/**"
 ---
@@ -56,9 +55,15 @@ vibe pipeline script-to-video "<script>" --dry-run  # Always preview first
 
 ## Error Handling
 
-- **Exit code 0**: Success. Parse `--json` output for result.
-- **Exit code 1**: Failure. Error message in stderr.
-- **Missing API key**: Commands fail fast with clear error messages indicating which env var to set.
+Structured exit codes (see `ExitCode` enum in `commands/output.ts`):
+- **0**: Success. Parse `--json` output for result.
+- **2**: Usage error (bad args, missing required params).
+- **3**: Not found (file or resource missing).
+- **4**: Auth error (missing API key). Includes `suggestion` field with fix command.
+- **5**: API error (provider returned error). Check `retryable` field.
+- **6**: Network error (connection failure, timeout).
+
+In `--json` mode, errors output structured JSON: `{ success, error, code, exitCode, suggestion, retryable }`.
 
 ## Environment
 

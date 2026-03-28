@@ -39,14 +39,16 @@ import {
   ClaudeProvider,
   GrokProvider,
 } from "@vibeframe/ai-providers";
-import { getApiKey } from "../utils/api-key.js";
+import { requireApiKey, hasApiKey } from "../utils/api-key.js";
+import { hasTTY, prompt as promptText } from "../utils/tty.js";
 import { getApiKeyFromConfig } from "../config/index.js";
 import { sanitizeLLMResponse } from "./sanitize.js";
-import { isJsonMode, outputResult, log, spinner as createSpinner } from "./output.js";
+import { isJsonMode, outputResult, log, exitWithError, usageError, apiError } from "./output.js";
 import { commandExists } from "../utils/exec-safe.js";
 import { uploadToImgbb } from "./ai-script-pipeline.js";
 import { downloadVideo, formatTime } from "./ai-helpers.js";
 import { rejectControlChars } from "./validate.js";
+import { resolveProvider } from "../utils/provider-resolver.js";
 import { executeThumbnailBestFrame } from "./ai-image.js";
 import { registerMotionCommand } from "./ai-motion.js";
 
@@ -71,6 +73,7 @@ function getStatusColor(status: string): string {
 // ── Command group ────────────────────────────────────────────────────────────
 
 export const generateCommand = new Command("generate")
+  .alias("gen")
   .description(
     "Generate assets using AI (images, videos, speech, music, motion)"
   )
@@ -107,8 +110,9 @@ Run 'vibe schema generate.<command>' for structured parameter info.
 
 generateCommand
   .command("image")
+  .alias("img")
   .description("Generate image using AI (Gemini, DALL-E, or Runway)")
-  .argument("<prompt>", "Image description prompt")
+  .argument("[prompt]", "Image description prompt (interactive if omitted)")
   .option("-p, --provider <provider>", "Provider: gemini, openai, grok, runway (dalle is deprecated)", "gemini")
   .option("-k, --api-key <key>", "API key (or set env: OPENAI_API_KEY, GOOGLE_API_KEY)")
   .option("-o, --output <path>", "Output file path (downloads image)")
@@ -119,16 +123,39 @@ generateCommand
   .option("-n, --count <n>", "Number of images to generate", "1")
   .option("-m, --model <model>", "Gemini model: flash, 3.1-flash, latest (Nano Banana 2), pro (4K)")
   .option("--dry-run", "Preview parameters without executing")
-  .action(async (prompt: string, options) => {
+  .action(async (prompt: string | undefined, options) => {
     try {
+      // Interactive prompt if no argument provided
+      if (!prompt) {
+        if (hasTTY()) {
+          prompt = await promptText(chalk.cyan("What would you like to generate? "));
+          if (!prompt?.trim()) {
+            console.error(chalk.red("Prompt is required."));
+            return;
+          }
+        } else {
+          console.error(chalk.red("Prompt argument is required."));
+          return;
+        }
+      }
       rejectControlChars(prompt);
 
-      const provider = options.provider.toLowerCase();
+      // Auto-resolve provider if user didn't explicitly set one
+      let provider = options.provider.toLowerCase();
       const validProviders = ["openai", "dalle", "gemini", "grok", "runway"];
       if (!validProviders.includes(provider)) {
-        console.error(chalk.red(`Invalid provider: ${provider}`));
-        console.error(chalk.dim(`Available providers: openai, gemini, grok, runway`));
-        process.exit(1);
+        exitWithError(usageError(`Invalid provider: ${provider}`, `Available providers: openai, gemini, grok, runway`));
+      }
+      // Auto-fallback: if default provider's key is missing, find one that works
+      const providerEnvMap: Record<string, string> = {
+        gemini: "GOOGLE_API_KEY", openai: "OPENAI_API_KEY", grok: "XAI_API_KEY",
+      };
+      if (providerEnvMap[provider] && !hasApiKey(providerEnvMap[provider]) && !options.apiKey) {
+        const resolved = resolveProvider("image");
+        if (resolved) {
+          log(chalk.dim(`  ${provider} key not found. Using ${resolved.label} instead.`));
+          provider = resolved.name;
+        }
       }
 
       // Show deprecation warning for "dalle"
@@ -160,12 +187,7 @@ generateCommand
       const envKey = envKeyMap[provider];
       const providerName = providerNameMap[provider];
 
-      const apiKey = await getApiKey(envKey, providerName, options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red(`${providerName} API key required.`));
-        console.error(chalk.dim(`Use --api-key or set ${envKey} environment variable`));
-        process.exit(1);
-      }
+      const apiKey = await requireApiKey(envKey, providerName, options.apiKey);
 
       const spinner = ora(`Generating image with ${providerName}...`).start();
 
@@ -473,9 +495,7 @@ generateCommand
         });
       }
     } catch (error) {
-      console.error(chalk.red("Image generation failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Image generation failed: ${(error as Error).message}`));
     }
   });
 
@@ -485,8 +505,9 @@ generateCommand
 
 generateCommand
   .command("video")
+  .alias("vid")
   .description("Generate video using AI (Kling, Runway, Veo, or Grok)")
-  .argument("<prompt>", "Text prompt describing the video")
+  .argument("[prompt]", "Text prompt describing the video (interactive if omitted)")
   .option("-p, --provider <provider>", "Provider: grok (default), kling, runway, veo", "grok")
   .option("-k, --api-key <key>", "API key (or set XAI_API_KEY / RUNWAY_API_SECRET / KLING_API_KEY / GOOGLE_API_KEY env)")
   .option("-o, --output <path>", "Output file path (downloads video)")
@@ -504,16 +525,39 @@ generateCommand
   .option("--runway-model <model>", "Runway model: gen4.5 (default, text+image-to-video), gen4_turbo (image-to-video only)", "gen4.5")
   .option("--no-wait", "Start generation and return task ID without waiting")
   .option("--dry-run", "Preview parameters without executing")
-  .action(async (prompt: string, options) => {
+  .action(async (prompt: string | undefined, options) => {
     try {
+      // Interactive prompt if no argument provided
+      if (!prompt) {
+        if (hasTTY()) {
+          prompt = await promptText(chalk.cyan("Describe your video: "));
+          if (!prompt?.trim()) {
+            console.error(chalk.red("Prompt is required."));
+            return;
+          }
+        } else {
+          console.error(chalk.red("Prompt argument is required."));
+          return;
+        }
+      }
       rejectControlChars(prompt);
 
-      const provider = options.provider.toLowerCase();
+      let provider = options.provider.toLowerCase();
       const validProviders = ["runway", "kling", "veo", "grok"];
       if (!validProviders.includes(provider)) {
-        console.error(chalk.red(`Invalid provider: ${provider}`));
-        console.error(chalk.dim(`Available providers: ${validProviders.join(", ")}`));
-        process.exit(1);
+        exitWithError(usageError(`Invalid provider: ${provider}`, `Available providers: ${validProviders.join(", ")}`));
+      }
+
+      // Auto-fallback: if default provider's key is missing, find one that works
+      const videoEnvMap: Record<string, string> = {
+        grok: "XAI_API_KEY", veo: "GOOGLE_API_KEY", kling: "KLING_API_KEY", runway: "RUNWAY_API_SECRET",
+      };
+      if (videoEnvMap[provider] && !hasApiKey(videoEnvMap[provider]) && !options.apiKey) {
+        const resolved = resolveProvider("video");
+        if (resolved) {
+          log(chalk.dim(`  ${provider} key not found. Using ${resolved.label} instead.`));
+          provider = resolved.name;
+        }
       }
 
       // Read image early so we can auto-detect aspect ratio before dry-run
@@ -581,15 +625,7 @@ generateCommand
       };
       const envKey = envKeyMap[provider];
       const providerName = providerNameMap[provider];
-      const apiKey = await getApiKey(envKey, providerName, options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red(`${providerName} API key required.`));
-        if (provider === "kling") {
-          console.error(chalk.dim("Format: ACCESS_KEY:SECRET_KEY"));
-        }
-        console.error(chalk.dim(`Use --api-key or set ${envKey} environment variable`));
-        process.exit(1);
-      }
+      const apiKey = await requireApiKey(envKey, providerName, options.apiKey);
 
       // Runway gen4_turbo requires an input image; gen4.5 supports text-to-video
       const runwayModel = (options.runwayModel as string) || "gen4.5";
@@ -879,9 +915,7 @@ generateCommand
         }
       }
     } catch (error) {
-      console.error(chalk.red("Video generation failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Video generation failed: ${(error as Error).message}`));
     }
   });
 
@@ -891,16 +925,30 @@ generateCommand
 
 generateCommand
   .command("speech")
+  .alias("tts")
   .description("Generate speech from text using ElevenLabs")
-  .argument("<text>", "Text to convert to speech")
+  .argument("[text]", "Text to convert to speech (interactive if omitted)")
   .option("-k, --api-key <key>", "ElevenLabs API key (or set ELEVENLABS_API_KEY env)")
   .option("-o, --output <path>", "Output audio file path", "output.mp3")
   .option("-v, --voice <id>", "Voice ID (default: Rachel)", "21m00Tcm4TlvDq8ikWAM")
   .option("--list-voices", "List available voices")
   .option("--fit-duration <seconds>", "Speed up audio to fit target duration (via FFmpeg atempo)", parseFloat)
   .option("--dry-run", "Preview parameters without executing")
-  .action(async (text: string, options) => {
+  .action(async (text: string | undefined, options) => {
     try {
+      // Interactive prompt if no argument provided
+      if (!text) {
+        if (hasTTY()) {
+          text = await promptText(chalk.cyan("What text to speak? "));
+          if (!text?.trim()) {
+            console.error(chalk.red("Text is required."));
+            return;
+          }
+        } else {
+          console.error(chalk.red("Text argument is required."));
+          return;
+        }
+      }
       rejectControlChars(text);
 
       if (options.dryRun) {
@@ -908,11 +956,7 @@ generateCommand
         return;
       }
 
-      const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("ElevenLabs API key required. Use --api-key or set ELEVENLABS_API_KEY"));
-        process.exit(1);
-      }
+      const apiKey = await requireApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
 
       const elevenlabs = new ElevenLabsProvider();
       await elevenlabs.initialize({ apiKey });
@@ -1027,11 +1071,7 @@ generateCommand
         return;
       }
 
-      const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("ElevenLabs API key required. Use --api-key or set ELEVENLABS_API_KEY"));
-        process.exit(1);
-      }
+      const apiKey = await requireApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
 
       const spinner = ora("Generating sound effect...").start();
 
@@ -1097,11 +1137,7 @@ generateCommand
 
       if (provider === "elevenlabs") {
         // ElevenLabs Music API — synchronous, up to 10 minutes
-        const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
-        if (!apiKey) {
-          console.error(chalk.red("ElevenLabs API key required. Use --api-key or set ELEVENLABS_API_KEY"));
-          process.exit(1);
-        }
+        const apiKey = await requireApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
 
         const elevenlabs = new ElevenLabsProvider();
         await elevenlabs.initialize({ apiKey });
@@ -1137,11 +1173,7 @@ generateCommand
         console.log();
       } else {
         // Replicate MusicGen — async, max 30 seconds
-        const apiKey = await getApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
-        if (!apiKey) {
-          console.error(chalk.red("Replicate API token required. Use --api-key or set REPLICATE_API_TOKEN"));
-          process.exit(1);
-        }
+        const apiKey = await requireApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
 
         const replicate = new ReplicateProvider();
         await replicate.initialize({ apiKey });
@@ -1227,17 +1259,13 @@ generateCommand
 // ============================================================================
 
 generateCommand
-  .command("music-status")
+  .command("music-status", { hidden: true })
   .description("Check music generation status")
   .argument("<task-id>", "Task ID from music generation")
   .option("-k, --api-key <key>", "Replicate API token (or set REPLICATE_API_TOKEN env)")
   .action(async (taskId: string, options) => {
     try {
-      const apiKey = await getApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("Replicate API token required. Use --api-key or set REPLICATE_API_TOKEN"));
-        process.exit(1);
-      }
+      const apiKey = await requireApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
 
       const replicate = new ReplicateProvider();
       await replicate.initialize({ apiKey });
@@ -1308,11 +1336,7 @@ generateCommand
         return;
       }
 
-      const apiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("Anthropic API key required. Use --api-key or set ANTHROPIC_API_KEY"));
-        process.exit(1);
-      }
+      const apiKey = await requireApiKey("ANTHROPIC_API_KEY", "Anthropic", options.apiKey);
 
       const spinnerText = creativity === "high"
         ? "Analyzing content with high creativity..."
@@ -1417,12 +1441,7 @@ generateCommand
           process.exit(1);
         }
 
-        const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
-        if (!apiKey) {
-          console.error(chalk.red("Google API key required for Gemini video analysis."));
-          console.error(chalk.dim("Use --api-key or set GOOGLE_API_KEY"));
-          process.exit(1);
-        }
+        const apiKey = await requireApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
 
         const name = basename(options.bestFrame, extname(options.bestFrame));
         const outputPath = options.output || `${name}-thumbnail.png`;
@@ -1466,11 +1485,7 @@ generateCommand
         process.exit(1);
       }
 
-      const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("OpenAI API key required. Use --api-key or set OPENAI_API_KEY"));
-        process.exit(1);
-      }
+      const apiKey = await requireApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
 
       const spinner = ora("Generating thumbnail...").start();
 
@@ -1566,11 +1581,7 @@ generateCommand
         return;
       }
 
-      const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
-      if (!apiKey) {
-        console.error(chalk.red("OpenAI API key required. Use --api-key or set OPENAI_API_KEY"));
-        process.exit(1);
-      }
+      const apiKey = await requireApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
 
       const spinner = ora("Generating background...").start();
 
@@ -1650,7 +1661,7 @@ generateCommand
 // ============================================================================
 
 generateCommand
-  .command("video-status")
+  .command("video-status", { hidden: true })
   .description("Check video generation status (Grok, Runway, or Kling)")
   .argument("<task-id>", "Task ID from video generation")
   .option("-p, --provider <provider>", "Provider: grok, runway, kling", "grok")
@@ -1663,11 +1674,7 @@ generateCommand
       const provider = (options.provider || "grok").toLowerCase();
 
       if (provider === "grok") {
-        const apiKey = await getApiKey("XAI_API_KEY", "xAI", options.apiKey);
-        if (!apiKey) {
-          console.error(chalk.red("xAI API key required"));
-          process.exit(1);
-        }
+        const apiKey = await requireApiKey("XAI_API_KEY", "xAI", options.apiKey);
 
         const spinner = ora("Checking status...").start();
 
@@ -1725,11 +1732,7 @@ generateCommand
           }
         }
       } else if (provider === "runway") {
-        const apiKey = await getApiKey("RUNWAY_API_SECRET", "Runway", options.apiKey);
-        if (!apiKey) {
-          console.error(chalk.red("Runway API key required"));
-          process.exit(1);
-        }
+        const apiKey = await requireApiKey("RUNWAY_API_SECRET", "Runway", options.apiKey);
 
         const spinner = ora("Checking status...").start();
 
@@ -1792,11 +1795,7 @@ generateCommand
           }
         }
       } else if (provider === "kling") {
-        const apiKey = await getApiKey("KLING_API_KEY", "Kling", options.apiKey);
-        if (!apiKey) {
-          console.error(chalk.red("Kling API key required"));
-          process.exit(1);
-        }
+        const apiKey = await requireApiKey("KLING_API_KEY", "Kling", options.apiKey);
 
         const spinner = ora("Checking status...").start();
 
@@ -1875,7 +1874,7 @@ generateCommand
 // ============================================================================
 
 generateCommand
-  .command("video-cancel")
+  .command("video-cancel", { hidden: true })
   .description("Cancel video generation (Grok or Runway)")
   .argument("<task-id>", "Task ID to cancel")
   .option("-p, --provider <provider>", "Provider: grok, runway", "grok")
@@ -1887,11 +1886,7 @@ generateCommand
       let success = false;
 
       if (provider === "grok") {
-        const apiKey = await getApiKey("XAI_API_KEY", "xAI", options.apiKey);
-        if (!apiKey) {
-          console.error(chalk.red("xAI API key required"));
-          process.exit(1);
-        }
+        const apiKey = await requireApiKey("XAI_API_KEY", "xAI", options.apiKey);
 
         const spinner = ora("Cancelling generation...").start();
         const grok = new GrokProvider();
@@ -1909,11 +1904,7 @@ generateCommand
           process.exit(1);
         }
       } else if (provider === "runway") {
-        const apiKey = await getApiKey("RUNWAY_API_SECRET", "Runway", options.apiKey);
-        if (!apiKey) {
-          console.error(chalk.red("Runway API key required"));
-          process.exit(1);
-        }
+        const apiKey = await requireApiKey("RUNWAY_API_SECRET", "Runway", options.apiKey);
 
         const spinner = ora("Cancelling generation...").start();
         const runway = new RunwayProvider();
@@ -1947,7 +1938,7 @@ generateCommand
 // ============================================================================
 
 generateCommand
-  .command("video-extend")
+  .command("video-extend", { hidden: true })
   .description("Extend video duration (Kling by video ID, Veo by operation name)")
   .argument("<id>", "Kling video ID or Veo operation name")
   .option("-p, --provider <provider>", "Provider: kling, veo", "kling")
@@ -1969,13 +1960,7 @@ generateCommand
       }
 
       if (provider === "kling") {
-        const apiKey = await getApiKey("KLING_API_KEY", "Kling", options.apiKey);
-        if (!apiKey) {
-          console.error(chalk.red("Kling API key required."));
-          console.error(chalk.dim("Format: ACCESS_KEY:SECRET_KEY"));
-          console.error(chalk.dim("Use --api-key or set KLING_API_KEY environment variable"));
-          process.exit(1);
-        }
+        const apiKey = await requireApiKey("KLING_API_KEY", "Kling", options.apiKey);
 
         const spinner = ora("Initializing Kling AI...").start();
 
@@ -2064,12 +2049,7 @@ generateCommand
           }
         }
       } else if (provider === "veo") {
-        const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
-        if (!apiKey) {
-          console.error(chalk.red("Google API key required."));
-          console.error(chalk.dim("Use --api-key or set GOOGLE_API_KEY environment variable"));
-          process.exit(1);
-        }
+        const apiKey = await requireApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
 
         const spinner = ora("Initializing Veo...").start();
 

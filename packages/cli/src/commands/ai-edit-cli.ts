@@ -36,6 +36,7 @@ export function registerEditCommands(aiCommand: Command): void {
 
 aiCommand
   .command("silence-cut")
+  .alias("sc")
   .description("Remove silent segments from video (FFmpeg default, or Gemini for smart detection)")
   .argument("<video>", "Video file path")
   .option("-o, --output <path>", "Output file path (default: <name>-cut.<ext>)")
@@ -157,6 +158,7 @@ aiCommand
 
 aiCommand
   .command("caption")
+  .alias("cap")
   .description("Transcribe and burn styled captions onto video (Whisper + FFmpeg)")
   .argument("<video>", "Video file path")
   .option("-o, --output <path>", "Output file path (default: <name>-captioned.<ext>)")
@@ -199,7 +201,7 @@ aiCommand
 
       const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("OpenAI API key required for Whisper transcription."));
+        console.error(chalk.red("OpenAI API key required for Whisper transcription. Set OPENAI_API_KEY in .env or run: vibe setup"));
         console.error(chalk.dim("Use --api-key or set OPENAI_API_KEY"));
         process.exit(1);
       }
@@ -475,7 +477,7 @@ aiCommand
 
       const apiKey = await getApiKey(envKey, providerName, options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red(`${providerName} API key required for translation.`));
+        console.error(chalk.red(`${providerName} API key required for translation. Set ${envKey} in .env or run: vibe setup`));
         console.error(chalk.dim(`Use --api-key or set ${envKey}`));
         process.exit(1);
       }
@@ -579,7 +581,7 @@ aiCommand
 
       const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("OpenAI API key required for Whisper transcription."));
+        console.error(chalk.red("OpenAI API key required for Whisper transcription. Set OPENAI_API_KEY in .env or run: vibe setup"));
         console.error(chalk.dim("Use --api-key or set OPENAI_API_KEY"));
         process.exit(1);
       }

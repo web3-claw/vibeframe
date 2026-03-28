@@ -7,6 +7,7 @@ if (process.env.VIBE_DEBUG === "1") {
 
 import { Command } from "commander";
 import { createRequire } from "module";
+import chalk from "chalk";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../package.json");
@@ -26,7 +27,11 @@ import { exportCommand } from "./commands/export.js";
 import { batchCommand } from "./commands/batch.js";
 import { detectCommand } from "./commands/detect.js";
 import { setupCommand } from "./commands/setup.js";
+import { doctorCommand } from "./commands/doctor.js";
 import { agentCommand, startAgent } from "./commands/agent.js";
+import { ApiKeyError } from "./utils/api-key.js";
+import { isFirstRun, showFirstRunBanner } from "./utils/first-run.js";
+import { exitWithError } from "./commands/output.js";
 
 export { startAgent } from "./commands/agent.js";
 export { loadConfig, saveConfig, isConfigured, type VibeConfig } from "./config/index.js";
@@ -37,40 +42,83 @@ const program = new Command();
 
 program
   .name("vibe")
+  .showSuggestionAfterError(true)
   .description("VibeFrame CLI - AI-First Video Editor")
   .version(pkg.version)
   .option("--json", "Output in JSON format")
+  .option("-q, --quiet", "Output only the primary result value (path, URL, or ID)")
+  .option("--fields <fields>", "Limit JSON output to specific fields (comma-separated)")
+  .configureOutput({
+    outputError: (str, write) => {
+      write(chalk.red(str.trim()) + "\n");
+      write(chalk.dim("Run with --help for full options.\n"));
+    },
+  })
   .addHelpText(
     "after",
     `
 Tips:
+  vibe setup               Configure API keys and preferences
+  vibe doctor              Check system health and available commands
   vibe schema <command>    Show JSON schema for any command (e.g., vibe schema generate.image)
-  vibe setup --show        Check which API keys are configured
   vibe                     Start interactive Agent mode (no args)
+
+More commands: vibe project|timeline|export|batch|detect|schema --help
 `
   );
 
 // Set JSON mode env var before subcommand parsing
-program.hook("preAction", () => {
-  if (program.opts().json) {
+// Also check for first-run and show banner
+program.hook("preAction", async (thisCommand) => {
+  const opts = program.opts();
+
+  // --json flag or auto-detect non-TTY stdout
+  if (opts.json || (!process.stdout.isTTY && !process.env.VIBE_HUMAN_OUTPUT)) {
     process.env.VIBE_JSON_OUTPUT = "1";
+  }
+
+  // --quiet flag
+  if (opts.quiet) {
+    process.env.VIBE_QUIET_OUTPUT = "1";
+  }
+
+  // --fields flag
+  if (opts.fields) {
+    process.env.VIBE_OUTPUT_FIELDS = opts.fields;
+  }
+
+  // Show first-run banner for non-setup/doctor commands
+  const cmdName = thisCommand.name();
+  const skipBannerCommands = ["setup", "doctor", "help"];
+  if (!skipBannerCommands.includes(cmdName) && process.stdin.isTTY) {
+    try {
+      if (await isFirstRun()) {
+        showFirstRunBanner();
+      }
+    } catch {
+      // Don't block on first-run check failure
+    }
   }
 });
 
-program.addCommand(projectCommand);
-program.addCommand(timelineCommand);
+// Main commands (visible in --help)
 program.addCommand(generateCommand);
 program.addCommand(editCommand);
 program.addCommand(analyzeCommand);
 program.addCommand(audioCommand);
 program.addCommand(pipelineCommand);
-program.addCommand(schemaCommand);
-program.addCommand(mediaCommand);
-program.addCommand(exportCommand);
-program.addCommand(batchCommand);
-program.addCommand(detectCommand);
 program.addCommand(setupCommand);
+program.addCommand(doctorCommand);
 program.addCommand(agentCommand);
+
+// Infrastructure commands (hidden from --help, still fully functional)
+program.addCommand(projectCommand, { hidden: true });
+program.addCommand(timelineCommand, { hidden: true });
+program.addCommand(schemaCommand, { hidden: true });
+program.addCommand(mediaCommand, { hidden: true });
+program.addCommand(exportCommand, { hidden: true });
+program.addCommand(batchCommand, { hidden: true });
+program.addCommand(detectCommand, { hidden: true });
 
 // Check if any arguments provided
 if (process.argv.length <= 2) {
@@ -83,6 +131,16 @@ if (process.argv.length <= 2) {
     process.exit(1);
   });
 } else {
-  // Arguments provided - parse normally
-  program.parse();
+  // Arguments provided - parse normally with global error handling
+  (async () => {
+    try {
+      await program.parseAsync();
+    } catch (err) {
+      if (err instanceof ApiKeyError) {
+        exitWithError(err.toStructured());
+      }
+      // Re-throw non-ApiKeyError errors
+      throw err;
+    }
+  })();
 }

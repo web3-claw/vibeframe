@@ -159,7 +159,7 @@ export async function executeHighlights(
     if (options.useGemini && isVideo) {
       const geminiApiKey = await getApiKey("GOOGLE_API_KEY", "Google");
       if (!geminiApiKey) {
-        return { success: false, highlights: [], totalDuration: 0, totalHighlightDuration: 0, error: "Google API key required for Gemini Video Understanding" };
+        return { success: false, highlights: [], totalDuration: 0, totalHighlightDuration: 0, error: "Google API key required for Gemini Video Understanding. Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
       }
 
       sourceDuration = await ffprobeDuration(absPath);
@@ -247,12 +247,12 @@ Analyze both what is SHOWN (visual cues, actions, expressions) and what is SAID 
     } else {
       const openaiApiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
       if (!openaiApiKey) {
-        return { success: false, highlights: [], totalDuration: 0, totalHighlightDuration: 0, error: "OpenAI API key required for Whisper transcription" };
+        return { success: false, highlights: [], totalDuration: 0, totalHighlightDuration: 0, error: "OpenAI API key required for Whisper transcription. Run 'vibe setup' or set OPENAI_API_KEY in .env" };
       }
 
       const claudeApiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic");
       if (!claudeApiKey) {
-        return { success: false, highlights: [], totalDuration: 0, totalHighlightDuration: 0, error: "Anthropic API key required for highlight analysis" };
+        return { success: false, highlights: [], totalDuration: 0, totalHighlightDuration: 0, error: "Anthropic API key required for highlight analysis. Run 'vibe setup' or set ANTHROPIC_API_KEY in .env" };
       }
 
       let audioPath = absPath;
@@ -453,7 +453,7 @@ export async function executeAutoShorts(
     if (options.useGemini) {
       const geminiApiKey = await getApiKey("GOOGLE_API_KEY", "Google");
       if (!geminiApiKey) {
-        return { success: false, shorts: [], error: "Google API key required for Gemini Video Understanding" };
+        return { success: false, shorts: [], error: "Google API key required for Gemini Video Understanding. Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
       }
 
       const gemini = new GeminiProvider();
@@ -538,12 +538,12 @@ Analyze both VISUALS (expressions, actions, scene changes) and AUDIO (speech, re
     } else {
       const openaiApiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
       if (!openaiApiKey) {
-        return { success: false, shorts: [], error: "OpenAI API key required for transcription" };
+        return { success: false, shorts: [], error: "OpenAI API key required for transcription. Run 'vibe setup' or set OPENAI_API_KEY in .env" };
       }
 
       const claudeApiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic");
       if (!claudeApiKey) {
-        return { success: false, shorts: [], error: "Anthropic API key required for highlight detection" };
+        return { success: false, shorts: [], error: "Anthropic API key required for highlight detection. Run 'vibe setup' or set ANTHROPIC_API_KEY in .env" };
       }
 
       const tempAudio = absPath.replace(/(\.[^.]+)$/, "-temp-audio.mp3");
@@ -714,7 +714,7 @@ export function registerHighlightsCommands(aiCommand: Command): void {
         if (options.useGemini && isVideo) {
           const geminiApiKey = await getApiKey("GOOGLE_API_KEY", "Google");
           if (!geminiApiKey) {
-            console.error(chalk.red("Google API key required for Gemini Video Understanding."));
+            console.error(chalk.red("Google API key required for Gemini Video Understanding. Set GOOGLE_API_KEY in .env or run: vibe setup"));
             console.error(chalk.dim("Set GOOGLE_API_KEY environment variable"));
             process.exit(1);
           }
@@ -814,14 +814,14 @@ Analyze both what is SHOWN (visual cues, actions, expressions) and what is SAID 
         } else {
           const openaiApiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
           if (!openaiApiKey) {
-            console.error(chalk.red("OpenAI API key required for Whisper transcription."));
+            console.error(chalk.red("OpenAI API key required for Whisper transcription. Set OPENAI_API_KEY in .env or run: vibe setup"));
             console.error(chalk.dim("Set OPENAI_API_KEY environment variable"));
             process.exit(1);
           }
 
           const claudeApiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic");
           if (!claudeApiKey) {
-            console.error(chalk.red("Anthropic API key required for highlight analysis."));
+            console.error(chalk.red("Anthropic API key required for highlight analysis. Set ANTHROPIC_API_KEY in .env or run: vibe setup"));
             console.error(chalk.dim("Set ANTHROPIC_API_KEY environment variable"));
             process.exit(1);
           }
@@ -1011,6 +1011,7 @@ Analyze both what is SHOWN (visual cues, actions, expressions) and what is SAID 
 
   aiCommand
     .command("auto-shorts")
+    .alias("shorts")
     .description("Auto-generate shorts from long-form video")
     .argument("<video>", "Video file path")
     .option("-o, --output <path>", "Output file (single) or directory (multiple)")
@@ -1055,7 +1056,7 @@ Analyze both what is SHOWN (visual cues, actions, expressions) and what is SAID 
         if (options.useGemini) {
           const geminiApiKey = await getApiKey("GOOGLE_API_KEY", "Google");
           if (!geminiApiKey) {
-            console.error(chalk.red("Google API key required for Gemini Video Understanding."));
+            console.error(chalk.red("Google API key required for Gemini Video Understanding. Set GOOGLE_API_KEY in .env or run: vibe setup"));
             console.error(chalk.dim("Set GOOGLE_API_KEY environment variable"));
             process.exit(1);
           }
@@ -1145,13 +1146,13 @@ Analyze both VISUALS (expressions, actions, scene changes) and AUDIO (speech, re
         } else {
           const openaiApiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
           if (!openaiApiKey) {
-            console.error(chalk.red("OpenAI API key required for transcription."));
+            console.error(chalk.red("OpenAI API key required for transcription. Set OPENAI_API_KEY in .env or run: vibe setup"));
             process.exit(1);
           }
 
           const claudeApiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic");
           if (!claudeApiKey) {
-            console.error(chalk.red("Anthropic API key required for highlight detection."));
+            console.error(chalk.red("Anthropic API key required for highlight detection. Set ANTHROPIC_API_KEY in .env or run: vibe setup"));
             process.exit(1);
           }
 

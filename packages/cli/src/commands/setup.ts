@@ -248,10 +248,22 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
   console.log();
   console.log(chalk.dim(`Config: ${CONFIG_PATH}`));
   console.log();
-  console.log(`Run ${chalk.cyan("vibe")} to start editing`);
-  console.log(`Run ${chalk.cyan("vibe setup --show")} to verify your configuration`);
-  console.log(`Run ${chalk.cyan("vibe setup --full")} to configure more providers`);
-  console.log(`Run ${chalk.cyan("vibe setup --claude-code")} to set up Claude Code integration`);
+
+  // Suggest a "try it" command based on configured providers
+  const { hasApiKey } = await import("../utils/api-key.js");
+  if (hasApiKey("GOOGLE_API_KEY")) {
+    console.log(`  Try: ${chalk.cyan('vibe generate image "a sunset over mountains" -o test.png')}`);
+  } else if (hasApiKey("ELEVENLABS_API_KEY")) {
+    console.log(`  Try: ${chalk.cyan('vibe generate speech "Hello world" -o hello.mp3')}`);
+  } else if (hasApiKey("OPENAI_API_KEY")) {
+    console.log(`  Try: ${chalk.cyan('vibe generate image "a cute robot" -p openai -o test.png')}`);
+  } else {
+    console.log(`  Try: ${chalk.cyan("vibe")} to start the interactive Agent`);
+  }
+  console.log();
+  console.log(chalk.dim(`  vibe doctor         Check what's ready`));
+  console.log(chalk.dim(`  vibe setup --show   Verify configuration`));
+  console.log(chalk.dim(`  vibe setup --full   Configure more providers`));
   console.log();
 }
 
@@ -272,8 +284,6 @@ async function setupClaudeCode(): Promise<void> {
   }
 
   // Read the bundled CLI reference from the package
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
   // In built dist: packages/cli/dist/commands/setup.js
   // Source reference: .claude/rules/cli-reference.md (relative to repo root)
   // We'll embed it directly since the file ships with the npm package

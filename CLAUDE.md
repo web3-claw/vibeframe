@@ -11,17 +11,13 @@ VibeFrame is an AI-native video editing tool. CLI-first, MCP-ready. It uses natu
 ```bash
 pnpm install          # Install dependencies
 pnpm build            # Build all packages
-pnpm test             # Run all tests (248+ passing)
+pnpm test             # Run all tests (225+ passing)
 pnpm lint             # Lint all packages
 pnpm format           # Format code with Prettier
 
 # Run CLI directly
 pnpm vibe             # Start Agent mode (default, no-args only)
-pnpm vibe agent       # Start Agent mode with options (e.g., -p gemini)
 pnpm vibe --help      # Show CLI commands
-
-# Run MCP server (development)
-pnpm mcp
 
 # Single package commands
 pnpm -F @vibeframe/cli test       # Test CLI package only
@@ -31,14 +27,12 @@ pnpm -F @vibeframe/core build     # Build core package only
 ## Architecture
 
 ```
-CLI (Commander.js + Agent)
-    ↓
-Engine (Project state management)
-    ↓
-Core (Zustand + Immer store, timeline operations, FFmpeg export)
-    ↓
-AI Providers (pluggable: OpenAI, Claude, Gemini, ElevenLabs, Runway, Kling, xAI Grok, etc.)
+CLI (Commander.js + Agent)  →  Engine (Project state)  →  Core (Zustand + FFmpeg)  →  AI Providers
 ```
+
+**Monorepo**: Turborepo + pnpm workspaces. ESM. TypeScript strict mode.
+
+**Packages**: `packages/cli` (main CLI), `packages/core` (timeline/export), `packages/ai-providers`, `packages/mcp-server`, `packages/ui`, `apps/web`
 
 ### Commit Format
 
@@ -57,11 +51,11 @@ Copy `.env.example` to `.env`. Each AI provider has its own API key:
 
 ## AI Provider Models
 
-See **[MODELS.md](MODELS.md)** for the complete SSOT (Single Source of Truth) on all AI models. Do not duplicate model lists here.
+See **[MODELS.md](MODELS.md)** for the complete SSOT on all AI models. Do not duplicate model lists here.
 
-@.claude/rules/architecture.md
-@.claude/rules/agent-tools.md
-@.claude/rules/agents.md
-@.claude/rules/versioning.md
-@.claude/rules/mcp-server.md
-@MODELS.md
+## Harness
+
+All 7 rules in `.claude/rules/` are **path-scoped** — they load on-demand only when editing matching files. See `.claude/README.md` for the full harness structure.
+
+**Skills**: `/test`, `/release`, `/sync-check`
+**Agents**: `code-reviewer`, `version-checker`, `lint-fixer`, `e2e-tester`, `feature-tester`, `pipeline-tester`

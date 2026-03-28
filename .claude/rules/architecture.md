@@ -1,33 +1,27 @@
 ---
-description: Package structure, Agent architecture, development workflow
-globs:
-  - "packages/**"
-  - ".claude/skills/**"
+paths:
+  - "packages/cli/src/agent/**"
+  - "packages/cli/src/index.ts"
+  - "packages/core/src/**"
+  - "packages/ai-providers/src/**"
 ---
 
 # Architecture Details
 
-## Skills → CLI → Agent Workflow
+## CLI → Agent Workflow
 
 ```
-.claude/skills/           Development-time API reference + Python helpers
-       ↓
 packages/cli/             CLI implementation (TypeScript/Commander.js)
        ↓
-scripts/install.sh        User installation via curl | bash (copied to apps/web/public/ on build)
+scripts/install.sh        User installation via curl | bash
        ↓
 Agent (vibe)              Natural language → LLM tool calling → autonomous execution
 ```
 
-**Claude Code Skills** (`.claude/skills/`):
-- Each skill contains `SKILL.md` (API documentation) and `scripts/` (Python helpers)
-- Used during development to understand API capabilities and test integrations
-- Python scripts serve as working reference implementations
-
 **CLI** (`packages/cli/`):
 - Production commands built in TypeScript using Commander.js
-- Calls Python helper scripts or implements providers directly
 - Supports `--provider` option for multi-provider commands (image, video, etc.)
+- Command aliases: `gen`, `ed`, `az`, `au`, `pipe`
 
 **Agent** (`packages/cli/src/agent/`) - **Interactive CLI / Onboarding entry point**:
 - `vibe` (no args) starts an interactive natural language session
@@ -89,8 +83,8 @@ vibe agent -i "query" -v       # Non-interactive mode with verbose output
 
 ## Package Structure
 
-- **.claude/skills/** - Claude Code Skills. Each skill has `SKILL.md` (API docs) + `scripts/` (Python helpers). Providers: openai-api, claude-api, gemini-image, gemini-video, elevenlabs-tts, replicate-ai, runway-video, kling-video, remotion-motion.
-- **packages/cli** - Main CLI interface. Entry: `src/index.ts`. Commands in `src/commands/`. Agent in `src/agent/`. REPL in `src/repl/` (deprecated). Config schema in `src/config/schema.ts`.
+- **.claude/skills/** - Workflow skills: `/test`, `/release`, `/sync-check`.
+- **packages/cli** - Main CLI interface. Entry: `src/index.ts`. Commands in `src/commands/`. Agent in `src/agent/`. Config schema in `src/config/schema.ts`.
 - **packages/core** - Timeline data structures (`src/timeline/`), effects (`src/effects/`), FFmpeg export (`src/export/`). State managed with Zustand + Immer.
 - **packages/ai-providers** - Pluggable AI providers. Abstract interface in `src/interface/`. Registry for capability matching. Each provider in its own directory.
 - **packages/mcp-server** - MCP server for Claude Desktop/Cursor. Published as `@vibeframe/mcp-server` on npm. Bundled with esbuild (single file, workspace deps inlined). Tools, resources, and prompts in respective directories.
