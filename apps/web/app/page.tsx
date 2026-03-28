@@ -35,6 +35,12 @@ export default function LandingPage() {
           </div>
           <div className="flex items-center gap-4">
             <Link
+              href="/demo"
+              className="text-muted-foreground hover:text-foreground transition-colors hidden sm:inline"
+            >
+              Demo
+            </Link>
+            <Link
               href="https://github.com/vericontext/vibeframe"
               target="_blank"
               className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"

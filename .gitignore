@@ -46,7 +46,8 @@ pnpm-debug.log*
 
 samples/
 # Generated outputs
-demo/
+/demo/
+/demo-video/
 demo-output/
 test-results/
 
