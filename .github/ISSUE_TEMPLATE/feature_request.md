@@ -12,6 +12,12 @@ A clear description of what the problem is. Ex. I'm always frustrated when...
 ## Proposed Solution
 A clear description of what you want to happen.
 
+## Example Usage
+```bash
+# How would this feature be used?
+vibe <your-proposed-command>
+```
+
 ## Alternatives Considered
 Any alternative solutions or features you've considered.
 

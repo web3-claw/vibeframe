@@ -14,8 +14,8 @@ You should receive an acknowledgment within 48 hours. We will work with you to u
 
 | Version | Supported |
 |---------|-----------|
-| 0.19.x  | Yes       |
-| < 0.19  | No        |
+| 0.27.x  | Yes       |
+| < 0.27  | No        |
 
 ## API Key Safety
 

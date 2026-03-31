@@ -1,26 +1,31 @@
 ## Summary
-Brief description of what this PR does.
+Brief description of what this PR does and why.
 
 ## Changes
 - Change 1
 - Change 2
-- Change 3
 
 ## Type of Change
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Breaking change
+- [ ] Bug fix (non-breaking change that fixes an issue)
+- [ ] New feature (non-breaking change that adds functionality)
+- [ ] Breaking change (fix or feature that would cause existing functionality to change)
 - [ ] Documentation update
 
 ## Testing
-How has this been tested?
+- [ ] `pnpm build` passes
+- [ ] `pnpm test` passes
+- [ ] `pnpm lint` passes
+- [ ] Manual testing done (describe below)
+
+**Manual test steps:**
+
 
 ## Screenshots
-If applicable, add screenshots of the changes.
+If applicable, add screenshots or terminal output.
 
 ## Checklist
-- [ ] My code follows the project's style guidelines
+- [ ] My code follows the [contributing guidelines](../CONTRIBUTING.md)
 - [ ] I have performed a self-review of my code
-- [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally with my changes
-- [ ] I have updated the documentation accordingly
+- [ ] I have added tests for new functionality
+- [ ] I have updated documentation if needed (MODELS.md, CLAUDE.md, etc.)
+- [ ] My commit messages follow [conventional commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, `docs:`, etc.)
