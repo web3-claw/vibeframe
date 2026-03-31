@@ -140,7 +140,13 @@ Intelligence built into every interaction.
 - [x] Auto Reframe - Smart 16:9 → 9:16 conversion (`vibe edit reframe`)
 - [x] Auto-generate Shorts - From long-form with captions (`vibe pipeline auto-shorts`)
 - [x] ~~Video Style Transfer~~ - Deprecated (requires public URL, not local files)
-- [x] ~~Object Tracking~~ - Deprecated (requires public URL, not local files)
+- [x] ~~Object Tracking (API)~~ - Deprecated (requires public URL, not local files)
+- [ ] **Real-Time Subject Tracking** - Local model-based continuous tracking (`vibe edit reframe --track`)
+  - MediaPipe Face/Pose for person tracking (free, local, real-time)
+  - YOLO + ByteTrack for general object tracking (free, local)
+  - SAM 2 (Meta) for high-precision segmentation tracking
+  - Replaces current Claude Vision keyframe approach for fast-moving subjects
+  - Auto-center subject in frame for any aspect ratio conversion
 - [x] Text Overlay - Auto-compose text overlays on video (`vibe edit text-overlay`)
 - [x] AI Video Review - Gemini-powered quality review & auto-fix (`vibe analyze review`)
 - [x] Silence Cut - Remove silent segments from video (`vibe edit silence-cut`, `--use-gemini` for smart detection)
