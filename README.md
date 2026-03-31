@@ -2,8 +2,10 @@
 
 **AI-native video editing. CLI-first. MCP-ready.**
 
+[![GitHub stars](https://img.shields.io/github/stars/vericontext/vibeframe)](https://github.com/vericontext/vibeframe/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-248%2B%20passing-brightgreen.svg)]()
+[![Contributors](https://img.shields.io/github/contributors/vericontext/vibeframe)](https://github.com/vericontext/vibeframe/graphs/contributors)
 
 > Edit videos with natural language. Every edit is a command. Every workflow is scriptable.
 
@@ -221,6 +223,12 @@ pnpm lint      # Lint code
 ```
 
 Contributions welcome — AI provider integrations, CLI improvements, docs, bug fixes & tests. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### Contributors
+
+<a href="https://github.com/vericontext/vibeframe/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=vericontext/vibeframe" />
+</a>
 
 ---
 
