@@ -27,6 +27,22 @@ export const schemaCommand = new Command("schema")
     }
 
     const parts = commandPath.split(".");
+
+    if (parts.length === 1) {
+      // Single command (e.g., "export", "setup", "doctor")
+      const cmd = program.commands.find(
+        (c: Command) => c.name() === parts[0]
+      );
+      if (!cmd) {
+        console.error(`Unknown command: ${parts[0]}`);
+        console.error(`Run 'vibe schema --list' to see all available commands.`);
+        process.exit(1);
+      }
+      const schema = buildSchema(cmd as Command, parts[0]);
+      console.log(JSON.stringify(schema, null, 2));
+      return;
+    }
+
     if (parts.length !== 2) {
       console.error(
         `Invalid command path: ${commandPath}. Use format: group.action (e.g., generate.image)`
@@ -71,15 +87,26 @@ export const schemaCommand = new Command("schema")
 
 function listCommands(program: Command): void {
   const commands: { path: string; description: string }[] = [];
+  const skipTopLevel = new Set(["help", "schema"]);
 
   for (const group of program.commands) {
+    const name = group.name();
+    if (skipTopLevel.has(name)) continue;
+
     const subCmds = (group as Command).commands;
-    if (subCmds.length === 0) continue;
+    if (subCmds.length === 0) {
+      // Top-level command without subcommands (e.g., export, setup, doctor)
+      const desc = (group as Command).description() || "";
+      if (desc.toLowerCase().includes("deprecated")) continue;
+      commands.push({ path: name, description: desc });
+      continue;
+    }
+
     for (const sub of subCmds) {
       const desc = (sub as Command).description() || "";
       if (desc.toLowerCase().includes("deprecated")) continue;
       commands.push({
-        path: `${group.name()}.${(sub as Command).name()}`,
+        path: `${name}.${(sub as Command).name()}`,
         description: desc,
       });
     }

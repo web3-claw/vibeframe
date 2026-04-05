@@ -57,13 +57,25 @@ program
   .addHelpText(
     "after",
     `
-Tips:
-  vibe setup               Configure API keys and preferences
-  vibe doctor              Check system health and available commands
-  vibe schema <command>    Show JSON schema for any command (e.g., vibe schema generate.image)
-  vibe                     Start interactive Agent mode (no args)
+Workflow commands:
+  vibe project create|info|set       Manage .vibe.json project files
+  vibe timeline add-source|add-clip|trim|split|list|delete  Edit project timeline
+  vibe export <project> -o out.mp4   Export project to video
+  vibe batch import|concat|apply-effect  Bulk operations
+  vibe detect scenes|silence|beats   Analyze media structure
 
-More commands: vibe project|timeline|export|batch|detect|schema --help
+Utilities:
+  vibe setup                   Configure API keys and preferences
+  vibe setup --show            Show current API key status
+  vibe doctor --json           Check system health and available providers
+  vibe schema --list           List all commands with JSON schema
+  vibe schema <group.action>   Show JSON schema (e.g., vibe schema generate.image)
+
+Global flags (work with any command):
+  --json         Output JSON (auto-enabled when piped)
+  --fields       Limit output fields (e.g., --fields "path,duration")
+  --quiet        Output only the result value
+  --dry-run      Preview without executing (most commands)
 `
   );
 

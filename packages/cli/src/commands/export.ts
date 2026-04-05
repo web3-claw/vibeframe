@@ -183,6 +183,13 @@ export const exportCommand = new Command("export")
   )
   .option("-y, --overwrite", "Overwrite output file if exists", false)
   .option("-g, --gap-fill <strategy>", "Gap filling strategy (black, extend)", "extend")
+  .addHelpText("after", `
+Examples:
+  $ vibe export project.vibe.json -o output.mp4
+  $ vibe export project.vibe.json -o output.mp4 -p high -y
+  $ vibe export project.vibe.json -o output.webm -f webm
+
+No API keys needed. Requires FFmpeg.`)
   .action(async (projectPath: string, options) => {
     const spinner = ora("Checking FFmpeg...").start();
 

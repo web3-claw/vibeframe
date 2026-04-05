@@ -25,7 +25,15 @@ async function resolveProjectPath(inputPath: string): Promise<string> {
 }
 
 export const projectCommand = new Command("project")
-  .description("Project management commands");
+  .description("Project management commands")
+  .addHelpText("after", `
+Examples:
+  $ vibe project create "my-video" -o project.vibe.json
+  $ vibe project create "shorts" -r 9:16 -o vertical.vibe.json
+  $ vibe project info project.vibe.json
+  $ vibe project set project.vibe.json --fps 60
+
+No API keys needed. Projects are saved as .vibe.json files.`);
 
 projectCommand
   .command("create")

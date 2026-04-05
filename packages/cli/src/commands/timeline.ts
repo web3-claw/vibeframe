@@ -8,7 +8,18 @@ import type { MediaType } from "@vibeframe/core/timeline";
 import { validateResourceId } from "./validate.js";
 
 export const timelineCommand = new Command("timeline")
-  .description("Timeline editing commands");
+  .description("Timeline editing commands")
+  .addHelpText("after", `
+Examples:
+  $ vibe timeline add-source project.vibe.json video.mp4         # Returns source ID
+  $ vibe timeline add-clip project.vibe.json <source-id>         # Add clip from source
+  $ vibe timeline trim project.vibe.json <clip-id> --start 5 --end 30
+  $ vibe timeline split project.vibe.json <clip-id> --time 10
+  $ vibe timeline list project.vibe.json --json
+  $ vibe timeline delete project.vibe.json <clip-id>
+
+Typical workflow: create project → add-source → add-clip → trim/split → export
+No API keys needed.`);
 
 timelineCommand
   .command("add-source")
