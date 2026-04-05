@@ -30,7 +30,7 @@ export const setupCommand = new Command("setup")
   .option("--reset", "Reset configuration to defaults")
   .option("--full", "Run full setup with all optional providers")
   .option("--show", "Show current configuration (for debugging)")
-  .option("--claude-code", "Set up Claude Code integration (.claude/rules/) in current directory")
+  .option("--claude-code", "Show Claude Code integration guide")
   .action(async (options) => {
     if (options.claudeCode) {
       await setupClaudeCode();
@@ -132,10 +132,10 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
   console.log();
 
   const topLabels = [
-    `Edit videos ${chalk.dim("(silence-cut, fade, noise-reduce, detect)")} ${chalk.green("FREE")}`,
-    `AI generation ${chalk.dim("(pick what you need — images, videos, speech)")}`,
+    `Edit videos offline ${chalk.dim("(silence-cut, fade, noise-reduce, detect)")} ${chalk.green("no API keys")}`,
+    `AI features ${chalk.dim("(pick what you need — images, videos, audio, editing)")}`,
     `Full AI pipeline ${chalk.dim("(script-to-video, highlights, auto-shorts)")}`,
-    `Custom setup ${chalk.dim("(choose providers individually)")}`,
+    `Custom setup ${chalk.dim("(choose providers one by one)")}`,
   ];
 
   const topIndex = await promptSelect(chalk.cyan("  Select [1-4]: "), topLabels, 0);
@@ -195,10 +195,10 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
   console.log();
 
   if (selectedFeatures.length === 0) {
-    console.log(chalk.dim("  No features selected. You can still edit videos offline."));
+    console.log(chalk.dim("  No features selected. You can re-run setup anytime."));
     console.log();
     await saveConfig(config);
-    showComplete(config, 'vibe edit silence-cut video.mp4 -o clean.mp4');
+    showComplete(config, 'vibe --help');
     return;
   }
 
@@ -212,6 +212,7 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
 
   console.log(chalk.bold("API Keys"));
   console.log(chalk.dim("  Paste your key — saved locally, never shared."));
+  console.log(chalk.dim("  Already set keys are shown with " + chalk.green("✓") + "."));
   console.log();
 
   await collectKeys(config, [...allKeys.values()]);
@@ -221,16 +222,25 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
 }
 
 /**
- * Collect API keys, skipping already-configured ones
+ * Collect API keys, skipping already-configured ones (checks config + .env + env vars)
  */
 async function collectKeys(
   config: NonNullable<Awaited<ReturnType<typeof loadConfig>>>,
   keys: { configKey: string; envVar: string; name: string }[]
 ): Promise<void> {
+  // Load .env so we can detect keys already set there
+  loadEnv();
+
   for (const keyDef of keys) {
-    const existing = config.providers[keyDef.configKey as keyof typeof config.providers];
-    if (existing) {
-      console.log(`  ${chalk.green("✓")} ${keyDef.name.padEnd(14)} ${maskApiKey(existing)}`);
+    const configValue = config.providers[keyDef.configKey as keyof typeof config.providers];
+    const envValue = process.env[keyDef.envVar];
+
+    if (configValue) {
+      console.log(`  ${chalk.green("✓")} ${keyDef.name.padEnd(14)} ${maskApiKey(configValue)} ${chalk.dim("(config)")}`);
+      continue;
+    }
+    if (envValue) {
+      console.log(`  ${chalk.green("✓")} ${keyDef.name.padEnd(14)} ${maskApiKey(envValue)} ${chalk.dim("(.env)")}`);
       continue;
     }
 
