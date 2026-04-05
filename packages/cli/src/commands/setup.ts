@@ -67,58 +67,42 @@ export const setupCommand = new Command("setup")
     }
   });
 
-// ── Use-case definitions ──────────────────────────────────────────────
+// ── AI feature definitions for mix-and-match selection ────────────────
 
-interface UseCase {
+interface AIFeature {
   label: string;
   desc: string;
   keys: { configKey: string; envVar: string; name: string }[];
   tryCommand: string;
-  llmProvider?: LLMProvider;
 }
 
-const USE_CASES: UseCase[] = [
-  {
-    label: "Edit videos",
-    desc: "silence-cut, caption, fade, grade, noise-reduce",
-    keys: [],
-    tryCommand: 'vibe edit silence-cut video.mp4 -o clean.mp4',
-  },
+const AI_FEATURES: AIFeature[] = [
   {
     label: "Generate images",
-    desc: "Gemini Nano Banana (default), OpenAI, Grok",
+    desc: "Gemini, OpenAI, Grok",
     keys: [{ configKey: "google", envVar: "GOOGLE_API_KEY", name: "Google" }],
     tryCommand: 'vibe generate image "a sunset over mountains" -o test.png',
   },
   {
     label: "Generate videos",
-    desc: "Grok Imagine (default), Kling, Runway, Veo",
+    desc: "Grok, Kling, Runway, Veo",
     keys: [{ configKey: "xai", envVar: "XAI_API_KEY", name: "xAI" }],
-    tryCommand: 'vibe generate video "ocean waves at sunset" -o ocean.mp4',
+    tryCommand: 'vibe generate video "ocean waves" -o waves.mp4',
   },
   {
     label: "Text-to-speech & music",
-    desc: "ElevenLabs TTS, SFX, music, voice clone",
+    desc: "ElevenLabs TTS, SFX, music",
     keys: [{ configKey: "elevenlabs", envVar: "ELEVENLABS_API_KEY", name: "ElevenLabs" }],
     tryCommand: 'vibe generate speech "Hello world" -o hello.mp3',
   },
   {
-    label: "Full AI pipeline",
-    desc: "script-to-video, highlights, auto-shorts",
+    label: "AI editing",
+    desc: "captions, color grade, reframe, speed-ramp",
     keys: [
+      { configKey: "openai", envVar: "OPENAI_API_KEY", name: "OpenAI" },
       { configKey: "anthropic", envVar: "ANTHROPIC_API_KEY", name: "Anthropic" },
-      { configKey: "google", envVar: "GOOGLE_API_KEY", name: "Google" },
-      { configKey: "elevenlabs", envVar: "ELEVENLABS_API_KEY", name: "ElevenLabs" },
-      { configKey: "xai", envVar: "XAI_API_KEY", name: "xAI (or Runway/Kling)" },
     ],
-    llmProvider: "claude",
-    tryCommand: 'vibe pipeline script-to-video "A day in the life..." -o ./output/',
-  },
-  {
-    label: "Custom setup",
-    desc: "pick providers individually",
-    keys: [],
-    tryCommand: 'vibe doctor',
+    tryCommand: 'vibe edit caption video.mp4 -o captioned.mp4',
   },
 ];
 
@@ -147,48 +131,103 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
   console.log(chalk.bold("What would you like to do?"));
   console.log();
 
-  const useCaseLabels = USE_CASES.map((uc) => {
-    const keyCount = uc.keys.length;
-    const tag = keyCount === 0
-      ? chalk.green("FREE")
-      : keyCount === 1
-      ? chalk.dim(`1 key`)
-      : chalk.dim(`${keyCount} keys`);
-    return `${uc.label} ${chalk.dim(`(${uc.desc})`)} ${tag}`;
-  });
+  const topLabels = [
+    `Edit videos ${chalk.dim("(silence-cut, fade, noise-reduce, detect)")} ${chalk.green("FREE")}`,
+    `AI generation ${chalk.dim("(pick what you need — images, videos, speech)")}`,
+    `Full AI pipeline ${chalk.dim("(script-to-video, highlights, auto-shorts)")}`,
+    `Custom setup ${chalk.dim("(choose providers individually)")}`,
+  ];
 
-  const useCaseIndex = await promptSelect(
-    chalk.cyan(`  Select [1-${USE_CASES.length}]: `),
-    useCaseLabels,
-    0
-  );
-  const selectedUseCase = USE_CASES[useCaseIndex];
+  const topIndex = await promptSelect(chalk.cyan("  Select [1-4]: "), topLabels, 0);
   console.log();
 
-  // Custom setup → delegate to full provider-by-provider flow
-  if (useCaseIndex === USE_CASES.length - 1) {
+  // ── Edit videos (FREE) ─────────────────────────────────────────────
+  if (topIndex === 0) {
+    await saveConfig(config);
+    showComplete(config, 'vibe edit silence-cut video.mp4 -o clean.mp4');
+    return;
+  }
+
+  // ── Custom setup ───────────────────────────────────────────────────
+  if (topIndex === 3) {
     await runCustomSetup(config);
     return;
   }
 
-  // No keys needed (edit videos)
-  if (selectedUseCase.keys.length === 0) {
+  // ── Full AI pipeline ───────────────────────────────────────────────
+  if (topIndex === 2) {
+    config.llm.provider = "claude";
+    const pipelineKeys = [
+      { configKey: "anthropic", envVar: "ANTHROPIC_API_KEY", name: "Anthropic" },
+      { configKey: "google", envVar: "GOOGLE_API_KEY", name: "Google" },
+      { configKey: "elevenlabs", envVar: "ELEVENLABS_API_KEY", name: "ElevenLabs" },
+      { configKey: "xai", envVar: "XAI_API_KEY", name: "xAI" },
+    ];
+
+    console.log(chalk.bold("Pipeline requires these API keys:"));
+    console.log(chalk.dim("  Paste your key — saved locally, never shared."));
+    console.log();
+
+    await collectKeys(config, pipelineKeys);
+
     await saveConfig(config);
-    showComplete(config, selectedUseCase);
+    showComplete(config, 'vibe pipeline script-to-video "A day in the life..." -o ./output/');
     return;
   }
 
-  // Set LLM provider if use case specifies one
-  if (selectedUseCase.llmProvider) {
-    config.llm.provider = selectedUseCase.llmProvider;
-  }
-
-  // Step 2: Collect required keys
-  console.log(chalk.bold("API Keys"));
-  console.log(chalk.dim("  Paste your key — it's saved locally and never shared."));
+  // ── AI generation (mix and match) ──────────────────────────────────
+  console.log(chalk.bold("Which AI features do you need?"));
+  console.log(chalk.dim("  Select each one you want to use."));
   console.log();
 
-  for (const keyDef of selectedUseCase.keys) {
+  const selectedFeatures: AIFeature[] = [];
+  for (const feature of AI_FEATURES) {
+    const keyCount = feature.keys.length;
+    const tag = chalk.dim(`${keyCount} key${keyCount > 1 ? "s" : ""}`);
+    const yes = await promptConfirm(
+      chalk.cyan(`  ${feature.label} ${chalk.dim(`(${feature.desc})`)} ${tag}`),
+      true
+    );
+    if (yes) {
+      selectedFeatures.push(feature);
+    }
+  }
+  console.log();
+
+  if (selectedFeatures.length === 0) {
+    console.log(chalk.dim("  No features selected. You can still edit videos offline."));
+    console.log();
+    await saveConfig(config);
+    showComplete(config, 'vibe edit silence-cut video.mp4 -o clean.mp4');
+    return;
+  }
+
+  // Deduplicate keys across selected features
+  const allKeys = new Map<string, { configKey: string; envVar: string; name: string }>();
+  for (const feature of selectedFeatures) {
+    for (const key of feature.keys) {
+      allKeys.set(key.configKey, key);
+    }
+  }
+
+  console.log(chalk.bold("API Keys"));
+  console.log(chalk.dim("  Paste your key — saved locally, never shared."));
+  console.log();
+
+  await collectKeys(config, [...allKeys.values()]);
+
+  await saveConfig(config);
+  showComplete(config, selectedFeatures[0].tryCommand);
+}
+
+/**
+ * Collect API keys, skipping already-configured ones
+ */
+async function collectKeys(
+  config: NonNullable<Awaited<ReturnType<typeof loadConfig>>>,
+  keys: { configKey: string; envVar: string; name: string }[]
+): Promise<void> {
+  for (const keyDef of keys) {
     const existing = config.providers[keyDef.configKey as keyof typeof config.providers];
     if (existing) {
       console.log(`  ${chalk.green("✓")} ${keyDef.name.padEnd(14)} ${maskApiKey(existing)}`);
@@ -204,10 +243,6 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
     }
   }
   console.log();
-
-  // Save and show completion
-  await saveConfig(config);
-  showComplete(config, selectedUseCase);
 }
 
 /**
@@ -283,22 +318,19 @@ async function runCustomSetup(config: Awaited<ReturnType<typeof loadConfig>> & o
 
   // Save
   await saveConfig(config);
-  showComplete(config, null);
+  showComplete(config, "vibe doctor");
 }
 
 /**
  * Show completion message with contextual "try it" command
  */
-function showComplete(config: NonNullable<Awaited<ReturnType<typeof loadConfig>>>, useCase: UseCase | null): void {
+function showComplete(config: NonNullable<Awaited<ReturnType<typeof loadConfig>>>, tryCommand: string): void {
   console.log(chalk.dim("─".repeat(40)));
   console.log(chalk.green.bold("✓ Setup complete!"));
   console.log();
   console.log(chalk.dim(`  Config: ${CONFIG_PATH}`));
   console.log();
-
-  // Show contextual try-it command
-  const tryCmd = useCase?.tryCommand || "vibe doctor";
-  console.log(`  Try: ${chalk.cyan(tryCmd)}`);
+  console.log(`  Try: ${chalk.cyan(tryCommand)}`);
   console.log();
   console.log(chalk.dim("  vibe doctor         Check what's ready"));
   console.log(chalk.dim("  vibe setup --show   Verify configuration"));
