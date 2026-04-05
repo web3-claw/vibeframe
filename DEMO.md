@@ -10,13 +10,13 @@ From install to "wow" in 5 minutes.
 # One-line install
 curl -fsSL https://vibeframe.ai/install.sh | bash
 
-# Setup wizard — pick what you need
+# Setup wizard — arrow keys to select, Enter to confirm
 vibe setup
 
-#   1. Edit videos offline (FREE)
-#   2. AI features (images, videos, audio, editing)
-#   3. Full AI pipeline
-#   4. Custom setup
+#   ❯ Edit videos offline          no API keys
+#     AI features                   pick what you need
+#     Full AI pipeline              script-to-video, highlights
+#     Custom setup                  choose providers one by one
 
 # Verify
 vibe doctor
