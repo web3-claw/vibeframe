@@ -31,7 +31,18 @@ import { doctorCommand } from "./commands/doctor.js";
 import { agentCommand, startAgent } from "./commands/agent.js";
 import { ApiKeyError } from "./utils/api-key.js";
 import { isFirstRun, showFirstRunBanner } from "./utils/first-run.js";
-import { exitWithError } from "./commands/output.js";
+import { exitWithError, usageError } from "./commands/output.js";
+
+/**
+ * Read all data from stdin (non-blocking, only when stdin is piped).
+ */
+async function readStdin(): Promise<string> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks).toString("utf-8").trim();
+}
 
 export { startAgent } from "./commands/agent.js";
 export { loadConfig, saveConfig, isConfigured, type VibeConfig } from "./config/index.js";
@@ -48,6 +59,7 @@ program
   .option("--json", "Output in JSON format")
   .option("-q, --quiet", "Output only the primary result value (path, URL, or ID)")
   .option("--fields <fields>", "Limit JSON output to specific fields (comma-separated)")
+  .option("--stdin", "Read options from stdin as JSON (for agent/script use)")
   .configureOutput({
     outputError: (str, write) => {
       write(chalk.red(str.trim()) + "\n");
@@ -75,13 +87,17 @@ Global flags (work with any command):
   --json         Output JSON (auto-enabled when piped)
   --fields       Limit output fields (e.g., --fields "path,duration")
   --quiet        Output only the result value
+  --stdin        Read options from stdin as JSON (for agent/script use)
   --dry-run      Preview without executing (most commands)
+
+Stdin JSON example:
+  echo '{"provider":"kling","duration":5}' | vibe generate video "prompt" --stdin
 `
   );
 
 // Set JSON mode env var before subcommand parsing
-// Also check for first-run and show banner
-program.hook("preAction", async (thisCommand) => {
+// Also check for first-run, stdin JSON, and show banner
+program.hook("preAction", async (thisCommand, actionCommand) => {
   const opts = program.opts();
 
   // --json flag or auto-detect non-TTY stdout
@@ -97,6 +113,39 @@ program.hook("preAction", async (thisCommand) => {
   // --fields flag
   if (opts.fields) {
     process.env.VIBE_OUTPUT_FIELDS = opts.fields;
+  }
+
+  // --stdin: read JSON from stdin and merge into command options
+  // Usage: echo '{"output":"out.mp4","provider":"kling"}' | vibe generate video "prompt" --stdin
+  if (opts.stdin) {
+    if (process.stdin.isTTY) {
+      exitWithError(usageError("--stdin requires piped input.", "echo '{\"key\":\"value\"}' | vibe <command> --stdin"));
+    }
+    try {
+      const raw = await readStdin();
+      if (!raw) {
+        exitWithError(usageError("--stdin received empty input.", "Pipe JSON to stdin: echo '{...}' | vibe <command> --stdin"));
+      }
+      const json = JSON.parse(raw);
+      if (typeof json !== "object" || json === null || Array.isArray(json)) {
+        exitWithError(usageError("--stdin expects a JSON object.", 'Example: {"output":"out.mp4","provider":"kling"}'));
+      }
+      // Merge JSON keys into the action command's options (CLI flags take precedence)
+      for (const [key, value] of Object.entries(json)) {
+        // Convert kebab-case to camelCase (e.g., "api-key" → "apiKey")
+        const camelKey = key.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+        // Only set if not already specified via CLI flag
+        const existing = actionCommand.getOptionValue(camelKey);
+        if (existing === undefined || existing === actionCommand.getOptionValue(camelKey + "_default")) {
+          actionCommand.setOptionValueWithSource(camelKey, value, "stdin");
+        }
+      }
+    } catch (err) {
+      if (err instanceof SyntaxError) {
+        exitWithError(usageError(`--stdin received invalid JSON: ${err.message}`, "Ensure valid JSON: echo '{\"key\":\"value\"}' | vibe <command> --stdin"));
+      }
+      throw err;
+    }
   }
 
   // Show first-run banner for non-setup/doctor commands

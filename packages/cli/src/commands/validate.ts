@@ -7,14 +7,21 @@
 import { resolve, relative, isAbsolute } from "node:path";
 
 /**
- * Validate and resolve an output path, ensuring it stays within the working directory.
+ * Validate and resolve an output path.
  * Prevents path traversal attacks (e.g., --output ../../etc/passwd).
+ * Absolute paths are allowed (explicit user intent), but relative paths
+ * containing ".." that escape the working directory are blocked.
  */
 export function validateOutputPath(path: string, cwd = process.cwd()): string {
   rejectControlChars(path);
+  // Absolute paths are explicit user intent — allow them
+  if (isAbsolute(path)) {
+    return resolve(path);
+  }
+  // Relative paths must stay within cwd
   const resolved = resolve(cwd, path);
   const rel = relative(cwd, resolved);
-  if (rel.startsWith("..") || isAbsolute(rel)) {
+  if (rel.startsWith("..")) {
     throw new Error(
       `Output path "${path}" escapes the working directory. Use a path within "${cwd}".`
     );
