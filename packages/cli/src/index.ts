@@ -156,7 +156,8 @@ program.hook("preAction", async (thisCommand, actionCommand) => {
   }
 
   // Show first-run banner for non-setup/doctor commands
-  const cmdName = thisCommand.name();
+  // Use actionCommand (the actual subcommand) not thisCommand (root "vibe")
+  const cmdName = actionCommand.name();
   const skipBannerCommands = ["setup", "doctor", "help"];
   if (!skipBannerCommands.includes(cmdName) && process.stdin.isTTY && process.stdout.isTTY) {
     try {
