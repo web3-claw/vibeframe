@@ -4,7 +4,7 @@
 
 [![GitHub stars](https://img.shields.io/github/stars/vericontext/vibeframe)](https://github.com/vericontext/vibeframe/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-248%2B%20passing-brightgreen.svg)]()
+[![CI](https://github.com/vericontext/vibeframe/actions/workflows/ci.yml/badge.svg)](https://github.com/vericontext/vibeframe/actions/workflows/ci.yml)
 [![Contributors](https://img.shields.io/github/contributors/vericontext/vibeframe)](https://github.com/vericontext/vibeframe/graphs/contributors)
 
 > Edit videos with natural language. Every edit is a command. Every workflow is scriptable.
@@ -181,7 +181,7 @@ vibe agent -p ollama           # Use local Ollama
 ```
 vibeframe/
 ├── packages/
-│   ├── cli/               # CLI + Agent (58 tools, 225+ tests)
+│   ├── cli/               # CLI + Agent mode
 │   ├── core/              # Timeline engine (Zustand + Immer + FFmpeg)
 │   ├── ai-providers/      # Pluggable AI providers
 │   ├── mcp-server/        # MCP server (npm: @vibeframe/mcp-server)
@@ -218,7 +218,7 @@ See [ROADMAP.md](ROADMAP.md) for details.
 
 ```bash
 pnpm build     # Build all packages
-pnpm test      # Run tests (225+ passing)
+pnpm test      # Run all tests
 pnpm lint      # Lint code
 ```
 
