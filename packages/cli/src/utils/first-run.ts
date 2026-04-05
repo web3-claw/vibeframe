@@ -44,7 +44,7 @@ export function showFirstRunBanner(): void {
   console.log();
   console.log(`  ${chalk.white("1.")} ${chalk.green("vibe setup")}         Configure API keys ${chalk.dim("(1 min)")}`);
   console.log(`  ${chalk.white("2.")} ${chalk.green("vibe doctor")}        Check what's ready`);
-  console.log(`  ${chalk.white("3.")} ${chalk.green("vibe")}               Start editing with natural language`);
+  console.log(`  ${chalk.white("3.")} ${chalk.green("vibe --help")}        See all commands`);
   console.log();
   console.log(chalk.dim("  No API keys? These work offline: silence-cut, fade, noise-reduce, detect."));
   console.log();

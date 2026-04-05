@@ -144,19 +144,17 @@ Every command supports `--help`, `--json`, `--dry-run`, and `--stdin`. Run `vibe
 
 ---
 
-## Agent Mode
+## Agent Mode (Standalone)
 
-For environments without Claude Code or MCP, run `vibe` for an interactive natural language session:
+For environments without Claude Code, Codex, or MCP — a built-in interactive session:
 
 ```bash
-vibe                           # Start Agent mode (default: OpenAI)
+vibe agent                     # Start (default: OpenAI)
 vibe agent -p claude           # Use Claude
-vibe agent -p gemini           # Use Gemini
-vibe agent -p xai              # Use xAI Grok
-vibe agent -p ollama           # Use local Ollama
+vibe agent -p ollama           # Free, local, no API key
 ```
 
-Tools across project, timeline, AI generation, media, export, batch, and filesystem. The LLM reasons, calls tools, and executes autonomously. Run `vibe agent` then type `tools` to see the full list.
+Best used for onboarding and quick experiments. For production workflows, use CLI commands directly or via Claude Code / MCP.
 
 ---
 

@@ -245,11 +245,11 @@ export default function LandingPage() {
               <span>Agent Mode</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              Interactive CLI Agent
+              Built-in AI Agent
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              No Claude Code or MCP? Type <code className="text-primary bg-primary/10 px-2 py-0.5 rounded">vibe</code> for a built-in natural language session.
-              {process.env.NEXT_PUBLIC_LLM_PROVIDERS} LLM providers, {process.env.NEXT_PUBLIC_AGENT_TOOLS} tools, command aliases, fully autonomous.
+              No Claude Code or Codex? Run <code className="text-primary bg-primary/10 px-2 py-0.5 rounded">vibe agent</code> for a standalone natural language session.
+              Great for quick onboarding and environments without AI coding tools.
             </p>
           </div>
 
@@ -288,7 +288,7 @@ export default function LandingPage() {
               <FeatureItem
                 icon={<Terminal className="w-5 h-5" />}
                 title="Standalone"
-                description="Works without Claude Code or MCP — great for onboarding and standalone environments"
+                description="No Claude Code or Codex needed — built-in fallback for any environment"
                 gradient="from-green-500 to-emerald-500"
               />
             </div>

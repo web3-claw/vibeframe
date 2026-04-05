@@ -28,7 +28,7 @@ import { batchCommand } from "./commands/batch.js";
 import { detectCommand } from "./commands/detect.js";
 import { setupCommand } from "./commands/setup.js";
 import { doctorCommand } from "./commands/doctor.js";
-import { agentCommand, startAgent } from "./commands/agent.js";
+import { agentCommand } from "./commands/agent.js";
 import { ApiKeyError } from "./utils/api-key.js";
 import { isFirstRun, showFirstRunBanner } from "./utils/first-run.js";
 import { exitWithError, usageError } from "./commands/output.js";
@@ -212,14 +212,8 @@ propagateErrorHandling(program);
 
 // Check if any arguments provided
 if (process.argv.length <= 2) {
-  // No arguments - start Agent mode
-  if (process.env.VIBE_DEBUG === "1") {
-    console.log("[CLI] No args, starting Agent...");
-  }
-  startAgent().catch((err) => {
-    console.error("Failed to start Agent:", err);
-    process.exit(1);
-  });
+  // No arguments — show help (standard CLI behavior)
+  program.help();
 } else {
   // Arguments provided - parse normally with global error handling
   (async () => {

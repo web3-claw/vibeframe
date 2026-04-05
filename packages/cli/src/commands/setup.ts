@@ -259,9 +259,9 @@ async function collectKeys(
  * Custom setup — provider-by-provider (old --full flow)
  */
 async function runCustomSetup(config: Awaited<ReturnType<typeof loadConfig>> & object): Promise<void> {
-  // LLM Provider selection
-  console.log(chalk.bold("1. Agent LLM Provider"));
-  console.log(chalk.dim("   Powers natural language commands in Agent mode."));
+  // LLM Provider selection (for Agent mode only)
+  console.log(chalk.bold("1. Agent LLM Provider") + chalk.dim(" (for vibe agent)"));
+  console.log(chalk.dim("   Only needed if you use the interactive Agent mode."));
   console.log();
 
   const providers: LLMProvider[] = ["claude", "openai", "gemini", "xai", "openrouter", "ollama"];
