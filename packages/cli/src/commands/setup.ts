@@ -67,6 +67,61 @@ export const setupCommand = new Command("setup")
     }
   });
 
+// ── Use-case definitions ──────────────────────────────────────────────
+
+interface UseCase {
+  label: string;
+  desc: string;
+  keys: { configKey: string; envVar: string; name: string }[];
+  tryCommand: string;
+  llmProvider?: LLMProvider;
+}
+
+const USE_CASES: UseCase[] = [
+  {
+    label: "Edit videos",
+    desc: "silence-cut, caption, fade, grade, noise-reduce",
+    keys: [],
+    tryCommand: 'vibe edit silence-cut video.mp4 -o clean.mp4',
+  },
+  {
+    label: "Generate images",
+    desc: "Gemini Nano Banana (default), OpenAI, Grok",
+    keys: [{ configKey: "google", envVar: "GOOGLE_API_KEY", name: "Google" }],
+    tryCommand: 'vibe generate image "a sunset over mountains" -o test.png',
+  },
+  {
+    label: "Generate videos",
+    desc: "Grok Imagine (default), Kling, Runway, Veo",
+    keys: [{ configKey: "xai", envVar: "XAI_API_KEY", name: "xAI" }],
+    tryCommand: 'vibe generate video "ocean waves at sunset" -o ocean.mp4',
+  },
+  {
+    label: "Text-to-speech & music",
+    desc: "ElevenLabs TTS, SFX, music, voice clone",
+    keys: [{ configKey: "elevenlabs", envVar: "ELEVENLABS_API_KEY", name: "ElevenLabs" }],
+    tryCommand: 'vibe generate speech "Hello world" -o hello.mp3',
+  },
+  {
+    label: "Full AI pipeline",
+    desc: "script-to-video, highlights, auto-shorts",
+    keys: [
+      { configKey: "anthropic", envVar: "ANTHROPIC_API_KEY", name: "Anthropic" },
+      { configKey: "google", envVar: "GOOGLE_API_KEY", name: "Google" },
+      { configKey: "elevenlabs", envVar: "ELEVENLABS_API_KEY", name: "ElevenLabs" },
+      { configKey: "xai", envVar: "XAI_API_KEY", name: "xAI (or Runway/Kling)" },
+    ],
+    llmProvider: "claude",
+    tryCommand: 'vibe pipeline script-to-video "A day in the life..." -o ./output/',
+  },
+  {
+    label: "Custom setup",
+    desc: "pick providers individually",
+    keys: [],
+    tryCommand: 'vibe doctor',
+  },
+];
+
 /**
  * Run the interactive setup wizard
  */
@@ -82,9 +137,86 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
     config = createDefaultConfig();
   }
 
-  // Step 1: Select LLM Provider
-  console.log(chalk.bold("1. Choose your AI provider"));
-  console.log(chalk.dim("   This provider handles natural language commands."));
+  // If --full, run the custom provider-by-provider flow
+  if (fullSetup) {
+    await runCustomSetup(config);
+    return;
+  }
+
+  // Step 1: What do you want to do?
+  console.log(chalk.bold("What would you like to do?"));
+  console.log();
+
+  const useCaseLabels = USE_CASES.map((uc) => {
+    const keyCount = uc.keys.length;
+    const tag = keyCount === 0
+      ? chalk.green("FREE")
+      : keyCount === 1
+      ? chalk.dim(`1 key`)
+      : chalk.dim(`${keyCount} keys`);
+    return `${uc.label} ${chalk.dim(`(${uc.desc})`)} ${tag}`;
+  });
+
+  const useCaseIndex = await promptSelect(
+    chalk.cyan(`  Select [1-${USE_CASES.length}]: `),
+    useCaseLabels,
+    0
+  );
+  const selectedUseCase = USE_CASES[useCaseIndex];
+  console.log();
+
+  // Custom setup → delegate to full provider-by-provider flow
+  if (useCaseIndex === USE_CASES.length - 1) {
+    await runCustomSetup(config);
+    return;
+  }
+
+  // No keys needed (edit videos)
+  if (selectedUseCase.keys.length === 0) {
+    await saveConfig(config);
+    showComplete(config, selectedUseCase);
+    return;
+  }
+
+  // Set LLM provider if use case specifies one
+  if (selectedUseCase.llmProvider) {
+    config.llm.provider = selectedUseCase.llmProvider;
+  }
+
+  // Step 2: Collect required keys
+  console.log(chalk.bold("API Keys"));
+  console.log(chalk.dim("  Paste your key — it's saved locally and never shared."));
+  console.log();
+
+  for (const keyDef of selectedUseCase.keys) {
+    const existing = config.providers[keyDef.configKey as keyof typeof config.providers];
+    if (existing) {
+      console.log(`  ${chalk.green("✓")} ${keyDef.name.padEnd(14)} ${maskApiKey(existing)}`);
+      continue;
+    }
+
+    const newKey = await promptHidden(chalk.cyan(`  ${keyDef.name.padEnd(14)} ${chalk.dim(keyDef.envVar)}: `));
+    if (newKey.trim()) {
+      config.providers[keyDef.configKey as keyof typeof config.providers] = newKey.trim();
+      console.log(`  ${chalk.green("✓")} Saved`);
+    } else {
+      console.log(`  ${chalk.yellow("⚠")} Skipped ${chalk.dim(`(set ${keyDef.envVar} in .env later)`)}`);
+    }
+  }
+  console.log();
+
+  // Save and show completion
+  await saveConfig(config);
+  showComplete(config, selectedUseCase);
+}
+
+/**
+ * Custom setup — provider-by-provider (old --full flow)
+ */
+async function runCustomSetup(config: Awaited<ReturnType<typeof loadConfig>> & object): Promise<void> {
+  // LLM Provider selection
+  console.log(chalk.bold("1. Agent LLM Provider"));
+  console.log(chalk.dim("   Powers natural language commands in Agent mode."));
   console.log();
 
   const providers: LLMProvider[] = ["claude", "openai", "gemini", "xai", "openrouter", "ollama"];
@@ -98,8 +230,7 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
   };
   const providerLabels = providers.map((p) => {
     const rec = p === "claude" ? chalk.dim(" (recommended)") : "";
-    const desc = chalk.dim(` - ${providerDescriptions[p]}`);
-    return `${PROVIDER_NAMES[p]}${rec}${desc}`;
+    return `${PROVIDER_NAMES[p]}${rec} ${chalk.dim(`- ${providerDescriptions[p]}`)}`;
   });
 
   const currentIndex = providers.indexOf(config.llm.provider);
@@ -111,158 +242,67 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
   config.llm.provider = providers[providerIndex];
   console.log();
 
-  // Step 2: API Key for selected provider
-  const selectedProvider = config.llm.provider;
+  // Collect all provider keys
+  console.log(chalk.bold("2. API Keys"));
+  console.log(chalk.dim("   Press Enter to skip any provider you don't need."));
+  console.log();
 
-  // Show Ollama-specific guidance
-  if (selectedProvider === "ollama") {
-    console.log(chalk.bold("2. Ollama Setup"));
-    console.log();
-    console.log(chalk.dim("   Ollama runs locally and requires no API key."));
-    console.log(chalk.dim("   Make sure Ollama is running before using VibeFrame:"));
-    console.log();
-    console.log(chalk.cyan("   ollama serve") + chalk.dim("          # Start server"));
-    console.log(chalk.cyan("   ollama pull llama3.2") + chalk.dim("  # Download model (first time)"));
-    console.log();
-    console.log(chalk.dim("   Server should be running at http://localhost:11434"));
-    console.log();
-  }
+  const allProviders = [
+    { key: "anthropic", name: "Anthropic", env: "ANTHROPIC_API_KEY", desc: "Claude (Agent, grade, reframe)" },
+    { key: "openai", name: "OpenAI", env: "OPENAI_API_KEY", desc: "GPT, Whisper, DALL-E" },
+    { key: "google", name: "Google", env: "GOOGLE_API_KEY", desc: "Gemini (image, video, analysis)" },
+    { key: "xai", name: "xAI", env: "XAI_API_KEY", desc: "Grok (Agent, image, video)" },
+    { key: "elevenlabs", name: "ElevenLabs", env: "ELEVENLABS_API_KEY", desc: "TTS, SFX, music, voice clone" },
+    { key: "runway", name: "Runway", env: "RUNWAY_API_SECRET", desc: "Gen-4.5 video" },
+    { key: "kling", name: "Kling", env: "KLING_API_KEY", desc: "v2.5/v3 video" },
+    { key: "openrouter", name: "OpenRouter", env: "OPENROUTER_API_KEY", desc: "300+ models" },
+    { key: "replicate", name: "Replicate", env: "REPLICATE_API_TOKEN", desc: "MusicGen" },
+  ];
 
-  if (selectedProvider !== "ollama") {
-    const providerKey =
-      selectedProvider === "gemini"
-        ? "google"
-        : selectedProvider === "claude"
-        ? "anthropic"
-        : selectedProvider;
-
-    console.log(chalk.bold(`2. ${PROVIDER_NAMES[selectedProvider]} API Key`));
-    console.log(
-      chalk.dim(`   You can also set ${getEnvVarName(selectedProvider)} environment variable.`)
-    );
-    console.log();
-
-    const existingKey = config.providers[providerKey as keyof typeof config.providers];
-    if (existingKey) {
-      console.log(chalk.dim(`   Current: ${maskApiKey(existingKey)}`));
-      const change = await promptConfirm(chalk.cyan("   Update?"), false);
+  for (const p of allProviders) {
+    const existing = config.providers[p.key as keyof typeof config.providers];
+    if (existing) {
+      console.log(`  ${chalk.green("✓")} ${p.name.padEnd(12)} ${maskApiKey(existing)} ${chalk.dim(p.desc)}`);
+      const change = await promptConfirm(chalk.cyan("    Update?"), false);
       if (change) {
-        const newKey = await promptHidden(chalk.cyan("   Enter API key: "));
+        const newKey = await promptHidden(chalk.cyan("    New key: "));
         if (newKey.trim()) {
-          config.providers[providerKey as keyof typeof config.providers] = newKey.trim();
-          console.log(chalk.green("   ✓ Updated"));
+          config.providers[p.key as keyof typeof config.providers] = newKey.trim();
+          console.log(chalk.green("    ✓ Updated"));
         }
       }
     } else {
-      const newKey = await promptHidden(chalk.cyan("   Enter API key: "));
+      const newKey = await promptHidden(chalk.cyan(`  ${chalk.dim("○")} ${p.name.padEnd(12)} ${chalk.dim(p.desc)}: `));
       if (newKey.trim()) {
-        config.providers[providerKey as keyof typeof config.providers] = newKey.trim();
-        console.log(chalk.green("   ✓ Saved"));
-      } else {
-        console.log(chalk.yellow("   ⚠ Skipped (required for AI features)"));
+        config.providers[p.key as keyof typeof config.providers] = newKey.trim();
+        console.log(`  ${chalk.green("✓")} Saved`);
       }
     }
-    console.log();
   }
+  console.log();
 
-  // Step 3: Optional providers (only in full setup mode)
-  if (fullSetup) {
-    console.log(chalk.bold("3. Additional Providers (optional)"));
-    console.log(chalk.dim("   Natural language, video generation, TTS, images, etc."));
-    console.log();
-
-    // Build list of optional providers, excluding the one already configured as primary LLM
-    const allOptionalProviders = [
-      { key: "openai", name: "OpenAI", desc: "NL Commands, DALL-E, Whisper" },
-      { key: "anthropic", name: "Anthropic", desc: "Claude, NL Commands" },
-      { key: "google", name: "Google", desc: "Gemini" },
-      { key: "xai", name: "xAI", desc: "Grok, NL Commands" },
-      { key: "elevenlabs", name: "ElevenLabs", desc: "TTS & Voice" },
-      { key: "runway", name: "Runway", desc: "Video Gen" },
-      { key: "kling", name: "Kling", desc: "Video Gen" },
-      { key: "imgbb", name: "ImgBB", desc: "Image Hosting (for Kling)" },
-      { key: "replicate", name: "Replicate", desc: "Various" },
-    ];
-
-    // Get the key of the primary LLM provider to skip it
-    const primaryProviderKey =
-      selectedProvider === "gemini"
-        ? "google"
-        : selectedProvider === "claude"
-        ? "anthropic"
-        : selectedProvider;
-
-    // Filter out the primary provider
-    const optionalProviders = allOptionalProviders.filter(
-      (p) => p.key !== primaryProviderKey
-    );
-
-    for (const provider of optionalProviders) {
-      const existing = config.providers[provider.key as keyof typeof config.providers];
-      const status = existing ? chalk.green("✓") : chalk.dim("○");
-
-      const configure = await promptConfirm(
-        chalk.cyan(`   ${status} ${provider.name} ${chalk.dim(`(${provider.desc})`)}?`),
-        false
-      );
-
-      if (configure) {
-        const key = await promptHidden(chalk.cyan(`      API key: `));
-        if (key.trim()) {
-          config.providers[provider.key as keyof typeof config.providers] = key.trim();
-          console.log(chalk.green("      ✓ Saved"));
-        }
-      }
-    }
-    console.log();
-
-    // Step 4: Default aspect ratio
-    console.log(chalk.bold("4. Default Aspect Ratio"));
-    console.log();
-
-    const ratios = ["16:9", "9:16", "1:1", "4:5"] as const;
-    const ratioLabels = [
-      "16:9 (YouTube, landscape)",
-      "9:16 (TikTok, Reels, Shorts)",
-      "1:1 (Instagram, square)",
-      "4:5 (Instagram portrait)",
-    ];
-
-    const currentRatioIndex = ratios.indexOf(config.defaults.aspectRatio);
-    const ratioIndex = await promptSelect(
-      chalk.cyan("   Select [1-4]: "),
-      ratioLabels,
-      currentRatioIndex >= 0 ? currentRatioIndex : 0
-    );
-    config.defaults.aspectRatio = ratios[ratioIndex];
-    console.log();
-  }
-
-  // Save configuration
+  // Save
   await saveConfig(config);
+  showComplete(config, null);
+}
 
-  // Done
+/**
+ * Show completion message with contextual "try it" command
+ */
+function showComplete(config: NonNullable<Awaited<ReturnType<typeof loadConfig>>>, useCase: UseCase | null): void {
   console.log(chalk.dim("─".repeat(40)));
   console.log(chalk.green.bold("✓ Setup complete!"));
   console.log();
-  console.log(chalk.dim(`Config: ${CONFIG_PATH}`));
+  console.log(chalk.dim(`  Config: ${CONFIG_PATH}`));
   console.log();
 
-  // Suggest a "try it" command based on configured providers
-  const { hasApiKey } = await import("../utils/api-key.js");
-  if (hasApiKey("GOOGLE_API_KEY")) {
-    console.log(`  Try: ${chalk.cyan('vibe generate image "a sunset over mountains" -o test.png')}`);
-  } else if (hasApiKey("ELEVENLABS_API_KEY")) {
-    console.log(`  Try: ${chalk.cyan('vibe generate speech "Hello world" -o hello.mp3')}`);
-  } else if (hasApiKey("OPENAI_API_KEY")) {
-    console.log(`  Try: ${chalk.cyan('vibe generate image "a cute robot" -p openai -o test.png')}`);
-  } else {
-    console.log(`  Try: ${chalk.cyan("vibe")} to start the interactive Agent`);
-  }
+  // Show contextual try-it command
+  const tryCmd = useCase?.tryCommand || "vibe doctor";
+  console.log(`  Try: ${chalk.cyan(tryCmd)}`);
   console.log();
-  console.log(chalk.dim(`  vibe doctor         Check what's ready`));
-  console.log(chalk.dim(`  vibe setup --show   Verify configuration`));
-  console.log(chalk.dim(`  vibe setup --full   Configure more providers`));
+  console.log(chalk.dim("  vibe doctor         Check what's ready"));
+  console.log(chalk.dim("  vibe setup --show   Verify configuration"));
+  console.log(chalk.dim("  vibe setup          Re-run setup anytime"));
   console.log();
 }
 
@@ -292,21 +332,6 @@ async function setupClaudeCode(): Promise<void> {
 function maskApiKey(key: string): string {
   if (key.length <= 8) return "****";
   return `${key.slice(0, 4)}${"*".repeat(8)}${key.slice(-4)}`;
-}
-
-/**
- * Get environment variable name for a provider
- */
-function getEnvVarName(provider: LLMProvider): string {
-  const envVars: Record<LLMProvider, string> = {
-    claude: "ANTHROPIC_API_KEY",
-    openai: "OPENAI_API_KEY",
-    gemini: "GOOGLE_API_KEY",
-    xai: "XAI_API_KEY",
-    openrouter: "OPENROUTER_API_KEY",
-    ollama: "",
-  };
-  return envVars[provider];
 }
 
 /**
