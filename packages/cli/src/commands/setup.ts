@@ -69,38 +69,56 @@ export const setupCommand = new Command("setup")
 
 // ── AI feature definitions for mix-and-match selection ────────────────
 
+interface AIFeatureKey {
+  configKey: string;
+  envVar: string;
+  name: string;
+  url: string;
+  what: string;
+}
+
 interface AIFeature {
   label: string;
   desc: string;
-  keys: { configKey: string; envVar: string; name: string }[];
+  defaultProvider: string;
+  alsoAvailable: string;
+  keys: AIFeatureKey[];
   tryCommand: string;
 }
 
 const AI_FEATURES: AIFeature[] = [
   {
     label: "Images",
-    desc: "generate + edit (Gemini, OpenAI, Grok)",
-    keys: [{ configKey: "google", envVar: "GOOGLE_API_KEY", name: "Google" }],
+    desc: "generate + edit",
+    defaultProvider: "Gemini Nano Banana",
+    alsoAvailable: "OpenAI GPT Image, Grok Imagine",
+    keys: [{ configKey: "google", envVar: "GOOGLE_API_KEY", name: "Google", url: "https://aistudio.google.com/apikey", what: "Gemini image generation + editing + video analysis" }],
     tryCommand: 'vibe generate image "a sunset over mountains" -o test.png',
   },
   {
     label: "Videos",
-    desc: "generate + extend (Grok, Kling, Runway, Veo)",
-    keys: [{ configKey: "xai", envVar: "XAI_API_KEY", name: "xAI" }],
+    desc: "generate + extend",
+    defaultProvider: "Grok Imagine (native audio)",
+    alsoAvailable: "Kling, Runway Gen-4.5, Google Veo",
+    keys: [{ configKey: "xai", envVar: "XAI_API_KEY", name: "xAI", url: "https://console.x.ai", what: "Grok video generation with native audio" }],
     tryCommand: 'vibe generate video "ocean waves" -o waves.mp4',
   },
   {
     label: "Audio",
-    desc: "TTS, SFX, music, voice clone (ElevenLabs)",
-    keys: [{ configKey: "elevenlabs", envVar: "ELEVENLABS_API_KEY", name: "ElevenLabs" }],
+    desc: "TTS, SFX, music, voice clone",
+    defaultProvider: "ElevenLabs",
+    alsoAvailable: "Replicate MusicGen (music only)",
+    keys: [{ configKey: "elevenlabs", envVar: "ELEVENLABS_API_KEY", name: "ElevenLabs", url: "https://elevenlabs.io/app/settings/api-keys", what: "Text-to-speech, sound effects, music, voice cloning" }],
     tryCommand: 'vibe generate speech "Hello world" -o hello.mp3',
   },
   {
     label: "AI editing + motion",
-    desc: "captions, grade, reframe, motion graphics (Whisper + Claude)",
+    desc: "captions, grade, reframe, motion graphics",
+    defaultProvider: "Whisper (transcription) + Claude (reasoning)",
+    alsoAvailable: "",
     keys: [
-      { configKey: "openai", envVar: "OPENAI_API_KEY", name: "OpenAI" },
-      { configKey: "anthropic", envVar: "ANTHROPIC_API_KEY", name: "Anthropic" },
+      { configKey: "openai", envVar: "OPENAI_API_KEY", name: "OpenAI", url: "https://platform.openai.com/api-keys", what: "Whisper transcription (captions, jump-cut)" },
+      { configKey: "anthropic", envVar: "ANTHROPIC_API_KEY", name: "Anthropic", url: "https://console.anthropic.com/settings/keys", what: "Claude (color grade, reframe, motion graphics)" },
     ],
     tryCommand: 'vibe edit caption video.mp4 -o captioned.mp4',
   },
@@ -157,15 +175,15 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
   // ── Full AI pipeline ───────────────────────────────────────────────
   if (topIndex === 2) {
     config.llm.provider = "claude";
-    const pipelineKeys = [
-      { configKey: "anthropic", envVar: "ANTHROPIC_API_KEY", name: "Anthropic" },
-      { configKey: "google", envVar: "GOOGLE_API_KEY", name: "Google" },
-      { configKey: "elevenlabs", envVar: "ELEVENLABS_API_KEY", name: "ElevenLabs" },
-      { configKey: "xai", envVar: "XAI_API_KEY", name: "xAI" },
+    const pipelineKeys: AIFeatureKey[] = [
+      { configKey: "anthropic", envVar: "ANTHROPIC_API_KEY", name: "Anthropic", url: "https://console.anthropic.com/settings/keys", what: "Claude — storyboard generation + reasoning" },
+      { configKey: "google", envVar: "GOOGLE_API_KEY", name: "Google", url: "https://aistudio.google.com/apikey", what: "Gemini — image generation + video analysis" },
+      { configKey: "elevenlabs", envVar: "ELEVENLABS_API_KEY", name: "ElevenLabs", url: "https://elevenlabs.io/app/settings/api-keys", what: "Text-to-speech narration + music" },
+      { configKey: "xai", envVar: "XAI_API_KEY", name: "xAI", url: "https://console.x.ai", what: "Grok — video generation with native audio" },
     ];
 
     console.log(chalk.bold("Pipeline requires these API keys:"));
-    console.log(chalk.dim("  Paste your key — saved locally, never shared."));
+    console.log(chalk.dim("  Saved locally, never shared. Press Enter to skip."));
     console.log();
 
     await collectKeys(config, pipelineKeys);
@@ -198,27 +216,64 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
     console.log(chalk.dim("  No features selected. You can re-run setup anytime."));
     console.log();
     await saveConfig(config);
-    showComplete(config, 'vibe --help');
+    showComplete(config, 'vibe --help', []);
     return;
   }
 
-  // Deduplicate keys across selected features
-  const allKeys = new Map<string, { configKey: string; envVar: string; name: string }>();
-  for (const feature of selectedFeatures) {
-    for (const key of feature.keys) {
-      allKeys.set(key.configKey, key);
-    }
-  }
-
+  // Collect keys feature-by-feature with context
   console.log(chalk.bold("API Keys"));
-  console.log(chalk.dim("  Paste your key — saved locally, never shared."));
-  console.log(chalk.dim("  Already set keys are shown with " + chalk.green("✓") + "."));
+  console.log(chalk.dim("  Saved locally, never shared. Press Enter to skip."));
   console.log();
 
-  await collectKeys(config, [...allKeys.values()]);
+  // Track already-collected keys to avoid asking twice
+  const collectedKeys = new Set<string>();
+
+  for (const feature of selectedFeatures) {
+    // Feature header
+    console.log(chalk.bold.cyan(`  ${feature.label}`));
+    console.log(chalk.dim(`  Default: ${feature.defaultProvider}`));
+    if (feature.alsoAvailable) {
+      console.log(chalk.dim(`  Also available: ${feature.alsoAvailable}`));
+    }
+    console.log();
+
+    for (const keyDef of feature.keys) {
+      // Skip if already collected for a previous feature
+      if (collectedKeys.has(keyDef.configKey)) {
+        console.log(`  ${chalk.green("✓")} ${keyDef.name.padEnd(14)} (already set above)`);
+        continue;
+      }
+
+      // Check existing config / .env
+      loadEnv();
+      const configValue = config.providers[keyDef.configKey as keyof typeof config.providers];
+      const envValue = process.env[keyDef.envVar];
+
+      if (configValue || envValue) {
+        const value = configValue || envValue!;
+        const source = configValue ? "config" : ".env";
+        console.log(`  ${chalk.green("✓")} ${keyDef.name.padEnd(14)} ${maskApiKey(value)} ${chalk.dim(`(${source})`)}`);
+        collectedKeys.add(keyDef.configKey);
+        continue;
+      }
+
+      // Show what this key is for + where to get it
+      console.log(chalk.dim(`  ${keyDef.what}`));
+      console.log(chalk.dim(`  Get key: ${keyDef.url}`));
+      const newKey = await promptHidden(chalk.cyan(`  ${keyDef.name.padEnd(14)} ${chalk.dim(keyDef.envVar)}: `));
+      if (newKey.trim()) {
+        config.providers[keyDef.configKey as keyof typeof config.providers] = newKey.trim();
+        console.log(`  ${chalk.green("✓")} Saved`);
+        collectedKeys.add(keyDef.configKey);
+      } else {
+        console.log(`  ${chalk.yellow("⚠")} Skipped ${chalk.dim(`(set ${keyDef.envVar} in .env later)`)}`);
+      }
+    }
+    console.log();
+  }
 
   await saveConfig(config);
-  showComplete(config, selectedFeatures[0].tryCommand);
+  showComplete(config, selectedFeatures[0].tryCommand, selectedFeatures);
 }
 
 /**
@@ -226,9 +281,8 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
  */
 async function collectKeys(
   config: NonNullable<Awaited<ReturnType<typeof loadConfig>>>,
-  keys: { configKey: string; envVar: string; name: string }[]
+  keys: AIFeatureKey[]
 ): Promise<void> {
-  // Load .env so we can detect keys already set there
   loadEnv();
 
   for (const keyDef of keys) {
@@ -244,6 +298,8 @@ async function collectKeys(
       continue;
     }
 
+    console.log(chalk.dim(`  ${keyDef.what}`));
+    console.log(chalk.dim(`  Get key: ${keyDef.url}`));
     const newKey = await promptHidden(chalk.cyan(`  ${keyDef.name.padEnd(14)} ${chalk.dim(keyDef.envVar)}: `));
     if (newKey.trim()) {
       config.providers[keyDef.configKey as keyof typeof config.providers] = newKey.trim();
@@ -332,15 +388,27 @@ async function runCustomSetup(config: Awaited<ReturnType<typeof loadConfig>> & o
 }
 
 /**
- * Show completion message with contextual "try it" command
+ * Show completion message with contextual "try it" commands
  */
-function showComplete(config: NonNullable<Awaited<ReturnType<typeof loadConfig>>>, tryCommand: string): void {
+function showComplete(
+  config: NonNullable<Awaited<ReturnType<typeof loadConfig>>>,
+  defaultTryCommand: string,
+  features: AIFeature[] = []
+): void {
   console.log(chalk.dim("─".repeat(40)));
   console.log(chalk.green.bold("✓ Setup complete!"));
   console.log();
   console.log(chalk.dim(`  Config: ${CONFIG_PATH}`));
   console.log();
-  console.log(`  Try: ${chalk.cyan(tryCommand)}`);
+
+  if (features.length > 1) {
+    console.log(chalk.bold("  Try these:"));
+    for (const f of features) {
+      console.log(`    ${chalk.cyan(f.tryCommand)}`);
+    }
+  } else {
+    console.log(`  Try: ${chalk.cyan(defaultTryCommand)}`);
+  }
   console.log();
   console.log(chalk.dim("  vibe doctor         Check what's ready"));
   console.log(chalk.dim("  vibe setup --show   Verify configuration"));
