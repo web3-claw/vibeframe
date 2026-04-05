@@ -123,6 +123,13 @@ generateCommand
   .option("-n, --count <n>", "Number of images to generate", "1")
   .option("-m, --model <model>", "Gemini model: flash, 3.1-flash, latest (Nano Banana 2), pro (4K)")
   .option("--dry-run", "Preview parameters without executing")
+  .addHelpText("after", `
+Examples:
+  $ vibe generate image "a sunset over the ocean" -o sunset.png
+  $ vibe gen img "logo design" -o logo.png -p openai
+  $ vibe gen img "landscape photo" -o wide.png -r 16:9
+  $ vibe gen img "portrait" -o portrait.png -p gemini -m pro
+  $ vibe gen img "product shot" --dry-run --json`)
   .action(async (prompt: string | undefined, options) => {
     try {
       // Interactive prompt if no argument provided
@@ -525,6 +532,13 @@ generateCommand
   .option("--runway-model <model>", "Runway model: gen4.5 (default, text+image-to-video), gen4_turbo (image-to-video only)", "gen4.5")
   .option("--no-wait", "Start generation and return task ID without waiting")
   .option("--dry-run", "Preview parameters without executing")
+  .addHelpText("after", `
+Examples:
+  $ vibe generate video "dancing cat" -o cat.mp4                      # Grok (default)
+  $ vibe gen vid "city timelapse" -o city.mp4 -p kling                # Kling
+  $ vibe gen vid "epic scene" -i frame.png -o out.mp4 -p runway       # Image-to-video
+  $ vibe gen vid "ocean waves" -o waves.mp4 -p veo --resolution 1080p # Veo
+  $ vibe gen vid "sunset" -o sun.mp4 -d 10 --dry-run --json`)
   .action(async (prompt: string | undefined, options) => {
     try {
       // Interactive prompt if no argument provided

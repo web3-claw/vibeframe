@@ -49,6 +49,15 @@ aiCommand
   .option("--low-res", "Low resolution mode for longer videos (Gemini only)")
   .option("-k, --api-key <key>", "Google API key override (or set GOOGLE_API_KEY env)")
   .option("--dry-run", "Preview parameters without executing")
+  .addHelpText("after", `
+Examples:
+  $ vibe edit silence-cut interview.mp4 -o clean.mp4
+  $ vibe ed sc podcast.mp4 -o trimmed.mp4 -n -25 -d 1.0
+  $ vibe ed sc video.mp4 --use-gemini -o smart-cut.mp4    # AI-powered detection
+  $ vibe ed sc video.mp4 --analyze-only                    # Detect only, no cut
+  $ vibe ed sc video.mp4 --dry-run --json
+
+No API key needed (FFmpeg only). Use --use-gemini for smart detection (requires GOOGLE_API_KEY).`)
   .action(async (videoPath: string, options) => {
     try {
       const absVideoPath = resolve(process.cwd(), videoPath);
@@ -169,6 +178,15 @@ aiCommand
   .option("--position <pos>", "Caption position: top, center, bottom (default: bottom)", "bottom")
   .option("-k, --api-key <key>", "OpenAI API key (or set OPENAI_API_KEY env)")
   .option("--dry-run", "Preview parameters without executing")
+  .addHelpText("after", `
+Examples:
+  $ vibe edit caption video.mp4 -o captioned.mp4
+  $ vibe ed cap video.mp4 -o out.mp4 -s bold --position top
+  $ vibe ed cap video.mp4 -o out.mp4 -l ko              # Korean transcription
+  $ vibe ed cap video.mp4 -o out.mp4 -s karaoke          # Karaoke-style
+  $ vibe ed cap video.mp4 --dry-run --json
+
+Requires: OPENAI_API_KEY (Whisper transcription) + FFmpeg`)
   .action(async (videoPath: string, options) => {
     try {
       const absVideoPath = resolve(process.cwd(), videoPath);

@@ -5,19 +5,25 @@
  *
  * Usage: vibe schema generate.image
  *        vibe schema edit.silence-cut
+ *        vibe schema --list
  */
 
 import { Command } from "commander";
 
 export const schemaCommand = new Command("schema")
   .description("Show JSON schema for a CLI command")
-  .argument("<command>", "Command path (e.g., generate.image, edit.silence-cut)")
-  .action((commandPath: string) => {
-    // Access the parent program to find commands
+  .argument("[command]", "Command path (e.g., generate.image, edit.silence-cut)")
+  .option("--list", "List all available command paths")
+  .action((commandPath: string | undefined, options: { list?: boolean }) => {
     const program = schemaCommand.parent;
     if (!program) {
       console.error("Schema command must be registered on a program");
       process.exit(1);
+    }
+
+    if (options.list || !commandPath) {
+      listCommands(program);
+      return;
     }
 
     const parts = commandPath.split(".");
@@ -25,24 +31,26 @@ export const schemaCommand = new Command("schema")
       console.error(
         `Invalid command path: ${commandPath}. Use format: group.action (e.g., generate.image)`
       );
+      console.error(`Run 'vibe schema --list' to see all available commands.`);
       process.exit(1);
     }
 
     const [groupName, actionName] = parts;
 
-    // Find the group command
     const groupCmd = program.commands.find(
       (c: Command) => c.name() === groupName
     );
     if (!groupCmd) {
       console.error(`Unknown group: ${groupName}`);
       console.error(
-        `Available groups: ${program.commands.map((c: Command) => c.name()).join(", ")}`
+        `Available groups: ${program.commands
+          .filter((c: Command) => (c as Command).commands.length > 0)
+          .map((c: Command) => c.name())
+          .join(", ")}`
       );
       process.exit(1);
     }
 
-    // Find the action command
     const actionCmd = (groupCmd as Command).commands.find(
       (c: Command) => c.name() === actionName
     );
@@ -56,11 +64,111 @@ export const schemaCommand = new Command("schema")
       process.exit(1);
     }
 
-    // Build JSON schema from Commander options and arguments
     const toolName = `${groupName}_${actionName.replace(/-/g, "_")}`;
     const schema = buildSchema(actionCmd as Command, toolName);
     console.log(JSON.stringify(schema, null, 2));
   });
+
+function listCommands(program: Command): void {
+  const commands: { path: string; description: string }[] = [];
+
+  for (const group of program.commands) {
+    const subCmds = (group as Command).commands;
+    if (subCmds.length === 0) continue;
+    for (const sub of subCmds) {
+      const desc = (sub as Command).description() || "";
+      if (desc.toLowerCase().includes("deprecated")) continue;
+      commands.push({
+        path: `${group.name()}.${(sub as Command).name()}`,
+        description: desc,
+      });
+    }
+  }
+
+  console.log(JSON.stringify(commands, null, 2));
+}
+
+function extractEnumFromDescription(description: string): string[] | undefined {
+  // Match patterns like "Provider: gemini, openai, grok, runway"
+  const providerMatch = description.match(
+    /(?:Provider|Providers?):\s*([a-z0-9,\s-]+?)(?:\s*\(|$)/i
+  );
+  if (providerMatch) {
+    return providerMatch[1]
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  // Match patterns like "Style: vivid, natural"
+  const styleMatch = description.match(
+    /^[A-Z][a-z]+:\s*([a-z0-9,\s-]+?)(?:\s*\(|$)/
+  );
+  if (styleMatch) {
+    const values = styleMatch[1]
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (values.length >= 2 && values.length <= 10) return values;
+  }
+
+  return undefined;
+}
+
+function inferType(
+  opt: { flags: string; defaultValue?: unknown },
+  name: string
+): string {
+  // Check flags for numeric hints
+  const numericFlags = [
+    "<number>",
+    "<seconds>",
+    "<sec>",
+    "<dB>",
+    "<pixels>",
+    "<ms>",
+    "<n>",
+    "<count>",
+    "<duration>",
+  ];
+  if (numericFlags.some((f) => opt.flags.includes(f))) {
+    return "number";
+  }
+
+  // Check name for numeric hints
+  const numericNames = [
+    "count",
+    "duration",
+    "retries",
+    "fadeIn",
+    "fadeOut",
+    "start",
+    "end",
+    "time",
+    "threshold",
+    "padding",
+    "pageSize",
+    "maxResults",
+    "fps",
+    "bitrate",
+    "width",
+    "height",
+  ];
+  if (numericNames.includes(name)) {
+    return "number";
+  }
+
+  // Check default value type
+  if (typeof opt.defaultValue === "number") return "number";
+  if (typeof opt.defaultValue === "boolean") return "boolean";
+
+  // Boolean flags (no value argument)
+  if (opt.flags.includes("<") && opt.flags.includes(">")) {
+    return "string";
+  }
+
+  return "boolean";
+}
 
 function buildSchema(
   cmd: Command,
@@ -72,10 +180,17 @@ function buildSchema(
   // Extract arguments
   for (const arg of cmd.registeredArguments || []) {
     const name = arg.name();
-    properties[name] = {
+    const prop: Record<string, unknown> = {
       type: "string",
       description: arg.description,
     };
+
+    if (arg.variadic) {
+      prop.type = "array";
+      prop.items = { type: "string" };
+    }
+
+    properties[name] = prop;
     if (arg.required) {
       required.push(name);
     }
@@ -92,23 +207,28 @@ function buildSchema(
       description: opt.description,
     };
 
-    // Detect type from default value or flags
-    if (
-      opt.flags.includes("<number>") ||
-      opt.flags.includes("<seconds>") ||
-      opt.flags.includes("<sec>") ||
-      opt.flags.includes("<dB>") ||
-      opt.flags.includes("<pixels>")
-    ) {
-      prop.type = "number";
-    } else if (opt.flags.includes("<") && opt.flags.includes(">")) {
-      prop.type = "string";
-    } else {
-      prop.type = "boolean";
+    // Infer type
+    prop.type = inferType(
+      { flags: opt.flags, defaultValue: opt.defaultValue },
+      name
+    );
+
+    // Extract enum values from description
+    if (opt.description) {
+      const enumValues = extractEnumFromDescription(opt.description);
+      if (enumValues) {
+        prop.enum = enumValues;
+      }
     }
 
+    // Default value
     if (opt.defaultValue !== undefined) {
       prop.default = opt.defaultValue;
+      // Fix stringified numbers
+      if (prop.type === "number" && typeof opt.defaultValue === "string") {
+        const num = Number(opt.defaultValue);
+        if (!isNaN(num)) prop.default = num;
+      }
     }
 
     properties[name] = prop;
