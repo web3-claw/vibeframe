@@ -26,6 +26,7 @@ import { execSafe, commandExists } from '../utils/exec-safe.js';
 import { formatTime, downloadVideo } from './ai-helpers.js';
 import { applyTextOverlays, type TextOverlayStyle } from './ai-edit.js';
 import { exitWithError, usageError, authError, apiError, generalError } from './output.js';
+import { validateOutputPath } from "./validate.js";
 
 export function registerVisualFxCommands(ai: Command): void {
 
@@ -43,6 +44,10 @@ ai
   .option("-k, --api-key <key>", "Anthropic API key (or set ANTHROPIC_API_KEY env)")
   .action(async (videoPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       if (!options.style && !options.preset) {
         exitWithError(usageError("Either --style or --preset is required", 'Examples: vibe edit grade video.mp4 --style "warm sunset" or --preset cinematic-warm'));
       }
@@ -116,6 +121,10 @@ ai
   .option("-o, --output <path>", "Output video file path")
   .action(async (videoPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       if (!options.text || options.text.length === 0) {
         exitWithError(usageError("At least one --text option is required", 'Example: vibe edit text-overlay video.mp4 -t "NEXUS AI" --style center-bold'));
       }
@@ -177,6 +186,10 @@ ai
   .option("-k, --api-key <key>", "Anthropic API key (or set ANTHROPIC_API_KEY env)")
   .action(async (videoPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
         exitWithError(generalError("FFmpeg not found", "Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"));
@@ -311,6 +324,10 @@ ai
   .option("-k, --api-key <key>", "Anthropic API key (or set ANTHROPIC_API_KEY env)")
   .action(async (videoPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
         exitWithError(generalError("FFmpeg not found", "Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"));
@@ -465,6 +482,10 @@ ai
   .option("-k, --api-key <key>", "Replicate API token (or set REPLICATE_API_TOKEN env)")
   .action(async (videoPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       if (!options.style) {
         exitWithError(usageError("Style required. Use --style <image-path> or --style <prompt>"));
       }

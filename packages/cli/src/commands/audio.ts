@@ -30,7 +30,7 @@ import { execSafe, commandExists, execSafeSync } from "../utils/exec-safe.js";
 import { detectFormat, formatTranscript } from "../utils/subtitle.js";
 import { formatTime } from "./ai-helpers.js";
 import { isJsonMode, outputResult, exitWithError, notFoundError, usageError, apiError, generalError } from "./output.js";
-import { rejectControlChars } from "./validate.js";
+import { rejectControlChars, validateOutputPath } from "./validate.js";
 
 export const audioCommand = new Command("audio")
   .alias("au")
@@ -69,6 +69,10 @@ audioCommand
   .option("-f, --format <format>", "Output format: json, srt, vtt (auto-detected from extension)")
   .action(async (audioPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const apiKey = await requireApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
 
       const spinner = ora("Initializing Whisper...").start();
@@ -177,6 +181,10 @@ audioCommand
       if (options.dryRun) {
         outputResult({ dryRun: true, command: "audio isolate", audioPath });
         return;
+      }
+
+      if (options.output) {
+        validateOutputPath(options.output);
       }
 
       const apiKey = await requireApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
@@ -342,6 +350,10 @@ audioCommand
       if (options.dryRun) {
         outputResult({ dryRun: true, command: "audio dub", mediaPath, targetLanguage: options.language, sourceLanguage: options.source, voice: options.voice });
         return;
+      }
+
+      if (options.output) {
+        validateOutputPath(options.output);
       }
 
       if (!options.language) {
@@ -576,6 +588,10 @@ audioCommand
         const release = parseFloat(options.release);
         outputResult({ dryRun: true, command: "audio duck", musicPath, voicePath: options.voice, threshold, ratio, attack, release });
         return;
+      }
+
+      if (options.output) {
+        validateOutputPath(options.output);
       }
 
       if (!options.voice) {

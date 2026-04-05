@@ -25,6 +25,7 @@ import { getApiKey } from '../utils/api-key.js';
 import { formatTime, applySuggestion } from './ai-helpers.js';
 import { executeCommand } from './ai.js';
 import { exitWithError, authError, usageError, apiError, generalError } from './output.js';
+import { validateOutputPath } from "./validate.js";
 
 export function registerSuggestEditCommands(ai: Command): void {
   ai
@@ -187,6 +188,10 @@ export function registerSuggestEditCommands(ai: Command): void {
     .option("-c, --creativity <level>", "Creativity level: low (default, consistent) or high (varied, unexpected)", "low")
     .action(async (content: string, options) => {
       try {
+        if (options.output) {
+          validateOutputPath(options.output);
+        }
+
         const apiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic", options.apiKey);
         if (!apiKey) {
           exitWithError(authError("ANTHROPIC_API_KEY", "Anthropic"));

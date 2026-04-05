@@ -39,6 +39,7 @@ import {
 } from "./ai-script-pipeline.js";
 import { downloadVideo } from "./ai-helpers.js";
 import { exitWithError, authError, notFoundError, usageError, apiError, generalError } from "./output.js";
+import { validateOutputPath } from "./validate.js";
 
 export function registerScriptPipelineCommands(aiCommand: Command): void {
 // Script-to-Video command
@@ -68,6 +69,10 @@ aiCommand
   .option("--review-auto-apply", "Auto-apply fixable issues from AI review")
   .action(async (script: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       // Load environment variables from .env file
       loadEnv();
 

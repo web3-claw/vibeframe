@@ -29,6 +29,7 @@ import { getApiKey } from "../utils/api-key.js";
 import { execSafe, commandExists, ffprobeDuration } from "../utils/exec-safe.js";
 import { formatTime } from "./ai-helpers.js";
 import { exitWithError, authError, notFoundError, apiError, usageError, generalError } from "./output.js";
+import { validateOutputPath } from "./validate.js";
 
 function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
@@ -110,6 +111,10 @@ export function registerBrollCommand(ai: Command): void {
     .option("--analyze-only", "Only analyze, don't create project")
     .action(async (narration: string, options) => {
       try {
+        if (options.output) {
+          validateOutputPath(options.output);
+        }
+
         console.warn(chalk.yellow("Warning: 'pipeline b-roll' is deprecated. Use individual commands instead:"));
         console.warn(chalk.dim("  vibe analyze video <video> 'identify scenes needing b-roll' → vibe generate video '<prompt>'"));
         console.warn();

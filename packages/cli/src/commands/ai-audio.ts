@@ -29,6 +29,7 @@ import { execSafe, execSafeSync, commandExists } from '../utils/exec-safe.js';
 import { detectFormat, formatTranscript } from '../utils/subtitle.js';
 import { formatTime } from './ai-helpers.js';
 import { exitWithError, authError, notFoundError, apiError, usageError, generalError } from './output.js';
+import { validateOutputPath } from "./validate.js";
 
 function _registerAudioCommands(aiCommand: Command): void {
 
@@ -42,6 +43,10 @@ aiCommand
   .option("-f, --format <format>", "Output format: json, srt, vtt (auto-detected from extension)")
   .action(async (audioPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
       if (!apiKey) {
         exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
@@ -105,6 +110,10 @@ aiCommand
   .option("--list-voices", "List available voices")
   .action(async (text: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
       if (!apiKey) {
         exitWithError(authError("ELEVENLABS_API_KEY", "ElevenLabs"));
@@ -205,6 +214,10 @@ aiCommand
   .option("--prompt-influence <value>", "Prompt influence (0-1, default: 0.3)")
   .action(async (prompt: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
       if (!apiKey) {
         exitWithError(authError("ELEVENLABS_API_KEY", "ElevenLabs"));
@@ -244,6 +257,10 @@ aiCommand
   .option("-o, --output <path>", "Output audio file path", "vocals.mp3")
   .action(async (audioPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
       if (!apiKey) {
         exitWithError(authError("ELEVENLABS_API_KEY", "ElevenLabs"));
@@ -385,6 +402,10 @@ aiCommand
   .option("--no-wait", "Don't wait for generation to complete (async mode)")
   .action(async (prompt: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const apiKey = await getApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
       if (!apiKey) {
         exitWithError(authError("REPLICATE_API_TOKEN", "Replicate"));
@@ -512,6 +533,10 @@ aiCommand
   .option("--noise-floor <dB>", "FFmpeg noise floor threshold", "-30")
   .action(async (audioPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const absPath = resolve(process.cwd(), audioPath);
       if (!existsSync(absPath)) {
         exitWithError(notFoundError(audioPath));
@@ -589,6 +614,10 @@ aiCommand
   .option("-o, --output <path>", "Output file path")
   .action(async (mediaPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       if (!options.language) {
         exitWithError(usageError("Target language is required. Use -l or --language"));
       }
@@ -830,6 +859,10 @@ aiCommand
   .option("-l, --release <ms>", "Release time in ms", "200")
   .action(async (musicPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       if (!options.voice) {
         exitWithError(usageError("Voice track required. Use --voice <path>"));
       }

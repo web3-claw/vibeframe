@@ -19,6 +19,7 @@ import ora from 'ora';
 import { ClaudeProvider, GeminiProvider } from '@vibeframe/ai-providers';
 import { getApiKey } from '../utils/api-key.js';
 import { exitWithError, apiError, generalError } from './output.js';
+import { validateOutputPath } from "./validate.js";
 
 // ── Motion: exported function for Agent tool ────────────────────────────────
 
@@ -285,6 +286,10 @@ export function registerMotionCommand(aiCommand: Command): void {
     .option("-m, --model <alias>", "LLM model: sonnet (default), opus, gemini, gemini-3.1-pro", "sonnet")
     .action(async (description: string, options) => {
       try {
+        if (options.output) {
+          validateOutputPath(options.output);
+        }
+
         const shouldRender = options.render || !!options.video || !!options.image;
 
         const spinner = ora("Generating motion graphic...").start();

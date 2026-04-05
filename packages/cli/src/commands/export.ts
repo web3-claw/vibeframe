@@ -7,6 +7,7 @@ import ora from "ora";
 import { Project, type ProjectFile } from "../engine/index.js";
 import { execSafe, ffprobeDuration } from "../utils/exec-safe.js";
 import { exitWithError, generalError, notFoundError, usageError } from "./output.js";
+import { validateOutputPath } from "./validate.js";
 
 /**
  * Resolve project file path - handles both file paths and directory paths
@@ -195,6 +196,10 @@ No API keys needed. Requires FFmpeg.`)
     const spinner = ora("Checking FFmpeg...").start();
 
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       // Check if FFmpeg is installed
       const ffmpegPath = await findFFmpeg();
       if (!ffmpegPath) {

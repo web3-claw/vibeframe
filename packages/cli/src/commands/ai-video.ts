@@ -22,6 +22,7 @@ import { getApiKeyFromConfig } from "../config/index.js";
 import { uploadToImgbb } from "./ai-script-pipeline.js";
 import { downloadVideo } from "./ai-helpers.js";
 import { exitWithError, authError, usageError, apiError, generalError } from "./output.js";
+import { validateOutputPath } from "./validate.js";
 
 function getStatusColor(status: string): string {
   switch (status) {
@@ -62,6 +63,10 @@ export function registerVideoCommands(aiCommand: Command): void {
     .option("--no-wait", "Start generation and return task ID without waiting")
     .action(async (prompt: string, options) => {
       try {
+        if (options.output) {
+          validateOutputPath(options.output);
+        }
+
         const provider = options.provider.toLowerCase();
         const validProviders = ["grok", "runway", "kling", "veo"];
         if (!validProviders.includes(provider)) {
@@ -390,6 +395,10 @@ export function registerVideoCommands(aiCommand: Command): void {
     .option("-o, --output <path>", "Download video when complete")
     .action(async (taskId: string, options) => {
       try {
+        if (options.output) {
+          validateOutputPath(options.output);
+        }
+
         const apiKey = await getApiKey("RUNWAY_API_SECRET", "Runway", options.apiKey);
         if (!apiKey) {
           exitWithError(authError("RUNWAY_API_SECRET", "Runway"));
@@ -492,6 +501,10 @@ export function registerVideoCommands(aiCommand: Command): void {
     .option("--no-wait", "Start generation and return task ID without waiting")
     .action(async (prompt: string, options) => {
       try {
+        if (options.output) {
+          validateOutputPath(options.output);
+        }
+
         const apiKey = await getApiKey("KLING_API_KEY", "Kling", options.apiKey);
         if (!apiKey) {
           exitWithError(authError("KLING_API_KEY", "Kling"));
@@ -630,6 +643,10 @@ export function registerVideoCommands(aiCommand: Command): void {
     .option("-o, --output <path>", "Download video when complete")
     .action(async (taskId: string, options) => {
       try {
+        if (options.output) {
+          validateOutputPath(options.output);
+        }
+
         const apiKey = await getApiKey("KLING_API_KEY", "Kling", options.apiKey);
         if (!apiKey) {
           exitWithError(authError("KLING_API_KEY", "Kling"));
@@ -701,6 +718,10 @@ export function registerVideoCommands(aiCommand: Command): void {
     .option("--no-wait", "Start generation and return task ID without waiting")
     .action(async (videoId: string, options) => {
       try {
+        if (options.output) {
+          validateOutputPath(options.output);
+        }
+
         const apiKey = await getApiKey("KLING_API_KEY", "Kling", options.apiKey);
         if (!apiKey) {
           exitWithError(authError("KLING_API_KEY", "Kling"));
@@ -797,6 +818,10 @@ export function registerVideoCommands(aiCommand: Command): void {
     .option("--no-wait", "Start extension and return operation name without waiting")
     .action(async (operationName: string, options) => {
       try {
+        if (options.output) {
+          validateOutputPath(options.output);
+        }
+
         const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
         if (!apiKey) {
           exitWithError(authError("GOOGLE_API_KEY", "Google"));

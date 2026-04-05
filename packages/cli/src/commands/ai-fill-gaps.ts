@@ -22,6 +22,7 @@ import { getApiKey } from '../utils/api-key.js';
 import { execSafe, ffprobeDuration } from '../utils/exec-safe.js';
 import { formatTime, downloadVideo } from './ai-helpers.js';
 import { exitWithError, authError, apiError, generalError } from './output.js';
+import { validateOutputPath } from "./validate.js";
 
 // ── Helper functions (module-private) ────────────────────────────────────────
 
@@ -142,6 +143,10 @@ aiCommand
   .option("-r, --ratio <ratio>", "Aspect ratio: 16:9, 9:16, or 1:1", "16:9")
   .action(async (projectPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const spinner = ora("Loading project...").start();
 
       // Load project
@@ -295,8 +300,7 @@ aiCommand
           await execSafe("ffmpeg", ["-i", sourceBefore.url, "-ss", String(frameOffset), "-vframes", "1", "-f", "image2", "-y", framePath]);
         } catch (err) {
           spinner.fail(chalk.red("Failed to extract frame"));
-          console.error(err);
-          continue;
+          exitWithError(generalError(`Failed to extract frame: ${err instanceof Error ? err.message : String(err)}`));
         }
         spinner.succeed("Frame extracted");
 
@@ -305,8 +309,7 @@ aiCommand
         const imgbbApiKey = await getApiKey("IMGBB_API_KEY", "imgbb", undefined);
         if (!imgbbApiKey) {
           spinner.fail(chalk.red("IMGBB_API_KEY required for image hosting"));
-          console.error(chalk.dim("Get a free API key at https://api.imgbb.com/"));
-          continue;
+          exitWithError(apiError("IMGBB_API_KEY required for image hosting. Get a free API key at https://api.imgbb.com/", true));
         }
 
         const frameBuffer = await readFile(framePath);
@@ -330,8 +333,7 @@ aiCommand
           frameUrl = imgbbData.data.url;
         } catch (err) {
           spinner.fail(chalk.red("Failed to upload frame to imgbb"));
-          console.error(err);
-          continue;
+          exitWithError(apiError(`Failed to upload frame to imgbb: ${err instanceof Error ? err.message : String(err)}`, true));
         }
         spinner.succeed(`Frame uploaded: ${frameUrl}`);
 

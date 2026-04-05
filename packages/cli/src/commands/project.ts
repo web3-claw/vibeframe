@@ -5,6 +5,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { Project, type ProjectFile } from "../engine/index.js";
 import { exitWithError, generalError } from "./output.js";
+import { validateOutputPath } from "./validate.js";
 
 /**
  * Resolve project file path - handles both file paths and directory paths
@@ -47,6 +48,10 @@ projectCommand
     const spinner = ora("Creating project...").start();
 
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       // If name contains a path separator, treat it as a directory path
       const projectName = name.includes("/") ? name.split("/").pop()! : name;
       const project = new Project(projectName);

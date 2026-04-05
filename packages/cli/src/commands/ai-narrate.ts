@@ -43,6 +43,7 @@ import { ffprobeDuration } from "../utils/exec-safe.js";
 import { getAudioDuration } from "../utils/audio.js";
 import { formatTime } from "./ai-helpers.js";
 import { exitWithError, notFoundError, usageError, apiError, generalError } from "./output.js";
+import { validateOutputPath } from "./validate.js";
 
 // ==========================================
 // Auto-Narrate Feature Types and Functions
@@ -290,6 +291,10 @@ ai
   .option("--add-to-project", "Add narration to project (only for .vibe.json input)")
   .action(async (inputPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const absPath = resolve(process.cwd(), inputPath);
       if (!existsSync(absPath)) {
         exitWithError(notFoundError(absPath));

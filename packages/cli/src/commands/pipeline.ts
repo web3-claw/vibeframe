@@ -25,6 +25,7 @@ import { Project, type ProjectFile } from "../engine/index.js";
 import { ffprobeDuration } from "../utils/exec-safe.js";
 import { getAudioDuration } from "../utils/audio.js";
 import { formatTime } from "./ai-helpers.js";
+import { validateOutputPath } from "./validate.js";
 import { autoNarrate } from "./ai-narrate.js";
 import { registerScriptPipelineCommands } from "./ai-script-pipeline-cli.js";
 import { registerHighlightsCommands } from "./ai-highlights.js";
@@ -95,6 +96,10 @@ pipelineCommand
       console.warn(chalk.yellow("Warning: 'pipeline narrate' is deprecated. Use individual commands instead:"));
       console.warn(chalk.dim("  vibe analyze video <video> 'describe scenes' → vibe generate speech '<script>'"));
       console.warn();
+
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
 
       const absPath = resolve(process.cwd(), inputPath);
       if (!existsSync(absPath)) {

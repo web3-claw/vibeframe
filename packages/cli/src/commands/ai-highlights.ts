@@ -31,6 +31,7 @@ import { getApiKey } from "../utils/api-key.js";
 import { formatTime } from "./ai-helpers.js";
 import { execSafe, commandExists, ffprobeDuration } from "../utils/exec-safe.js";
 import { exitWithError, authError, notFoundError, apiError, generalError } from "./output.js";
+import { validateOutputPath } from "./validate.js";
 
 // ============================================================================
 // Shared helpers
@@ -686,6 +687,10 @@ export function registerHighlightsCommands(aiCommand: Command): void {
     .option("--low-res", "Use low resolution mode for longer videos (Gemini only)")
     .action(async (mediaPath: string, options) => {
       try {
+        if (options.output) {
+          validateOutputPath(options.output);
+        }
+
         const absPath = resolve(process.cwd(), mediaPath);
         if (!existsSync(absPath)) {
           exitWithError(notFoundError(absPath));
@@ -1016,6 +1021,10 @@ Analyze both what is SHOWN (visual cues, actions, expressions) and what is SAID 
     .option("--low-res", "Use low resolution mode for longer videos (Gemini only)")
     .action(async (videoPath: string, options) => {
       try {
+        if (options.output) {
+          validateOutputPath(options.output);
+        }
+
         if (!commandExists("ffmpeg")) {
           exitWithError(generalError("FFmpeg not found. Please install FFmpeg."));
         }

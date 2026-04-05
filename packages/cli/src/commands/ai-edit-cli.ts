@@ -27,7 +27,7 @@ import {
   type CaptionStyle,
 } from './ai-edit.js';
 import { isJsonMode, outputResult, exitWithError, authError, notFoundError, apiError, usageError, generalError } from "./output.js";
-import { rejectControlChars } from "./validate.js";
+import { rejectControlChars, validateOutputPath } from "./validate.js";
 
 // ── Command registrations ───────────────────────────────────────────────────
 
@@ -60,6 +60,10 @@ Examples:
 No API key needed (FFmpeg only). Use --use-gemini for smart detection (requires GOOGLE_API_KEY).`)
   .action(async (videoPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const absVideoPath = resolve(process.cwd(), videoPath);
       if (!existsSync(absVideoPath)) {
         exitWithError(notFoundError(absVideoPath));
@@ -185,6 +189,10 @@ Examples:
 Requires: OPENAI_API_KEY (Whisper transcription) + FFmpeg`)
   .action(async (videoPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const absVideoPath = resolve(process.cwd(), videoPath);
       if (!existsSync(absVideoPath)) {
         exitWithError(notFoundError(absVideoPath));
@@ -280,6 +288,10 @@ aiCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (inputPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const absInputPath = resolve(process.cwd(), inputPath);
       if (!existsSync(absInputPath)) {
         exitWithError(notFoundError(absInputPath));
@@ -360,6 +372,10 @@ aiCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (videoPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const absVideoPath = resolve(process.cwd(), videoPath);
       if (!existsSync(absVideoPath)) {
         exitWithError(notFoundError(absVideoPath));
@@ -446,6 +462,10 @@ aiCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (srtPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       if (!options.target) {
         exitWithError(usageError("Target language required. Use -t or --target"));
       }
@@ -541,6 +561,9 @@ aiCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (videoPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
       if (options.fillers) rejectControlChars(options.fillers);
 
       const absVideoPath = resolve(process.cwd(), videoPath);

@@ -20,6 +20,7 @@ import { getApiKey } from "../utils/api-key.js";
 import { execSafe } from "../utils/exec-safe.js";
 import { downloadVideo } from "./ai-helpers.js";
 import { exitWithError, usageError, authError, apiError, generalError } from "./output.js";
+import { validateOutputPath } from "./validate.js";
 
 // ── Register all video FX commands ───────────────────────────────────────────
 
@@ -36,6 +37,10 @@ export function registerVideoFxCommands(ai: Command): void {
     .option("--no-wait", "Start processing and return task ID without waiting")
     .action(async (videoPath: string, options) => {
       try {
+        if (options.output) {
+          validateOutputPath(options.output);
+        }
+
         const absPath = resolve(process.cwd(), videoPath);
         const scale = parseInt(options.scale);
 
@@ -107,6 +112,10 @@ export function registerVideoFxCommands(ai: Command): void {
     .option("-q, --quality <mode>", "Quality: fast or quality", "quality")
     .action(async (videoPath: string, options) => {
       try {
+        if (options.output) {
+          validateOutputPath(options.output);
+        }
+
         const absPath = resolve(process.cwd(), videoPath);
         const factor = parseInt(options.factor);
 
@@ -174,6 +183,10 @@ export function registerVideoFxCommands(ai: Command): void {
     .option("--no-wait", "Start processing and return task ID without waiting")
     .action(async (videoPath: string, options) => {
       try {
+        if (options.output) {
+          validateOutputPath(options.output);
+        }
+
         if (!options.target && !options.mask) {
           exitWithError(usageError("Either --target or --mask is required", 'Example: vibe ai video-inpaint video.mp4 --target "watermark"'));
         }
@@ -288,6 +301,10 @@ export function registerVideoFxCommands(ai: Command): void {
     .option("-k, --api-key <key>", "Replicate API token (or set REPLICATE_API_TOKEN env)")
     .action(async (videoPath: string, options) => {
       try {
+        if (options.output) {
+          validateOutputPath(options.output);
+        }
+
         if (!options.point && !options.box && !options.prompt) {
           exitWithError(usageError("Tracking target required. Use --point, --box, or --prompt"));
         }

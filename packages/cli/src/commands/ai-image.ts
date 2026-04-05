@@ -25,6 +25,7 @@ import {
 import { getApiKey } from '../utils/api-key.js';
 import { execSafe, commandExists } from '../utils/exec-safe.js';
 import { exitWithError, authError, notFoundError, apiError, usageError, generalError } from './output.js';
+import { validateOutputPath } from "./validate.js";
 
 function _registerImageCommands(aiCommand: Command): void {
 
@@ -43,6 +44,10 @@ aiCommand
   .option("-m, --model <model>", "Gemini model: flash, 3.1-flash, latest (Nano Banana 2), pro (4K)")
   .action(async (prompt: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const provider = options.provider.toLowerCase();
       const validProviders = ["openai", "dalle", "gemini", "runway"];
       if (!validProviders.includes(provider)) {
@@ -283,6 +288,10 @@ aiCommand
   .option("--model <model>", "Gemini model: flash, latest, pro (default: flash)", "flash")
   .action(async (description: string | undefined, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       // Best-frame mode: analyze video with Gemini and extract frame
       if (options.bestFrame) {
         const absVideoPath = resolve(process.cwd(), options.bestFrame);
@@ -398,6 +407,10 @@ aiCommand
   .option("-a, --aspect <ratio>", "Aspect ratio: 16:9, 9:16, 1:1", "16:9")
   .action(async (description: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
       if (!apiKey) {
         exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
@@ -467,6 +480,10 @@ aiCommand
   .option("--image-search", "Enable Image Search grounding (3.1 Flash only)")
   .action(async (prompt: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
       if (!apiKey) {
         exitWithError(authError("GOOGLE_API_KEY", "Google"));
@@ -539,6 +556,10 @@ aiCommand
   .option("-s, --size <resolution>", "Resolution: 1K, 2K, 4K (Pro model only)")
   .action(async (args: string[], options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       // Last argument is the prompt, rest are image paths
       if (args.length < 2) {
         exitWithError(usageError("Need at least one image and a prompt"));

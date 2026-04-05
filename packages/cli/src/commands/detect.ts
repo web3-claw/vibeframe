@@ -6,6 +6,7 @@ import ora from "ora";
 import { Project, type ProjectFile } from "../engine/index.js";
 import { execSafe, commandExists, ffprobeDuration } from "../utils/exec-safe.js";
 import { exitWithError, generalError } from "./output.js";
+import { validateOutputPath } from "./validate.js";
 
 export const detectCommand = new Command("detect")
   .description("Auto-detect scenes, beats, and silences in media");
@@ -24,6 +25,10 @@ detectCommand
     const spinner = ora("Detecting scenes...").start();
 
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       // Check if FFmpeg is available
       if (!commandExists("ffmpeg")) {
         spinner.fail("FFmpeg not found");
@@ -158,6 +163,10 @@ detectCommand
     const spinner = ora("Detecting silence...").start();
 
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const absPath = resolve(process.cwd(), mediaPath);
       const noise = options.noise;
       const duration = options.duration;
@@ -240,6 +249,10 @@ detectCommand
     const spinner = ora("Detecting beats...").start();
 
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const absPath = resolve(process.cwd(), audioPath);
 
       // Use FFmpeg's ebur128 filter for loudness analysis

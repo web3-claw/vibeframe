@@ -47,7 +47,7 @@ import { isJsonMode, outputResult, log, exitWithError, usageError, apiError, gen
 import { commandExists } from "../utils/exec-safe.js";
 import { uploadToImgbb } from "./ai-script-pipeline.js";
 import { downloadVideo, formatTime } from "./ai-helpers.js";
-import { rejectControlChars } from "./validate.js";
+import { rejectControlChars, validateOutputPath } from "./validate.js";
 import { resolveProvider } from "../utils/provider-resolver.js";
 import { executeThumbnailBestFrame } from "./ai-image.js";
 import { registerMotionCommand } from "./ai-motion.js";
@@ -146,6 +146,9 @@ Examples:
         }
       }
       rejectControlChars(prompt);
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
 
       // Auto-resolve provider if user didn't explicitly set one
       let provider = options.provider.toLowerCase();
@@ -554,6 +557,9 @@ Examples:
         }
       }
       rejectControlChars(prompt);
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
 
       let provider = options.provider.toLowerCase();
       const validProviders = ["runway", "kling", "veo", "grok"];
@@ -960,6 +966,9 @@ generateCommand
         }
       }
       rejectControlChars(text);
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
 
       if (options.dryRun) {
         outputResult({ dryRun: true, command: "generate speech", params: { text, voice: options.voice, output: options.output } });
@@ -1074,6 +1083,9 @@ generateCommand
   .action(async (prompt: string, options) => {
     try {
       rejectControlChars(prompt);
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
 
       if (options.dryRun) {
         outputResult({ dryRun: true, command: "generate sound-effect", params: { prompt, duration: options.duration, promptInfluence: options.promptInfluence, output: options.output } });
@@ -1135,6 +1147,9 @@ generateCommand
   .action(async (prompt: string, options) => {
     try {
       rejectControlChars(prompt);
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
 
       const provider = (options.provider || "elevenlabs").toLowerCase();
 
@@ -1321,6 +1336,9 @@ generateCommand
   .action(async (content: string, options) => {
     try {
       rejectControlChars(content);
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
 
       // Validate creativity level
       const creativity = options.creativity?.toLowerCase();
@@ -1429,6 +1447,9 @@ generateCommand
   .action(async (description: string | undefined, options) => {
     try {
       if (description) rejectControlChars(description);
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
 
       // Best-frame mode: analyze video with Gemini and extract frame
       if (options.bestFrame) {
@@ -1572,6 +1593,9 @@ generateCommand
   .action(async (description: string, options) => {
     try {
       rejectControlChars(description);
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
 
       if (options.dryRun) {
         outputResult({ dryRun: true, command: "generate background", params: { description, aspect: options.aspect, output: options.output } });
@@ -1945,6 +1969,9 @@ generateCommand
   .action(async (id: string, options) => {
     try {
       const provider = (options.provider || "kling").toLowerCase();
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
 
       if (options.dryRun) {
         outputResult({ dryRun: true, command: "generate video-extend", params: { id, provider, prompt: options.prompt, duration: options.duration, negative: options.negative, veoModel: options.veoModel } });

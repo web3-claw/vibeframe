@@ -41,7 +41,7 @@ import { applyTextOverlays, type TextOverlayStyle } from "./ai-edit.js";
 import { registerEditCommands } from "./ai-edit-cli.js";
 import { registerFillGapsCommand } from "./ai-fill-gaps.js";
 import { isJsonMode, outputResult, exitWithError, usageError, notFoundError, apiError, generalError } from "./output.js";
-import { rejectControlChars } from "./validate.js";
+import { rejectControlChars, validateOutputPath } from "./validate.js";
 
 export const editCommand = new Command("edit")
   .alias("ed")
@@ -94,6 +94,9 @@ editCommand
   .action(async (videoPath: string, options) => {
     try {
       if (options.style) rejectControlChars(options.style);
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
 
       if (!options.style && !options.preset) {
         exitWithError(usageError(
@@ -212,6 +215,9 @@ editCommand
       }
 
       for (const t of options.text) rejectControlChars(t);
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
 
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
@@ -301,6 +307,10 @@ editCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (videoPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
         exitWithError(generalError("FFmpeg not found", "Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"));
@@ -459,6 +469,10 @@ editCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (videoPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
         exitWithError(generalError("FFmpeg not found", "Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"));
@@ -659,6 +673,9 @@ editCommand
 
       const prompt = args[args.length - 1];
       rejectControlChars(prompt);
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
       const imagePaths = args.slice(0, -1);
       const provider = options.provider as string;
 
@@ -810,6 +827,10 @@ editCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (videoPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const absPath = resolve(process.cwd(), videoPath);
       const factor = parseInt(options.factor);
 
@@ -906,6 +927,10 @@ editCommand
   .option("--dry-run", "Preview parameters without executing")
   .action(async (videoPath: string, options) => {
     try {
+      if (options.output) {
+        validateOutputPath(options.output);
+      }
+
       const absPath = resolve(process.cwd(), videoPath);
       const scale = parseInt(options.scale);
 

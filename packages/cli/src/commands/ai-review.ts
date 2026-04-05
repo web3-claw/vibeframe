@@ -22,6 +22,7 @@ import { getApiKey, loadEnv } from "../utils/api-key.js";
 import { execSafe } from "../utils/exec-safe.js";
 import type { VideoReviewFeedback } from "./ai-edit.js";
 import { exitWithError, apiError, generalError } from "./output.js";
+import { validateOutputPath } from "./validate.js";
 
 /** Options for {@link executeReview}. */
 export interface ReviewOptions {
@@ -231,6 +232,10 @@ export function registerReviewCommand(aiCommand: Command): void {
     .option("-o, --output <path>", "Output video file path (for auto-apply)")
     .action(async (videoPath: string, options) => {
       try {
+        if (options.output) {
+          validateOutputPath(options.output);
+        }
+
         loadEnv();
 
         const spinner = ora("Reviewing video with Gemini...").start();
