@@ -174,8 +174,8 @@ Intelligence built into every interaction.
 - [x] **Agent Mode (Default)** - Claude Code-like autonomous agent (`vibe` or `vibe agent`)
   - Default entry point: `vibe` starts Agent mode
   - Multi-turn agentic loop: LLM reasoning → tool call → result → repeat
-  - **57 tools** across 7 categories (project, timeline, filesystem, media, AI, export, batch)
-  - Multi-provider support: OpenAI, Claude, Gemini, xAI, OpenRouter, Ollama
+  - Tools across 7 categories (project, timeline, filesystem, media, AI, export, batch)
+  - Multi-provider support (run `vibe doctor --json` for configured providers)
   - Verbose mode for tool call visibility (`-v`)
   - Confirm mode: `--confirm` prompts before each tool execution
   - Non-interactive mode: `-i "query"` for single query execution

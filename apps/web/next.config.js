@@ -30,12 +30,35 @@ function countInFile(filePath, pattern) {
 }
 
 const cliToolsDir = path.resolve(__dirname, "../../packages/cli/src/agent/tools");
+const cliCommandsDir = path.resolve(__dirname, "../../packages/cli/src/commands");
 const mcpToolsDir = path.resolve(__dirname, "../../packages/mcp-server/src/tools");
 const agentTypesFile = path.resolve(__dirname, "../../packages/cli/src/agent/types.ts");
+const aiProvidersDir = path.resolve(__dirname, "../../packages/ai-providers/src");
 
 const agentTools = countPattern(cliToolsDir, "ToolDefinition = \\{") || 58;
+const cliCommands = countPattern(cliCommandsDir, '\\.command\\("[a-z]') || 107;
 const mcpTools = countPattern(mcpToolsDir, 'name: "') || 27;
-const llmProviders = countInFile(agentTypesFile, '"[a-z]+"') || 6;
+// Count LLM providers from the LLMProvider type union (e.g., "openai" | "claude" | ...)
+let llmProviders = 6;
+try {
+  const typesContent = fs.readFileSync(agentTypesFile, "utf8");
+  const providerLine = typesContent.match(/LLMProvider\s*=\s*(.+)/);
+  if (providerLine) {
+    const matches = providerLine[1].match(/"[a-z]+"/g);
+    if (matches) llmProviders = matches.length;
+  }
+} catch {
+  // Fallback
+}
+
+// Count unique AI provider directories (each dir = one provider service)
+let aiProviders = 11;
+try {
+  const entries = fs.readdirSync(aiProvidersDir, { withFileTypes: true });
+  aiProviders = entries.filter((e) => e.isDirectory() && !e.name.startsWith(".") && e.name !== "interface").length || 11;
+} catch {
+  // Fallback
+}
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -46,8 +69,10 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_VERSION: pkg.version,
     NEXT_PUBLIC_AGENT_TOOLS: String(agentTools),
+    NEXT_PUBLIC_CLI_COMMANDS: String(cliCommands),
     NEXT_PUBLIC_MCP_TOOLS: String(mcpTools),
     NEXT_PUBLIC_LLM_PROVIDERS: String(llmProviders),
+    NEXT_PUBLIC_AI_PROVIDERS: String(aiProviders),
   },
 };
 

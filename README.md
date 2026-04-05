@@ -118,8 +118,7 @@ vibe pipeline script-to-video "A morning routine of a startup founder..." \
 
 vibe pipeline highlights interview.mp4 -d 90 --criteria emotional
 vibe pipeline auto-shorts podcast.mp4
-vibe pipeline b-roll podcast.mp3 --broll-dir ./footage
-vibe pipeline viral project.vibe.json --platforms tiktok,youtube-shorts,instagram-reels
+vibe pipeline animated-caption video.mp4 -s bounce -o captioned.mp4
 ```
 
 ---
@@ -134,14 +133,14 @@ Every command supports `--help`. Run `vibe --help` for a full list.
 | **`vibe edit`** | `silence-cut`, `jump-cut`, `caption`, `grade`, `reframe`, `speed-ramp`, `text-overlay`, `fade`, `noise-reduce`, `image`, `fill-gaps` | `vibe edit caption video.mp4 -o out.mp4` |
 | **`vibe analyze`** | `media`, `video`, `review`, `suggest` | `vibe analyze media video.mp4 "summarize"` |
 | **`vibe audio`** | `transcribe`, `voices`, `isolate`, `voice-clone`, `dub`, `duck` | `vibe audio transcribe audio.mp3` |
-| **`vibe pipeline`** | `script-to-video`, `highlights`, `auto-shorts`, `viral`, `b-roll`, `narrate`, `regenerate-scene` | `vibe pipeline script-to-video "..." -a 9:16` |
+| **`vibe pipeline`** | `script-to-video`, `highlights`, `auto-shorts`, `regenerate-scene`, `animated-caption` | `vibe pipeline script-to-video "..." -a 9:16` |
 | **`vibe project`** | `create`, `info`, `set` | `vibe project create "name"` |
 | **`vibe timeline`** | `add-source`, `add-clip`, `split`, `trim`, `move`, `delete`, `list` | `vibe timeline add-source project file` |
 | **`vibe batch`** | `import`, `concat`, `apply-effect` | `vibe batch import project dir/` |
 | **`vibe detect`** | `scenes`, `silence`, `beats` | `vibe detect scenes video.mp4` |
 | **`vibe export`** | - | `vibe export project.vibe.json -o out.mp4` |
 
-Every command supports `--help`, `--json`, and `--dry-run`. Run `vibe schema --list` for a full machine-readable command index.
+Every command supports `--help`, `--json`, `--dry-run`, and `--stdin`. Run `vibe schema --list` for a full machine-readable command index.
 
 ---
 
@@ -157,7 +156,7 @@ vibe agent -p xai              # Use xAI Grok
 vibe agent -p ollama           # Use local Ollama
 ```
 
-Tools across project, timeline, AI generation, media, export, batch, and filesystem. The LLM reasons, calls tools, and executes autonomously.
+Tools across project, timeline, AI generation, media, export, batch, and filesystem. The LLM reasons, calls tools, and executes autonomously. Run `vibe agent` then type `tools` to see the full list.
 
 ---
 
@@ -167,7 +166,7 @@ Tools across project, timeline, AI generation, media, export, batch, and filesys
 
 | Category | Providers | Default |
 |----------|-----------|---------|
-| **Agent LLM** | OpenAI, Claude, Gemini, xAI, Ollama | GPT-5-mini |
+| **Agent LLM** | OpenAI, Claude, Gemini, xAI, OpenRouter, Ollama | GPT-5-mini |
 | **Image** | Gemini, OpenAI, xAI Grok | Gemini Nano Banana |
 | **Video** | xAI Grok, Kling, Runway, Veo | Grok Imagine |
 | **Audio** | ElevenLabs, Whisper | - |

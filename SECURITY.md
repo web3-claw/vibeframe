@@ -12,10 +12,12 @@ You should receive an acknowledgment within 48 hours. We will work with you to u
 
 ## Supported Versions
 
+Only the latest minor release is supported with security fixes. Check the current version in [package.json](package.json).
+
 | Version | Supported |
 |---------|-----------|
-| 0.27.x  | Yes       |
-| < 0.27  | No        |
+| Latest  | Yes       |
+| Older   | No        |
 
 ## API Key Safety
 

@@ -122,7 +122,7 @@ export default function LandingPage() {
               Every edit is a command
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              50+ commands for video editing, generation, and post-production.
+              {process.env.NEXT_PUBLIC_CLI_COMMANDS}+ commands for video editing, generation, and post-production.
               No GUI required — just your terminal.
             </p>
           </div>
@@ -228,7 +228,7 @@ export default function LandingPage() {
                   </span>
                 ))}
                 <span className="text-xs bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-full text-primary">
-                  +37 more tools
+                  +{Number(process.env.NEXT_PUBLIC_MCP_TOOLS) - 6} more tools
                 </span>
               </div>
             </div>
@@ -382,7 +382,7 @@ export default function LandingPage() {
             />
             <FeatureCard
               icon={<Layers className="w-6 h-6" />}
-              title="11 AI Providers"
+              title={`${process.env.NEXT_PUBLIC_AI_PROVIDERS} AI Providers`}
               description="OpenAI, Claude, Gemini, ElevenLabs, Runway, Kling, Veo, Replicate, xAI Grok, OpenRouter, Ollama."
               gradient="from-green-500 to-emerald-500"
             />
