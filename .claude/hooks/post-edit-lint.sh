@@ -10,7 +10,11 @@ if [[ -z "$FILE" ]]; then
   exit 0
 fi
 
-if [[ "$FILE" != *.ts ]] || [[ "$FILE" != *packages/cli/src* ]]; then
+if [[ "$FILE" != *.ts ]]; then
+  exit 0
+fi
+
+if [[ "$FILE" != *packages/*/src* ]]; then
   exit 0
 fi
 

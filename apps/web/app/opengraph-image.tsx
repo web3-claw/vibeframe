@@ -6,7 +6,7 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default async function Image() {
-  const version = process.env.NEXT_PUBLIC_VERSION || "0.27.0";
+  const version = process.env.NEXT_PUBLIC_VERSION;
 
   return new ImageResponse(
     (
