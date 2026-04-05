@@ -59,17 +59,17 @@ pnpm vibe agent --help
 pnpm vibe setup --help
 ```
 
-Every `ai` subcommand must respond to `--help` (56 commands):
+Every subcommand must respond to `--help`. Use `vibe schema --list --json` to get the full current list dynamically:
 
 ```bash
-for cmd in analyze audio-restore auto-shorts b-roll background dub duck edit fade fill-gaps \
-  gemini gemini-edit gemini-video grade highlights image isolate kling kling-status \
-  motion music music-status narrate noise-reduce providers reframe regenerate-scene review \
-  script-to-video \
-  sfx speed-ramp storyboard style-transfer suggest text-overlay thumbnail translate-srt \
-  silence-cut jump-cut caption track-object transcribe tts video video-cancel video-extend video-inpaint \
-  video-interpolate video-status video-upscale viral voice-clone voices; do
-  pnpm vibe ai $cmd --help 2>&1 | head -1
+# Verify all commands respond to --help
+pnpm vibe schema --list --json | node -e "
+  const data = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+  data.commands.forEach(c => console.log(c.command));
+" | while read cmd; do
+  group=$(echo "$cmd" | cut -d. -f1)
+  action=$(echo "$cmd" | cut -d. -f2)
+  pnpm vibe $group $action --help 2>&1 | head -1
 done
 ```
 

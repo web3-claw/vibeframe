@@ -60,7 +60,7 @@ This directory configures Claude Code for the VibeFrame project.
 ### Agents
 - Invoked via natural language ("run code review") or @-mention
 - Each has specific tools, model, and max turns
-- `code-reviewer` has persistent memory (`.claude/agent-memory/code-reviewer/`)
+- `code-reviewer` runs proactively after code changes
 
 ### Hooks
 - **PreToolUse (Bash)**: Validates SSOT before `git push`

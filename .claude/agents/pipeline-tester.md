@@ -84,22 +84,7 @@ pnpm vibe ai review test-output/pipeline-run/short.mp4
 - short.mp4 created (check file size > 0)
 - Gemini review completes
 
-### Phase 5: Viral Optimizer
-
-```bash
-mkdir -p test-output/pipeline-run/viral
-
-pnpm vibe ai viral test-output/pipeline-run/s2v/project.vibe.json \
-  -p tiktok,youtube-shorts \
-  -o test-output/pipeline-run/viral
-```
-
-**Verify:**
-- tiktok.vibe.json created
-- youtube-shorts.vibe.json created
-- Viral score reported
-
-### Phase 6: Regenerate Scene
+### Phase 5: Regenerate Scene
 
 ```bash
 pnpm vibe ai regenerate-scene test-output/pipeline-run/s2v --scene 1
