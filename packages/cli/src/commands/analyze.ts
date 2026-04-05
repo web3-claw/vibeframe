@@ -86,8 +86,8 @@ analyzeCommand
       });
 
       if (!result.success) {
-        spinner.fail(chalk.red(result.error || "Analysis failed"));
-        process.exit(1);
+        spinner.fail();
+        exitWithError(apiError(result.error || "Analysis failed", true));
       }
 
       spinner.succeed(chalk.green("Analysis complete"));
@@ -165,8 +165,8 @@ analyzeCommand
       });
 
       if (!result.success) {
-        spinner.fail(chalk.red(result.error || "Video analysis failed"));
-        process.exit(1);
+        spinner.fail();
+        exitWithError(apiError(result.error || "Video analysis failed", true));
       }
 
       spinner.succeed(chalk.green("Video analyzed"));

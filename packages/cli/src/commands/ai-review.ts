@@ -21,6 +21,7 @@ import { GeminiProvider } from "@vibeframe/ai-providers";
 import { getApiKey, loadEnv } from "../utils/api-key.js";
 import { execSafe } from "../utils/exec-safe.js";
 import type { VideoReviewFeedback } from "./ai-edit.js";
+import { exitWithError, apiError, generalError } from "./output.js";
 
 /** Options for {@link executeReview}. */
 export interface ReviewOptions {
@@ -244,8 +245,8 @@ export function registerReviewCommand(aiCommand: Command): void {
         });
 
         if (!result.success) {
-          spinner.fail(chalk.red(result.error || "Video review failed"));
-          process.exit(1);
+          spinner.fail(result.error || "Video review failed");
+          exitWithError(apiError(result.error || "Video review failed", true));
         }
 
         spinner.succeed(chalk.green("Video review complete"));
@@ -301,9 +302,7 @@ export function registerReviewCommand(aiCommand: Command): void {
         }
         console.log();
       } catch (error) {
-        console.error(chalk.red("Video review failed"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(generalError(error instanceof Error ? error.message : "Video review failed"));
       }
     });
 }

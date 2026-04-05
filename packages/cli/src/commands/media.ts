@@ -4,6 +4,7 @@ import { resolve, extname, basename } from "node:path";
 import chalk from "chalk";
 import ora from "ora";
 import * as musicMetadata from "music-metadata";
+import { exitWithError, generalError } from "./output.js";
 
 export const mediaCommand = new Command("media")
   .description("Media file utilities");
@@ -105,11 +106,9 @@ mediaCommand
 
       console.log();
     } catch (error) {
-      spinner.fail(chalk.red("Failed to analyze media"));
-      if (error instanceof Error) {
-        console.error(chalk.red(error.message));
-      }
-      process.exit(1);
+      spinner.fail("Failed to analyze media");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Failed to analyze media: ${msg}`));
     }
   });
 
@@ -125,12 +124,11 @@ mediaCommand
       if (metadata.format.duration) {
         console.log(metadata.format.duration.toFixed(3));
       } else {
-        console.error("Could not determine duration");
-        process.exit(1);
+        exitWithError(generalError("Could not determine duration"));
       }
     } catch (error) {
-      console.error("Failed to get duration");
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Failed to get duration: ${msg}`));
     }
   });
 

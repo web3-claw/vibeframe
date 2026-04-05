@@ -28,6 +28,7 @@ import { getApiKey } from '../utils/api-key.js';
 import { execSafe, execSafeSync, commandExists } from '../utils/exec-safe.js';
 import { detectFormat, formatTranscript } from '../utils/subtitle.js';
 import { formatTime } from './ai-helpers.js';
+import { exitWithError, authError, notFoundError, apiError, usageError, generalError } from './output.js';
 
 function _registerAudioCommands(aiCommand: Command): void {
 
@@ -43,8 +44,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("OpenAI API key required. Set OPENAI_API_KEY in .env or run: vibe setup"));
-        process.exit(1);
+        exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
       }
 
       const spinner = ora("Initializing Whisper...").start();
@@ -61,8 +61,8 @@ aiCommand
       const result = await whisper.transcribe(audioBlob, options.language);
 
       if (result.status === "failed") {
-        spinner.fail(chalk.red(`Transcription failed: ${result.error}`));
-        process.exit(1);
+        spinner.fail("Transcription failed");
+        exitWithError(apiError(`Transcription failed: ${result.error}`, true));
       }
 
       spinner.succeed(chalk.green("Transcription complete"));
@@ -91,9 +91,7 @@ aiCommand
         console.log(chalk.green(`Saved ${format.toUpperCase()} to: ${outputPath}`));
       }
     } catch (error) {
-      console.error(chalk.red("Transcription failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Transcription failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 
@@ -109,8 +107,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("ElevenLabs API key required. Set ELEVENLABS_API_KEY in .env or run: vibe setup"));
-        process.exit(1);
+        exitWithError(authError("ELEVENLABS_API_KEY", "ElevenLabs"));
       }
 
       const elevenlabs = new ElevenLabsProvider();
@@ -148,8 +145,8 @@ aiCommand
       });
 
       if (!result.success || !result.audioBuffer) {
-        spinner.fail(chalk.red(result.error || "TTS generation failed"));
-        process.exit(1);
+        spinner.fail("TTS generation failed");
+        exitWithError(apiError(result.error || "TTS generation failed", true));
       }
 
       const outputPath = resolve(process.cwd(), options.output);
@@ -161,9 +158,7 @@ aiCommand
       console.log(chalk.green(`Saved to: ${outputPath}`));
       console.log();
     } catch (error) {
-      console.error(chalk.red("TTS generation failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`TTS generation failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 
@@ -175,8 +170,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("ElevenLabs API key required. Set ELEVENLABS_API_KEY in .env or run: vibe setup"));
-        process.exit(1);
+        exitWithError(authError("ELEVENLABS_API_KEY", "ElevenLabs"));
       }
 
       const spinner = ora("Fetching voices...").start();
@@ -197,9 +191,7 @@ aiCommand
       }
       console.log();
     } catch (error) {
-      console.error(chalk.red("Failed to fetch voices"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Failed to fetch voices: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 
@@ -215,8 +207,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("ElevenLabs API key required. Set ELEVENLABS_API_KEY in .env or run: vibe setup"));
-        process.exit(1);
+        exitWithError(authError("ELEVENLABS_API_KEY", "ElevenLabs"));
       }
 
       const spinner = ora("Generating sound effect...").start();
@@ -230,8 +221,8 @@ aiCommand
       });
 
       if (!result.success || !result.audioBuffer) {
-        spinner.fail(chalk.red(result.error || "Sound effect generation failed"));
-        process.exit(1);
+        spinner.fail("Sound effect generation failed");
+        exitWithError(apiError(result.error || "Sound effect generation failed", true));
       }
 
       const outputPath = resolve(process.cwd(), options.output);
@@ -241,9 +232,7 @@ aiCommand
       console.log(chalk.green(`Saved to: ${outputPath}`));
       console.log();
     } catch (error) {
-      console.error(chalk.red("Sound effect generation failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Sound effect generation failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 
@@ -257,8 +246,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("ElevenLabs API key required. Set ELEVENLABS_API_KEY in .env or run: vibe setup"));
-        process.exit(1);
+        exitWithError(authError("ELEVENLABS_API_KEY", "ElevenLabs"));
       }
 
       const spinner = ora("Reading audio file...").start();
@@ -274,8 +262,8 @@ aiCommand
       const result = await elevenlabs.isolateVocals(audioBuffer);
 
       if (!result.success || !result.audioBuffer) {
-        spinner.fail(chalk.red(result.error || "Audio isolation failed"));
-        process.exit(1);
+        spinner.fail("Audio isolation failed");
+        exitWithError(apiError(result.error || "Audio isolation failed", true));
       }
 
       const outputPath = resolve(process.cwd(), options.output);
@@ -285,9 +273,7 @@ aiCommand
       console.log(chalk.green(`Saved to: ${outputPath}`));
       console.log();
     } catch (error) {
-      console.error(chalk.red("Audio isolation failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Audio isolation failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 
@@ -306,8 +292,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("ElevenLabs API key required. Set ELEVENLABS_API_KEY in .env or run: vibe setup"));
-        process.exit(1);
+        exitWithError(authError("ELEVENLABS_API_KEY", "ElevenLabs"));
       }
 
       const elevenlabs = new ElevenLabsProvider();
@@ -337,13 +322,11 @@ aiCommand
 
       // Clone voice mode
       if (!options.name) {
-        console.error(chalk.red("Voice name is required. Use --name <name>"));
-        process.exit(1);
+        exitWithError(usageError("Voice name is required. Use --name <name>"));
       }
 
       if (!samples || samples.length === 0) {
-        console.error(chalk.red("At least one audio sample is required"));
-        process.exit(1);
+        exitWithError(usageError("At least one audio sample is required"));
       }
 
       const spinner = ora("Reading audio samples...").start();
@@ -352,8 +335,8 @@ aiCommand
       for (const samplePath of samples) {
         const absPath = resolve(process.cwd(), samplePath);
         if (!existsSync(absPath)) {
-          spinner.fail(chalk.red(`File not found: ${samplePath}`));
-          process.exit(1);
+          spinner.fail("File not found");
+          exitWithError(notFoundError(samplePath));
         }
         const buffer = await readFile(absPath);
         audioBuffers.push(buffer);
@@ -371,8 +354,8 @@ aiCommand
       });
 
       if (!result.success) {
-        spinner.fail(chalk.red(result.error || "Voice cloning failed"));
-        process.exit(1);
+        spinner.fail("Voice cloning failed");
+        exitWithError(apiError(result.error || "Voice cloning failed", true));
       }
 
       spinner.succeed(chalk.green("Voice cloned successfully"));
@@ -386,9 +369,7 @@ aiCommand
       console.log(chalk.dim(`  pnpm vibe ai tts "Hello world" -v ${result.voiceId}`));
       console.log();
     } catch (error) {
-      console.error(chalk.red("Voice cloning failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Voice cloning failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 
@@ -406,8 +387,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("Replicate API token required. Set REPLICATE_API_TOKEN in .env or run: vibe setup"));
-        process.exit(1);
+        exitWithError(authError("REPLICATE_API_TOKEN", "Replicate"));
       }
 
       const replicate = new ReplicateProvider();
@@ -423,14 +403,12 @@ aiCommand
         spinner.text = "Uploading melody reference...";
         const absPath = resolve(process.cwd(), options.melody);
         if (!existsSync(absPath)) {
-          spinner.fail(chalk.red(`Melody file not found: ${options.melody}`));
-          process.exit(1);
+          spinner.fail("Melody file not found");
+          exitWithError(notFoundError(options.melody));
         }
         // For Replicate, we need a publicly accessible URL
         // In practice, users would need to host the file or use a data URL
-        console.log(chalk.yellow("Note: Melody conditioning requires a publicly accessible URL"));
-        console.log(chalk.yellow("Please upload your melody file and provide the URL"));
-        process.exit(1);
+        exitWithError(usageError("Melody conditioning requires a publicly accessible URL. Please upload your melody file and provide the URL."));
       }
 
       const result = await replicate.generateMusic(prompt, {
@@ -440,8 +418,8 @@ aiCommand
       });
 
       if (!result.success || !result.taskId) {
-        spinner.fail(chalk.red(result.error || "Music generation failed"));
-        process.exit(1);
+        spinner.fail("Music generation failed");
+        exitWithError(apiError(result.error || "Music generation failed", true));
       }
 
       if (!options.wait) {
@@ -457,16 +435,16 @@ aiCommand
       const finalResult = await replicate.waitForMusic(result.taskId);
 
       if (!finalResult.success || !finalResult.audioUrl) {
-        spinner.fail(chalk.red(finalResult.error || "Music generation failed"));
-        process.exit(1);
+        spinner.fail("Music generation failed");
+        exitWithError(apiError(finalResult.error || "Music generation failed", true));
       }
 
       spinner.text = "Downloading generated audio...";
 
       const response = await fetch(finalResult.audioUrl);
       if (!response.ok) {
-        spinner.fail(chalk.red("Failed to download generated audio"));
-        process.exit(1);
+        spinner.fail("Failed to download generated audio");
+        exitWithError(apiError("Failed to download generated audio", true));
       }
 
       const audioBuffer = Buffer.from(await response.arrayBuffer());
@@ -480,9 +458,7 @@ aiCommand
       console.log(`Model: ${options.model}`);
       console.log();
     } catch (error) {
-      console.error(chalk.red("Music generation failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Music generation failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 
@@ -495,8 +471,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("Replicate API token required. Set REPLICATE_API_TOKEN in .env or run: vibe setup"));
-        process.exit(1);
+        exitWithError(authError("REPLICATE_API_TOKEN", "Replicate"));
       }
 
       const replicate = new ReplicateProvider();
@@ -520,9 +495,7 @@ aiCommand
       }
       console.log();
     } catch (error) {
-      console.error(chalk.red("Failed to get music status"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Failed to get music status: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 
@@ -541,8 +514,7 @@ aiCommand
     try {
       const absPath = resolve(process.cwd(), audioPath);
       if (!existsSync(absPath)) {
-        console.error(chalk.red(`File not found: ${audioPath}`));
-        process.exit(1);
+        exitWithError(notFoundError(audioPath));
       }
 
       // Default output path
@@ -583,11 +555,8 @@ aiCommand
           console.log(`Saved to: ${chalk.bold(outputPath)}`);
           console.log();
         } catch (error) {
-          spinner.fail(chalk.red("FFmpeg restoration failed"));
-          if (error instanceof Error && "message" in error) {
-            console.error(chalk.dim(error.message));
-          }
-          process.exit(1);
+          spinner.fail("FFmpeg restoration failed");
+          exitWithError(generalError(`FFmpeg restoration failed: ${error instanceof Error ? error.message : String(error)}`));
         }
         return;
       }
@@ -595,9 +564,7 @@ aiCommand
       // Replicate AI mode
       const apiKey = await getApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("Replicate API token required. Set REPLICATE_API_TOKEN in .env or run: vibe setup"));
-        console.error(chalk.dim("Or use --ffmpeg for free FFmpeg-based restoration"));
-        process.exit(1);
+        exitWithError(authError("REPLICATE_API_TOKEN", "Replicate"));
       }
 
       const replicate = new ReplicateProvider();
@@ -605,16 +572,9 @@ aiCommand
 
       // For Replicate, we need a publicly accessible URL
       // This is a limitation - users need to upload their file first
-      console.log(chalk.yellow("Note: Replicate requires a publicly accessible audio URL"));
-      console.log(chalk.yellow("For local files, use --ffmpeg for free local processing"));
-      console.log();
-      console.log(chalk.dim("Example with FFmpeg:"));
-      console.log(chalk.dim(`  pnpm vibe ai audio-restore ${audioPath} --ffmpeg`));
-      process.exit(1);
+      exitWithError(usageError("Replicate requires a publicly accessible audio URL. For local files, use --ffmpeg for free local processing.", `pnpm vibe ai audio-restore ${audioPath} --ffmpeg`));
     } catch (error) {
-      console.error(chalk.red("Audio restoration failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Audio restoration failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 
@@ -630,14 +590,12 @@ aiCommand
   .action(async (mediaPath: string, options) => {
     try {
       if (!options.language) {
-        console.error(chalk.red("Target language is required. Use -l or --language"));
-        process.exit(1);
+        exitWithError(usageError("Target language is required. Use -l or --language"));
       }
 
       const absPath = resolve(process.cwd(), mediaPath);
       if (!existsSync(absPath)) {
-        console.error(chalk.red(`File not found: ${mediaPath}`));
-        process.exit(1);
+        exitWithError(notFoundError(mediaPath));
       }
 
       // Check required API keys
@@ -646,19 +604,15 @@ aiCommand
       const elevenlabsKey = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs", undefined);
 
       if (!openaiKey) {
-        console.error(chalk.red("OpenAI API key required for transcription. Set OPENAI_API_KEY in .env or run: vibe setup"));
-        process.exit(1);
+        exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
       }
 
       if (!anthropicKey) {
-        console.error(chalk.red("Anthropic API key required for translation. Set ANTHROPIC_API_KEY in .env or run: vibe setup"));
-        process.exit(1);
+        exitWithError(authError("ANTHROPIC_API_KEY", "Anthropic"));
       }
 
       if (!options.analyzeOnly && !elevenlabsKey) {
-        console.error(chalk.red("ElevenLabs API key required for TTS. Set ELEVENLABS_API_KEY in .env or run: vibe setup"));
-        console.error(chalk.dim("Or use --analyze-only to preview timing without generating audio"));
-        process.exit(1);
+        exitWithError(authError("ELEVENLABS_API_KEY", "ElevenLabs"));
       }
 
       const spinner = ora("Extracting audio...").start();
@@ -675,8 +629,8 @@ aiCommand
           execSafeSync("ffmpeg", ["-i", absPath, "-vn", "-acodec", "mp3", "-y", tempAudioPath]);
           audioPath = tempAudioPath;
         } catch (error) {
-          spinner.fail(chalk.red("Failed to extract audio from video"));
-          process.exit(1);
+          spinner.fail("Failed to extract audio from video");
+          exitWithError(generalError(`Failed to extract audio from video: ${error instanceof Error ? error.message : String(error)}`));
         }
       }
 
@@ -691,8 +645,8 @@ aiCommand
       const transcriptResult = await whisper.transcribe(audioBlob, options.source);
 
       if (transcriptResult.status === "failed" || !transcriptResult.segments) {
-        spinner.fail(chalk.red(`Transcription failed: ${transcriptResult.error}`));
-        process.exit(1);
+        spinner.fail("Transcription failed");
+        exitWithError(apiError(`Transcription failed: ${transcriptResult.error}`, true));
       }
 
       // Step 3: Translate with Claude
@@ -855,9 +809,7 @@ aiCommand
         }
       }
     } catch (error) {
-      console.error(chalk.red("Dubbing failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Dubbing failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 
@@ -879,14 +831,12 @@ aiCommand
   .action(async (musicPath: string, options) => {
     try {
       if (!options.voice) {
-        console.error(chalk.red("Voice track required. Use --voice <path>"));
-        process.exit(1);
+        exitWithError(usageError("Voice track required. Use --voice <path>"));
       }
 
       // Check FFmpeg availability
       if (!commandExists("ffmpeg")) {
-        console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-        process.exit(1);
+        exitWithError(generalError("FFmpeg not found. Please install FFmpeg."));
       }
 
       const spinner = ora("Processing audio ducking...").start();
@@ -922,9 +872,7 @@ aiCommand
       console.log(chalk.green(`Output: ${outputPath}`));
       console.log();
     } catch (error) {
-      console.error(chalk.red("Audio ducking failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(generalError(`Audio ducking failed: ${error instanceof Error ? error.message : String(error)}`));
     }
   });
 

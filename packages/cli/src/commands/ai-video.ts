@@ -21,6 +21,7 @@ import { getApiKey } from "../utils/api-key.js";
 import { getApiKeyFromConfig } from "../config/index.js";
 import { uploadToImgbb } from "./ai-script-pipeline.js";
 import { downloadVideo } from "./ai-helpers.js";
+import { exitWithError, authError, usageError, apiError, generalError } from "./output.js";
 
 function getStatusColor(status: string): string {
   switch (status) {
@@ -64,9 +65,7 @@ export function registerVideoCommands(aiCommand: Command): void {
         const provider = options.provider.toLowerCase();
         const validProviders = ["grok", "runway", "kling", "veo"];
         if (!validProviders.includes(provider)) {
-          console.error(chalk.red(`Invalid provider: ${provider}`));
-          console.error(chalk.dim(`Available providers: ${validProviders.join(", ")}`));
-          process.exit(1);
+          exitWithError(usageError(`Invalid provider: ${provider}`, `Available providers: ${validProviders.join(", ")}`));
         }
 
         const envKeyMap: Record<string, string> = {
@@ -85,20 +84,13 @@ export function registerVideoCommands(aiCommand: Command): void {
         const providerName = providerNameMap[provider];
         const apiKey = await getApiKey(envKey, providerName, options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red(`${providerName} API key required. Set ${envKey} in .env or run: vibe setup`));
-          if (provider === "kling") {
-            console.error(chalk.dim("Format: ACCESS_KEY:SECRET_KEY"));
-          }
-          console.error(chalk.dim(`Use --api-key or set ${envKey} environment variable`));
-          process.exit(1);
+          exitWithError(authError(envKey, providerName));
         }
 
         // Runway gen4_turbo requires an input image (gen4.5 supports text-to-video)
         const runwayModel = options.runwayModel || "gen4.5";
         if (provider === "runway" && !options.image && runwayModel === "gen4_turbo") {
-          console.error(chalk.red("Runway gen4_turbo requires an input image. Use -i <image> to specify."));
-          console.error(chalk.dim("Tip: Use gen4.5 (default) for text-to-video, or provide -i <image>"));
-          process.exit(1);
+          exitWithError(usageError("Runway gen4_turbo requires an input image. Use -i <image> to specify.", "Tip: Use gen4.5 (default) for text-to-video, or provide -i <image>"));
         }
 
         const spinner = ora(`Initializing ${providerName}...`).start();
@@ -140,8 +132,8 @@ export function registerVideoCommands(aiCommand: Command): void {
           });
 
           if (result.status === "failed") {
-            spinner.fail(chalk.red(result.error || "Failed to start generation"));
-            process.exit(1);
+            spinner.fail(result.error || "Failed to start generation");
+            exitWithError(apiError(result.error || "Failed to start Runway generation", true));
           }
 
           console.log();
@@ -175,8 +167,8 @@ export function registerVideoCommands(aiCommand: Command): void {
           await kling.initialize({ apiKey });
 
           if (!kling.isConfigured()) {
-            spinner.fail(chalk.red("Invalid API key format. Use ACCESS_KEY:SECRET_KEY"));
-            process.exit(1);
+            spinner.fail("Invalid API key format");
+            exitWithError(authError("KLING_API_KEY", "Kling"));
           }
 
           // Kling v2.x requires image URL, not base64 — auto-upload to ImgBB
@@ -185,17 +177,16 @@ export function registerVideoCommands(aiCommand: Command): void {
             spinner.text = "Uploading image to ImgBB for Kling...";
             const imgbbKey = (await getApiKeyFromConfig("imgbb")) || process.env.IMGBB_API_KEY;
             if (!imgbbKey) {
-              spinner.fail(chalk.red("Kling requires image URL. Set IMGBB_API_KEY for auto-upload."));
-              console.error(chalk.dim("Run: vibe setup --full  to configure ImgBB"));
-              process.exit(1);
+              spinner.fail("Kling requires image URL. Set IMGBB_API_KEY for auto-upload.");
+              exitWithError(authError("IMGBB_API_KEY", "ImgBB"));
             }
             // Extract raw base64 from data URI
             const base64Data = klingImage.split(",")[1];
             const imageBuffer = Buffer.from(base64Data, "base64");
             const uploadResult = await uploadToImgbb(imageBuffer, imgbbKey);
             if (!uploadResult.success || !uploadResult.url) {
-              spinner.fail(chalk.red(`ImgBB upload failed: ${uploadResult.error}`));
-              process.exit(1);
+              spinner.fail(`ImgBB upload failed: ${uploadResult.error}`);
+              exitWithError(apiError(`ImgBB upload failed: ${uploadResult.error}`, true));
             }
             klingImage = uploadResult.url;
             spinner.text = "Starting video generation...";
@@ -211,8 +202,8 @@ export function registerVideoCommands(aiCommand: Command): void {
           });
 
           if (result.status === "failed") {
-            spinner.fail(chalk.red(result.error || "Failed to start generation"));
-            process.exit(1);
+            spinner.fail(result.error || "Failed to start generation");
+            exitWithError(apiError(result.error || "Failed to start Kling generation", true));
           }
 
           console.log();
@@ -293,8 +284,8 @@ export function registerVideoCommands(aiCommand: Command): void {
           });
 
           if (result.status === "failed") {
-            spinner.fail(chalk.red(result.error || "Failed to start generation"));
-            process.exit(1);
+            spinner.fail(result.error || "Failed to start generation");
+            exitWithError(apiError(result.error || "Failed to start Veo generation", true));
           }
 
           console.log();
@@ -331,8 +322,8 @@ export function registerVideoCommands(aiCommand: Command): void {
           });
 
           if (result.status === "failed") {
-            spinner.fail(chalk.red(result.error || "Failed to start generation"));
-            process.exit(1);
+            spinner.fail(result.error || "Failed to start generation");
+            exitWithError(apiError(result.error || "Failed to start Grok generation", true));
           }
 
           console.log();
@@ -359,8 +350,8 @@ export function registerVideoCommands(aiCommand: Command): void {
         }
 
         if (!finalResult || finalResult.status !== "completed") {
-          spinner.fail(chalk.red(finalResult?.error || "Generation failed"));
-          process.exit(1);
+          spinner.fail(finalResult?.error || "Generation failed");
+          exitWithError(apiError(finalResult?.error || "Video generation failed", true));
         }
 
         spinner.succeed(chalk.green("Video generated"));
@@ -386,9 +377,7 @@ export function registerVideoCommands(aiCommand: Command): void {
           }
         }
       } catch (error) {
-        console.error(chalk.red("Video generation failed"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(generalError(error instanceof Error ? error.message : "Video generation failed"));
       }
     });
 
@@ -403,8 +392,7 @@ export function registerVideoCommands(aiCommand: Command): void {
       try {
         const apiKey = await getApiKey("RUNWAY_API_SECRET", "Runway", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Runway API key required. Set RUNWAY_API_SECRET in .env or run: vibe setup"));
-          process.exit(1);
+          exitWithError(authError("RUNWAY_API_SECRET", "Runway"));
         }
 
         const spinner = ora("Checking status...").start();
@@ -456,9 +444,7 @@ export function registerVideoCommands(aiCommand: Command): void {
           }
         }
       } catch (error) {
-        console.error(chalk.red("Failed to get status"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(generalError(error instanceof Error ? error.message : "Failed to get status"));
       }
     });
 
@@ -471,8 +457,7 @@ export function registerVideoCommands(aiCommand: Command): void {
       try {
         const apiKey = await getApiKey("RUNWAY_API_SECRET", "Runway", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Runway API key required. Set RUNWAY_API_SECRET in .env or run: vibe setup"));
-          process.exit(1);
+          exitWithError(authError("RUNWAY_API_SECRET", "Runway"));
         }
 
         const spinner = ora("Cancelling generation...").start();
@@ -485,13 +470,11 @@ export function registerVideoCommands(aiCommand: Command): void {
         if (success) {
           spinner.succeed(chalk.green("Generation cancelled"));
         } else {
-          spinner.fail(chalk.red("Failed to cancel generation"));
-          process.exit(1);
+          spinner.fail("Failed to cancel generation");
+          exitWithError(apiError("Failed to cancel generation", true));
         }
       } catch (error) {
-        console.error(chalk.red("Failed to cancel"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(generalError(error instanceof Error ? error.message : "Failed to cancel generation"));
       }
     });
 
@@ -511,10 +494,7 @@ export function registerVideoCommands(aiCommand: Command): void {
       try {
         const apiKey = await getApiKey("KLING_API_KEY", "Kling", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Kling API key required. Set KLING_API_KEY in .env or run: vibe setup"));
-          console.error(chalk.dim("Format: ACCESS_KEY:SECRET_KEY"));
-          console.error(chalk.dim("Use --api-key or set KLING_API_KEY environment variable"));
-          process.exit(1);
+          exitWithError(authError("KLING_API_KEY", "Kling"));
         }
 
         const spinner = ora("Initializing Kling AI...").start();
@@ -523,8 +503,8 @@ export function registerVideoCommands(aiCommand: Command): void {
         await kling.initialize({ apiKey });
 
         if (!kling.isConfigured()) {
-          spinner.fail(chalk.red("Invalid API key format. Use ACCESS_KEY:SECRET_KEY"));
-          process.exit(1);
+          spinner.fail("Invalid API key format");
+          exitWithError(authError("KLING_API_KEY", "Kling"));
         }
 
         let referenceImage: string | undefined;
@@ -552,16 +532,15 @@ export function registerVideoCommands(aiCommand: Command): void {
           spinner.text = "Uploading image to ImgBB for Kling...";
           const imgbbKey = (await getApiKeyFromConfig("imgbb")) || process.env.IMGBB_API_KEY;
           if (!imgbbKey) {
-            spinner.fail(chalk.red("Kling requires image URL. Set IMGBB_API_KEY for auto-upload."));
-            console.error(chalk.dim("Run: vibe setup --full  to configure ImgBB"));
-            process.exit(1);
+            spinner.fail("Kling requires image URL. Set IMGBB_API_KEY for auto-upload.");
+            exitWithError(authError("IMGBB_API_KEY", "ImgBB"));
           }
           const base64Data = klingImage.split(",")[1];
           const imageBuffer = Buffer.from(base64Data, "base64");
           const uploadResult = await uploadToImgbb(imageBuffer, imgbbKey);
           if (!uploadResult.success || !uploadResult.url) {
-            spinner.fail(chalk.red(`ImgBB upload failed: ${uploadResult.error}`));
-            process.exit(1);
+            spinner.fail(`ImgBB upload failed: ${uploadResult.error}`);
+            exitWithError(apiError(`ImgBB upload failed: ${uploadResult.error}`, true));
           }
           klingImage = uploadResult.url;
         }
@@ -578,8 +557,8 @@ export function registerVideoCommands(aiCommand: Command): void {
         });
 
         if (result.status === "failed") {
-          spinner.fail(chalk.red(result.error || "Failed to start generation"));
-          process.exit(1);
+          spinner.fail(result.error || "Failed to start generation");
+          exitWithError(apiError(result.error || "Failed to start Kling generation", true));
         }
 
         console.log();
@@ -610,8 +589,8 @@ export function registerVideoCommands(aiCommand: Command): void {
         );
 
         if (finalResult.status !== "completed") {
-          spinner.fail(chalk.red(finalResult.error || "Generation failed"));
-          process.exit(1);
+          spinner.fail(finalResult.error || "Generation failed");
+          exitWithError(apiError(finalResult.error || "Kling video generation failed", true));
         }
 
         spinner.succeed(chalk.green("Video generated"));
@@ -637,9 +616,7 @@ export function registerVideoCommands(aiCommand: Command): void {
           }
         }
       } catch (error) {
-        console.error(chalk.red("Video generation failed"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(generalError(error instanceof Error ? error.message : "Video generation failed"));
       }
     });
 
@@ -655,8 +632,7 @@ export function registerVideoCommands(aiCommand: Command): void {
       try {
         const apiKey = await getApiKey("KLING_API_KEY", "Kling", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Kling API key required. Set KLING_API_KEY in .env or run: vibe setup"));
-          process.exit(1);
+          exitWithError(authError("KLING_API_KEY", "Kling"));
         }
 
         const spinner = ora("Checking status...").start();
@@ -709,9 +685,7 @@ export function registerVideoCommands(aiCommand: Command): void {
           }
         }
       } catch (error) {
-        console.error(chalk.red("Failed to get status"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(generalError(error instanceof Error ? error.message : "Failed to get Kling status"));
       }
     });
 
@@ -729,10 +703,7 @@ export function registerVideoCommands(aiCommand: Command): void {
       try {
         const apiKey = await getApiKey("KLING_API_KEY", "Kling", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Kling API key required. Set KLING_API_KEY in .env or run: vibe setup"));
-          console.error(chalk.dim("Format: ACCESS_KEY:SECRET_KEY"));
-          console.error(chalk.dim("Use --api-key or set KLING_API_KEY environment variable"));
-          process.exit(1);
+          exitWithError(authError("KLING_API_KEY", "Kling"));
         }
 
         const spinner = ora("Initializing Kling AI...").start();
@@ -741,8 +712,8 @@ export function registerVideoCommands(aiCommand: Command): void {
         await kling.initialize({ apiKey });
 
         if (!kling.isConfigured()) {
-          spinner.fail(chalk.red("Invalid API key format. Use ACCESS_KEY:SECRET_KEY"));
-          process.exit(1);
+          spinner.fail("Invalid API key format");
+          exitWithError(authError("KLING_API_KEY", "Kling"));
         }
 
         spinner.text = "Starting video extension...";
@@ -754,8 +725,8 @@ export function registerVideoCommands(aiCommand: Command): void {
         });
 
         if (result.status === "failed") {
-          spinner.fail(chalk.red(result.error || "Failed to start extension"));
-          process.exit(1);
+          spinner.fail(result.error || "Failed to start extension");
+          exitWithError(apiError(result.error || "Failed to start Kling video extension", true));
         }
 
         console.log();
@@ -783,8 +754,8 @@ export function registerVideoCommands(aiCommand: Command): void {
         );
 
         if (finalResult.status !== "completed") {
-          spinner.fail(chalk.red(finalResult.error || "Extension failed"));
-          process.exit(1);
+          spinner.fail(finalResult.error || "Extension failed");
+          exitWithError(apiError(finalResult.error || "Kling video extension failed", true));
         }
 
         spinner.succeed(chalk.green("Video extended"));
@@ -810,9 +781,7 @@ export function registerVideoCommands(aiCommand: Command): void {
           }
         }
       } catch (error) {
-        console.error(chalk.red("Video extension failed"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(generalError(error instanceof Error ? error.message : "Video extension failed"));
       }
     });
 
@@ -830,9 +799,7 @@ export function registerVideoCommands(aiCommand: Command): void {
       try {
         const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Google API key required. Set GOOGLE_API_KEY in .env or run: vibe setup"));
-          console.error(chalk.dim("Use --api-key or set GOOGLE_API_KEY environment variable"));
-          process.exit(1);
+          exitWithError(authError("GOOGLE_API_KEY", "Google"));
         }
 
         const spinner = ora("Initializing Veo...").start();
@@ -855,8 +822,8 @@ export function registerVideoCommands(aiCommand: Command): void {
         });
 
         if (result.status === "failed") {
-          spinner.fail(chalk.red(result.error || "Failed to start extension"));
-          process.exit(1);
+          spinner.fail(result.error || "Failed to start extension");
+          exitWithError(apiError(result.error || "Failed to start Veo video extension", true));
         }
 
         console.log();
@@ -883,8 +850,8 @@ export function registerVideoCommands(aiCommand: Command): void {
         );
 
         if (finalResult.status !== "completed") {
-          spinner.fail(chalk.red(finalResult.error || "Extension failed"));
-          process.exit(1);
+          spinner.fail(finalResult.error || "Extension failed");
+          exitWithError(apiError(finalResult.error || "Veo video extension failed", true));
         }
 
         spinner.succeed(chalk.green("Video extended"));
@@ -907,9 +874,7 @@ export function registerVideoCommands(aiCommand: Command): void {
           }
         }
       } catch (error) {
-        console.error(chalk.red("Video extension failed"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(generalError(error instanceof Error ? error.message : "Video extension failed"));
       }
     });
 }

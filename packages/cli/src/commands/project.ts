@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import chalk from "chalk";
 import ora from "ora";
 import { Project, type ProjectFile } from "../engine/index.js";
+import { exitWithError, generalError } from "./output.js";
 
 /**
  * Resolve project file path - handles both file paths and directory paths
@@ -74,9 +75,9 @@ projectCommand
       console.log(chalk.dim("  Aspect Ratio:"), options.ratio);
       console.log(chalk.dim("  Frame Rate:"), options.fps, "fps");
     } catch (error) {
-      spinner.fail(chalk.red("Failed to create project"));
-      console.error(error);
-      process.exit(1);
+      spinner.fail("Failed to create project");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Failed to create project: ${msg}`));
     }
   });
 
@@ -114,9 +115,9 @@ projectCommand
       console.log(chalk.dim("  Updated:"), meta.updatedAt.toLocaleString());
       console.log();
     } catch (error) {
-      spinner.fail(chalk.red("Failed to load project"));
-      console.error(error);
-      process.exit(1);
+      spinner.fail("Failed to load project");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Failed to load project: ${msg}`));
     }
   });
 
@@ -144,9 +145,9 @@ projectCommand
 
       spinner.succeed(chalk.green("Project updated"));
     } catch (error) {
-      spinner.fail(chalk.red("Failed to update project"));
-      console.error(error);
-      process.exit(1);
+      spinner.fail("Failed to update project");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Failed to update project: ${msg}`));
     }
   });
 

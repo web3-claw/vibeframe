@@ -24,6 +24,7 @@ import { Project, type ProjectFile } from '../engine/index.js';
 import { getApiKey } from '../utils/api-key.js';
 import { formatTime, applySuggestion } from './ai-helpers.js';
 import { executeCommand } from './ai.js';
+import { exitWithError, authError, usageError, apiError, generalError } from './output.js';
 
 export function registerSuggestEditCommands(ai: Command): void {
   ai
@@ -37,8 +38,7 @@ export function registerSuggestEditCommands(ai: Command): void {
       try {
         const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Google API key required. Use --api-key or set GOOGLE_API_KEY"));
-          process.exit(1);
+          exitWithError(authError("GOOGLE_API_KEY", "Google"));
         }
 
         const spinner = ora("Initializing Gemini...").start();
@@ -88,9 +88,7 @@ export function registerSuggestEditCommands(ai: Command): void {
 
         console.log();
       } catch (error) {
-        console.error(chalk.red("AI suggestion failed"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(generalError(error instanceof Error ? error.message : "AI suggestion failed"));
       }
     });
 
@@ -105,8 +103,7 @@ export function registerSuggestEditCommands(ai: Command): void {
       try {
         const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("OpenAI API key required. Use --api-key or set OPENAI_API_KEY"));
-          process.exit(1);
+          exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
         }
 
         const spinner = ora("Parsing command...").start();
@@ -125,8 +122,8 @@ export function registerSuggestEditCommands(ai: Command): void {
         const result = await gpt.parseCommand(instruction, { clips, tracks });
 
         if (!result.success) {
-          spinner.fail(chalk.red(result.error || "Failed to parse command"));
-          process.exit(1);
+          spinner.fail(result.error || "Failed to parse command");
+          exitWithError(apiError(result.error || "Failed to parse command", true));
         }
 
         if (result.clarification) {
@@ -175,9 +172,7 @@ export function registerSuggestEditCommands(ai: Command): void {
         spinner.succeed(chalk.green(`Executed ${executed}/${result.commands.length} commands`));
         console.log();
       } catch (error) {
-        console.error(chalk.red("AI edit failed"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(generalError(error instanceof Error ? error.message : "AI edit failed"));
       }
     });
 
@@ -194,15 +189,13 @@ export function registerSuggestEditCommands(ai: Command): void {
       try {
         const apiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Anthropic API key required. Use --api-key or set ANTHROPIC_API_KEY"));
-          process.exit(1);
+          exitWithError(authError("ANTHROPIC_API_KEY", "Anthropic"));
         }
 
         // Validate creativity level
         const creativity = options.creativity?.toLowerCase();
         if (creativity && creativity !== "low" && creativity !== "high") {
-          console.error(chalk.red("Invalid creativity level. Use 'low' or 'high'."));
-          process.exit(1);
+          exitWithError(usageError("Invalid creativity level. Use 'low' or 'high'."));
         }
 
         let textContent = content;
@@ -226,8 +219,8 @@ export function registerSuggestEditCommands(ai: Command): void {
         );
 
         if (segments.length === 0) {
-          spinner.fail(chalk.red("Could not generate storyboard"));
-          process.exit(1);
+          spinner.fail("Could not generate storyboard");
+          exitWithError(apiError("Could not generate storyboard", true));
         }
 
         spinner.succeed(chalk.green(`Generated ${segments.length} segments`));
@@ -256,9 +249,7 @@ export function registerSuggestEditCommands(ai: Command): void {
           console.log(chalk.green(`Saved to: ${outputPath}`));
         }
       } catch (error) {
-        console.error(chalk.red("Storyboard generation failed"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(generalError(error instanceof Error ? error.message : "Storyboard generation failed"));
       }
     });
 }

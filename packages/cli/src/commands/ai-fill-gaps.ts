@@ -21,6 +21,7 @@ import { Project, type ProjectFile } from '../engine/index.js';
 import { getApiKey } from '../utils/api-key.js';
 import { execSafe, ffprobeDuration } from '../utils/exec-safe.js';
 import { formatTime, downloadVideo } from './ai-helpers.js';
+import { exitWithError, authError, apiError, generalError } from './output.js';
 
 // ── Helper functions (module-private) ────────────────────────────────────────
 
@@ -159,8 +160,8 @@ aiCommand
       }).sort((a, b) => a.startTime - b.startTime);
 
       if (videoClips.length === 0) {
-        spinner.fail(chalk.red("Project has no video clips"));
-        process.exit(1);
+        spinner.fail("Project has no video clips");
+        exitWithError(generalError("Project has no video clips"));
       }
 
       // Determine total duration (use audio track if available)
@@ -237,18 +238,14 @@ aiCommand
       // Get Kling API key
       const apiKey = await getApiKey("KLING_API_KEY", "Kling", undefined);
       if (!apiKey) {
-        console.error(chalk.red("Kling API key required for AI video generation. Set KLING_API_KEY in .env or run: vibe setup"));
-        console.error(chalk.dim("Format: ACCESS_KEY:SECRET_KEY"));
-        console.error(chalk.dim("Set KLING_API_KEY environment variable"));
-        process.exit(1);
+        exitWithError(authError("KLING_API_KEY", "Kling"));
       }
 
       const kling = new KlingProvider();
       await kling.initialize({ apiKey });
 
       if (!kling.isConfigured()) {
-        console.error(chalk.red("Invalid Kling API key format. Use ACCESS_KEY:SECRET_KEY"));
-        process.exit(1);
+        exitWithError(authError("KLING_API_KEY", "Kling"));
       }
 
       // Determine output directory for generated videos
@@ -558,9 +555,7 @@ aiCommand
 
       console.log();
     } catch (error) {
-      console.error(chalk.red("Fill gaps failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Fill gaps failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 }

@@ -12,6 +12,7 @@ import { AgentExecutor } from "../agent/index.js";
 import { getApiKeyFromConfig, type LLMProvider } from "../config/index.js";
 import { hasTTY } from "../utils/tty.js";
 import { loadEnv } from "../utils/api-key.js";
+import { exitWithError, authError, generalError } from "./output.js";
 
 const require = createRequire(import.meta.url);
 const pkg = require("../../package.json");
@@ -62,10 +63,7 @@ export async function startAgent(options: StartAgentOptions = {}): Promise<void>
 
   // Check if TTY is available (skip for non-interactive mode)
   if (!isNonInteractive && !hasTTY()) {
-    console.error(chalk.red("Error: Agent mode requires a terminal."));
-    console.log(chalk.dim("Run 'vibe agent' directly from your terminal."));
-    console.log(chalk.dim("Or use --input <query> for non-interactive mode."));
-    process.exit(1);
+    exitWithError(generalError("Agent mode requires a terminal.", "Run 'vibe agent' directly from your terminal, or use --input <query> for non-interactive mode."));
   }
 
   const provider = (options.provider || "openai") as LLMProvider;
@@ -91,12 +89,8 @@ export async function startAgent(options: StartAgentOptions = {}): Promise<void>
   if (provider !== "ollama") {
     apiKey = await getApiKeyFromConfig(providerKeyMap[provider]);
     if (!apiKey) {
-      spinner.fail(chalk.red(`API key required for ${provider}`));
-      console.log();
-      console.log(chalk.yellow("Configure your API key:"));
-      console.log(chalk.dim("  Run: vibe setup"));
-      console.log(chalk.dim(`  Or set: ${getEnvVar(provider)}`));
-      process.exit(1);
+      spinner.fail(`API key required for ${provider}`);
+      exitWithError(authError(getEnvVar(provider), provider));
     }
   } else {
     apiKey = "http://localhost:11434"; // Default Ollama URL
@@ -118,9 +112,9 @@ export async function startAgent(options: StartAgentOptions = {}): Promise<void>
     await agent.initialize();
     spinner.succeed(chalk.green("Agent initialized"));
   } catch (error) {
-    spinner.fail(chalk.red("Failed to initialize agent"));
-    console.error(error);
-    process.exit(1);
+    spinner.fail("Failed to initialize agent");
+    const msg = error instanceof Error ? error.message : String(error);
+    exitWithError(generalError(`Failed to initialize agent: ${msg}`));
   }
 
   // Non-interactive mode: run single query and exit
@@ -140,8 +134,7 @@ export async function startAgent(options: StartAgentOptions = {}): Promise<void>
 
       process.exit(0);
     } catch (error) {
-      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
-      process.exit(1);
+      exitWithError(generalError(error instanceof Error ? error.message : String(error)));
     }
   }
 

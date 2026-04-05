@@ -18,6 +18,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { ClaudeProvider, GeminiProvider } from '@vibeframe/ai-providers';
 import { getApiKey } from '../utils/api-key.js';
+import { exitWithError, apiError, generalError } from './output.js';
 
 // ── Motion: exported function for Agent tool ────────────────────────────────
 
@@ -307,11 +308,11 @@ export function registerMotionCommand(aiCommand: Command): void {
         });
 
         if (!result.success) {
-          spinner.fail(chalk.red(result.error || "Motion generation failed"));
+          spinner.fail(result.error || "Motion generation failed");
           if (result.codePath) {
             console.log(chalk.dim(`TSX code saved to: ${result.codePath}`));
           }
-          process.exit(1);
+          exitWithError(apiError(result.error || "Motion generation failed", true));
         }
 
         spinner.succeed(chalk.green("Motion graphic generated"));
@@ -339,9 +340,7 @@ export function registerMotionCommand(aiCommand: Command): void {
 
         console.log();
       } catch (error) {
-        console.error(chalk.red("Motion generation failed"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(generalError(error instanceof Error ? error.message : "Motion generation failed"));
       }
     });
 }

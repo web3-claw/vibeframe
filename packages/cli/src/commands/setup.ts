@@ -16,6 +16,7 @@ import {
   type LLMProvider,
   PROVIDER_NAMES,
 } from "../config/index.js";
+import { exitWithError, generalError } from "./output.js";
 import {
   promptHidden,
   promptSelect,
@@ -52,9 +53,7 @@ export const setupCommand = new Command("setup")
 
     // Check if TTY is available
     if (!hasTTY()) {
-      console.error(chalk.red("Error: Interactive setup requires a terminal."));
-      console.log(chalk.dim("Run 'vibe setup' directly from your terminal."));
-      process.exit(1);
+      exitWithError(generalError("Interactive setup requires a terminal.", "Run 'vibe setup' directly from your terminal."));
     }
 
     try {

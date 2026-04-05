@@ -20,6 +20,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { GeminiProvider } from "@vibeframe/ai-providers";
 import { getApiKey } from "../utils/api-key.js";
+import { exitWithError, authError, apiError } from "./output.js";
 
 /** Options for {@link executeGeminiVideo}. */
 export interface GeminiVideoOptions {
@@ -317,9 +318,7 @@ export function registerAnalyzeCommands(aiCommand: Command): void {
         } else {
           const apiKey = await getApiKey("GOOGLE_API_KEY", "Google");
           if (!apiKey) {
-            console.error(chalk.red("Google API key required. Set GOOGLE_API_KEY in .env or run: vibe setup"));
-            console.error(chalk.dim("Use --api-key or set GOOGLE_API_KEY environment variable"));
-            process.exit(1);
+            exitWithError(authError("GOOGLE_API_KEY", "Google"));
           }
         }
 
@@ -335,8 +334,8 @@ export function registerAnalyzeCommands(aiCommand: Command): void {
         });
 
         if (!result.success) {
-          spinner.fail(chalk.red(result.error || "Video analysis failed"));
-          process.exit(1);
+          spinner.fail("Video analysis failed");
+          exitWithError(apiError(result.error || "Video analysis failed", true));
         }
 
         spinner.succeed(chalk.green("Video analyzed"));
@@ -356,9 +355,7 @@ export function registerAnalyzeCommands(aiCommand: Command): void {
           console.log(chalk.dim(`Total tokens: ${result.totalTokens.toLocaleString()}`));
         }
       } catch (error) {
-        console.error(chalk.red("Video analysis failed"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(apiError(`Video analysis failed: ${error instanceof Error ? error.message : String(error)}`, true));
       }
     });
 
@@ -381,9 +378,7 @@ export function registerAnalyzeCommands(aiCommand: Command): void {
         } else {
           const apiKey = await getApiKey("GOOGLE_API_KEY", "Google");
           if (!apiKey) {
-            console.error(chalk.red("Google API key required. Set GOOGLE_API_KEY in .env or run: vibe setup"));
-            console.error(chalk.dim("Use --api-key or set GOOGLE_API_KEY environment variable"));
-            process.exit(1);
+            exitWithError(authError("GOOGLE_API_KEY", "Google"));
           }
         }
 
@@ -399,8 +394,8 @@ export function registerAnalyzeCommands(aiCommand: Command): void {
         });
 
         if (!result.success) {
-          spinner.fail(chalk.red(result.error || "Analysis failed"));
-          process.exit(1);
+          spinner.fail("Analysis failed");
+          exitWithError(apiError(result.error || "Analysis failed", true));
         }
 
         spinner.succeed(chalk.green("Analysis complete"));
@@ -421,9 +416,7 @@ export function registerAnalyzeCommands(aiCommand: Command): void {
           console.log(chalk.dim(`Total tokens: ${result.totalTokens.toLocaleString()}`));
         }
       } catch (error) {
-        console.error(chalk.red("Analysis failed"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(apiError(`Analysis failed: ${error instanceof Error ? error.message : String(error)}`, true));
       }
     });
 }

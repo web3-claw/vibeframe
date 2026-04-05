@@ -30,6 +30,7 @@ import { Project } from "../engine/index.js";
 import { getApiKey } from "../utils/api-key.js";
 import { formatTime } from "./ai-helpers.js";
 import { execSafe, commandExists, ffprobeDuration } from "../utils/exec-safe.js";
+import { exitWithError, authError, notFoundError, apiError, generalError } from "./output.js";
 
 // ============================================================================
 // Shared helpers
@@ -687,8 +688,7 @@ export function registerHighlightsCommands(aiCommand: Command): void {
       try {
         const absPath = resolve(process.cwd(), mediaPath);
         if (!existsSync(absPath)) {
-          console.error(chalk.red(`File not found: ${absPath}`));
-          process.exit(1);
+          exitWithError(notFoundError(absPath));
         }
 
         const ext = extname(absPath).toLowerCase();
@@ -714,9 +714,7 @@ export function registerHighlightsCommands(aiCommand: Command): void {
         if (options.useGemini && isVideo) {
           const geminiApiKey = await getApiKey("GOOGLE_API_KEY", "Google");
           if (!geminiApiKey) {
-            console.error(chalk.red("Google API key required for Gemini Video Understanding. Set GOOGLE_API_KEY in .env or run: vibe setup"));
-            console.error(chalk.dim("Set GOOGLE_API_KEY environment variable"));
-            process.exit(1);
+            exitWithError(authError("GOOGLE_API_KEY", "Google"));
           }
 
           const durationSpinner = ora("📊 Analyzing video metadata...").start();
@@ -724,8 +722,8 @@ export function registerHighlightsCommands(aiCommand: Command): void {
             sourceDuration = await ffprobeDuration(absPath);
             durationSpinner.succeed(chalk.green(`Video duration: ${formatTime(sourceDuration)}`));
           } catch {
-            durationSpinner.fail(chalk.red("Failed to get video duration"));
-            process.exit(1);
+            durationSpinner.fail("Failed to get video duration");
+            exitWithError(generalError("Failed to get video duration"));
           }
 
           const geminiSpinner = ora("🎬 Analyzing video with Gemini (visual + audio)...").start();
@@ -774,8 +772,8 @@ Analyze both what is SHOWN (visual cues, actions, expressions) and what is SAID 
           });
 
           if (!result.success || !result.response) {
-            geminiSpinner.fail(chalk.red(`Gemini analysis failed: ${result.error}`));
-            process.exit(1);
+            geminiSpinner.fail("Gemini analysis failed");
+            exitWithError(apiError(`Gemini analysis failed: ${result.error}`, true));
           }
 
           try {
@@ -806,24 +804,20 @@ Analyze both what is SHOWN (visual cues, actions, expressions) and what is SAID 
               }));
             }
           } catch {
-            geminiSpinner.fail(chalk.red("Failed to parse Gemini response"));
-            process.exit(1);
+            geminiSpinner.fail("Failed to parse Gemini response");
+            exitWithError(apiError("Failed to parse Gemini response", true));
           }
 
           geminiSpinner.succeed(chalk.green(`Found ${allHighlights.length} highlights via visual+audio analysis`));
         } else {
           const openaiApiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
           if (!openaiApiKey) {
-            console.error(chalk.red("OpenAI API key required for Whisper transcription. Set OPENAI_API_KEY in .env or run: vibe setup"));
-            console.error(chalk.dim("Set OPENAI_API_KEY environment variable"));
-            process.exit(1);
+            exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
           }
 
           const claudeApiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic");
           if (!claudeApiKey) {
-            console.error(chalk.red("Anthropic API key required for highlight analysis. Set ANTHROPIC_API_KEY in .env or run: vibe setup"));
-            console.error(chalk.dim("Set ANTHROPIC_API_KEY environment variable"));
-            process.exit(1);
+            exitWithError(authError("ANTHROPIC_API_KEY", "Anthropic"));
           }
 
           let audioPath = absPath;
@@ -833,8 +827,8 @@ Analyze both what is SHOWN (visual cues, actions, expressions) and what is SAID 
             const audioSpinner = ora("🎵 Extracting audio from video...").start();
             try {
               if (!commandExists("ffmpeg")) {
-                audioSpinner.fail(chalk.red("FFmpeg not found. Please install FFmpeg."));
-                process.exit(1);
+                audioSpinner.fail("FFmpeg not found");
+                exitWithError(generalError("FFmpeg not found. Please install FFmpeg."));
               }
 
               const { stdout: probeOut } = await execSafe("ffprobe", [
@@ -843,10 +837,8 @@ Analyze both what is SHOWN (visual cues, actions, expressions) and what is SAID 
               const hasAudio = probeOut.trim().length > 0;
 
               if (!hasAudio) {
-                audioSpinner.fail(chalk.yellow("Video has no audio track — cannot use Whisper transcription"));
-                console.log(chalk.yellow("\n⚠ This video has no audio stream."));
-                console.log(chalk.dim("  Use --use-gemini flag for visual-only analysis of videos without audio."));
-                process.exit(1);
+                audioSpinner.fail("Video has no audio track");
+                exitWithError(generalError("Video has no audio track — cannot use Whisper transcription.", "Use --use-gemini flag for visual-only analysis of videos without audio."));
               } else {
                 tempAudioPath = `/tmp/vibe_highlight_audio_${Date.now()}.wav`;
                 await execSafe("ffmpeg", [
@@ -861,9 +853,8 @@ Analyze both what is SHOWN (visual cues, actions, expressions) and what is SAID 
                 audioSpinner.succeed(chalk.green(`Extracted audio (${formatTime(sourceDuration)} total duration)`));
               }
             } catch (error) {
-              audioSpinner.fail(chalk.red("Failed to extract audio"));
-              console.error(error);
-              process.exit(1);
+              audioSpinner.fail("Failed to extract audio");
+              exitWithError(generalError(`Failed to extract audio: ${error instanceof Error ? error.message : String(error)}`));
             }
           }
 
@@ -877,12 +868,12 @@ Analyze both what is SHOWN (visual cues, actions, expressions) and what is SAID 
           const transcriptResult = await whisper.transcribe(audioBlob, options.language);
 
           if (transcriptResult.status === "failed" || !transcriptResult.segments) {
-            transcribeSpinner.fail(chalk.red(`Transcription failed: ${transcriptResult.error}`));
+            transcribeSpinner.fail("Transcription failed");
             if (tempAudioPath && existsSync(tempAudioPath)) {
               const { unlink: unlinkFile } = await import("node:fs/promises");
               await unlinkFile(tempAudioPath).catch(() => {});
             }
-            process.exit(1);
+            exitWithError(apiError(`Transcription failed: ${transcriptResult.error}`, true));
           }
 
           transcribeSpinner.succeed(chalk.green(`Transcribed ${transcriptResult.segments.length} segments`));
@@ -977,8 +968,8 @@ Analyze both what is SHOWN (visual cues, actions, expressions) and what is SAID 
 
           const videoTrack = project.getTracks().find((t) => t.type === "video");
           if (!videoTrack) {
-            projectSpinner.fail(chalk.red("Failed to create project"));
-            process.exit(1);
+            projectSpinner.fail("Failed to create project");
+            exitWithError(generalError("Failed to create project: no video track"));
           }
 
           let currentTime = 0;
@@ -1003,9 +994,7 @@ Analyze both what is SHOWN (visual cues, actions, expressions) and what is SAID 
         console.log(chalk.bold.green("✅ Highlight extraction complete!"));
         console.log();
       } catch (error) {
-        console.error(chalk.red("Highlight extraction failed"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(apiError(`Highlight extraction failed: ${error instanceof Error ? error.message : String(error)}`, true));
       }
     });
 
@@ -1028,14 +1017,12 @@ Analyze both what is SHOWN (visual cues, actions, expressions) and what is SAID 
     .action(async (videoPath: string, options) => {
       try {
         if (!commandExists("ffmpeg")) {
-          console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-          process.exit(1);
+          exitWithError(generalError("FFmpeg not found. Please install FFmpeg."));
         }
 
         const absPath = resolve(process.cwd(), videoPath);
         if (!existsSync(absPath)) {
-          console.error(chalk.red(`File not found: ${absPath}`));
-          process.exit(1);
+          exitWithError(notFoundError(absPath));
         }
 
         const targetDuration = parseInt(options.duration);
@@ -1056,9 +1043,7 @@ Analyze both what is SHOWN (visual cues, actions, expressions) and what is SAID 
         if (options.useGemini) {
           const geminiApiKey = await getApiKey("GOOGLE_API_KEY", "Google");
           if (!geminiApiKey) {
-            console.error(chalk.red("Google API key required for Gemini Video Understanding. Set GOOGLE_API_KEY in .env or run: vibe setup"));
-            console.error(chalk.dim("Set GOOGLE_API_KEY environment variable"));
-            process.exit(1);
+            exitWithError(authError("GOOGLE_API_KEY", "Google"));
           }
 
           const spinner = ora("🎬 Analyzing video with Gemini (visual + audio)...").start();
@@ -1107,8 +1092,8 @@ Analyze both VISUALS (expressions, actions, scene changes) and AUDIO (speech, re
           });
 
           if (!result.success || !result.response) {
-            spinner.fail(chalk.red(`Gemini analysis failed: ${result.error}`));
-            process.exit(1);
+            spinner.fail("Gemini analysis failed");
+            exitWithError(apiError(`Gemini analysis failed: ${result.error}`, true));
           }
 
           try {
@@ -1138,22 +1123,20 @@ Analyze both VISUALS (expressions, actions, scene changes) and AUDIO (speech, re
               }));
             }
           } catch {
-            spinner.fail(chalk.red("Failed to parse Gemini response"));
-            process.exit(1);
+            spinner.fail("Failed to parse Gemini response");
+            exitWithError(apiError("Failed to parse Gemini response", true));
           }
 
           spinner.succeed(chalk.green(`Found ${highlights.length} potential shorts via visual+audio analysis`));
         } else {
           const openaiApiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
           if (!openaiApiKey) {
-            console.error(chalk.red("OpenAI API key required for transcription. Set OPENAI_API_KEY in .env or run: vibe setup"));
-            process.exit(1);
+            exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
           }
 
           const claudeApiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic");
           if (!claudeApiKey) {
-            console.error(chalk.red("Anthropic API key required for highlight detection. Set ANTHROPIC_API_KEY in .env or run: vibe setup"));
-            process.exit(1);
+            exitWithError(authError("ANTHROPIC_API_KEY", "Anthropic"));
           }
 
           const spinner = ora("Extracting audio...").start();
@@ -1162,10 +1145,8 @@ Analyze both VISUALS (expressions, actions, scene changes) and AUDIO (speech, re
             "-v", "error", "-select_streams", "a", "-show_entries", "stream=codec_type", "-of", "csv=p=0", absPath,
           ]);
           if (!autoShortsProbe.trim()) {
-            spinner.fail(chalk.yellow("Video has no audio track — cannot use Whisper transcription"));
-            console.log(chalk.yellow("\n⚠ This video has no audio stream."));
-            console.log(chalk.dim("  Use --use-gemini flag for visual-only analysis of videos without audio."));
-            process.exit(1);
+            spinner.fail("Video has no audio track");
+            exitWithError(generalError("Video has no audio track — cannot use Whisper transcription.", "Use --use-gemini flag for visual-only analysis of videos without audio."));
           }
 
           const tempAudio = absPath.replace(/(\.[^.]+)$/, "-temp-audio.mp3");
@@ -1186,8 +1167,8 @@ Analyze both VISUALS (expressions, actions, scene changes) and AUDIO (speech, re
           } catch { /* ignore cleanup errors */ }
 
           if (!transcript.segments || transcript.segments.length === 0) {
-            spinner.fail(chalk.red("No transcript found"));
-            process.exit(1);
+            spinner.fail("No transcript found");
+            exitWithError(apiError("No transcript found", true));
           }
 
           spinner.text = "Finding highlights...";
@@ -1205,8 +1186,7 @@ Analyze both VISUALS (expressions, actions, scene changes) and AUDIO (speech, re
         }
 
         if (highlights.length === 0) {
-          console.error(chalk.red("No highlights found"));
-          process.exit(1);
+          exitWithError(apiError("No highlights found", false));
         }
 
         highlights.sort((a, b) => b.confidence - a.confidence);
@@ -1295,9 +1275,7 @@ Analyze both VISUALS (expressions, actions, scene changes) and AUDIO (speech, re
         console.log(chalk.bold.green(`Generated ${selectedHighlights.length} short(s)`));
         console.log();
       } catch (error) {
-        console.error(chalk.red("Auto shorts failed"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(apiError(`Auto shorts failed: ${error instanceof Error ? error.message : String(error)}`, true));
       }
     });
 }

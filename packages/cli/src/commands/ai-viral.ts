@@ -26,6 +26,7 @@ import { getApiKey } from "../utils/api-key.js";
 import { execSafe, commandExists } from "../utils/exec-safe.js";
 import { formatTime } from "./ai-helpers.js";
 import { autoNarrate } from "./ai-narrate.js";
+import { exitWithError, authError, notFoundError, usageError, apiError, generalError } from "./output.js";
 
 // Platform specifications for viral optimization
 export const PLATFORM_SPECS: Record<string, PlatformSpec> = {
@@ -103,16 +104,12 @@ export function registerViralCommand(ai: Command): void {
         // Validate API keys
         const openaiApiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
         if (!openaiApiKey) {
-          console.error(chalk.red("OpenAI API key required for Whisper transcription. Set OPENAI_API_KEY in .env or run: vibe setup"));
-          console.error(chalk.dim("Set OPENAI_API_KEY environment variable"));
-          process.exit(1);
+          exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
         }
 
         const claudeApiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic");
         if (!claudeApiKey) {
-          console.error(chalk.red("Anthropic API key required for viral analysis. Set ANTHROPIC_API_KEY in .env or run: vibe setup"));
-          console.error(chalk.dim("Set ANTHROPIC_API_KEY environment variable"));
-          process.exit(1);
+          exitWithError(authError("ANTHROPIC_API_KEY", "Anthropic"));
         }
 
         // Load project
@@ -138,16 +135,14 @@ export function registerViralCommand(ai: Command): void {
               if (files.length > 0) {
                 filePath = resolve(filePath, files[0]);
               } else {
-                console.error(chalk.red(`No .vibe.json project file found in: ${filePath}`));
-                process.exit(1);
+                exitWithError(notFoundError(filePath));
               }
             }
           }
         } catch { /* not a directory, treat as file */ }
 
         if (!existsSync(filePath)) {
-          console.error(chalk.red(`Project file not found: ${filePath}`));
-          process.exit(1);
+          exitWithError(notFoundError(filePath));
         }
 
         const content = await readFile(filePath, "utf-8");
@@ -163,9 +158,7 @@ export function registerViralCommand(ai: Command): void {
           // Validate platforms
           for (const platform of targetPlatforms) {
             if (!PLATFORM_SPECS[platform]) {
-              console.error(chalk.red(`Unknown platform: ${platform}`));
-              console.error(chalk.dim(`Available: ${Object.keys(PLATFORM_SPECS).join(", ")}`));
-              process.exit(1);
+              exitWithError(usageError(`Unknown platform: ${platform}`, `Available: ${Object.keys(PLATFORM_SPECS).join(", ")}`));
             }
           }
         }
@@ -214,8 +207,7 @@ export function registerViralCommand(ai: Command): void {
           });
 
           if (!narrateResult.success) {
-            console.error(chalk.red(`Auto-narrate failed: ${narrateResult.error}`));
-            process.exit(1);
+            exitWithError(apiError(`Auto-narrate failed: ${narrateResult.error}`, true));
           }
 
           console.log(chalk.green(`✔ Generated narration: ${narrateResult.audioPath}`));
@@ -256,14 +248,12 @@ export function registerViralCommand(ai: Command): void {
 
         const mediaSource = audioSource || videoSource;
         if (!mediaSource) {
-          console.error(chalk.red("No video or audio source found in project"));
-          process.exit(1);
+          exitWithError(generalError("No video or audio source found in project"));
         }
 
         // Check FFmpeg availability
         if (!commandExists("ffmpeg")) {
-          console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-          process.exit(1);
+          exitWithError(generalError("FFmpeg not found.", "Install FFmpeg: https://ffmpeg.org/download.html"));
         }
 
         const transcribeSpinner = ora("📝 Transcribing content with Whisper...").start();
@@ -296,8 +286,8 @@ export function registerViralCommand(ai: Command): void {
         }
 
         if (transcriptResult.status === "failed" || !transcriptResult.segments) {
-          transcribeSpinner.fail(chalk.red(`Transcription failed: ${transcriptResult.error}`));
-          process.exit(1);
+          transcribeSpinner.fail(`Transcription failed: ${transcriptResult.error}`);
+          exitWithError(apiError(`Transcription failed: ${transcriptResult.error}`, true));
         }
 
         transcribeSpinner.succeed(chalk.green(`Transcribed ${transcriptResult.segments.length} segments`));
@@ -587,9 +577,7 @@ export function registerViralCommand(ai: Command): void {
         }
         console.log();
       } catch (error) {
-        console.error(chalk.red("Viral optimization failed"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(generalError(error instanceof Error ? error.message : "Viral optimization failed"));
       }
     });
 }

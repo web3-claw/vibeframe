@@ -6,6 +6,7 @@ import ora from "ora";
 import { Project, type ProjectFile } from "../engine/index.js";
 import type { MediaType } from "@vibeframe/core/timeline";
 import { validateResourceId } from "./validate.js";
+import { exitWithError, generalError, notFoundError, usageError } from "./output.js";
 
 export const timelineCommand = new Command("timeline")
   .description("Timeline editing commands")
@@ -59,9 +60,9 @@ timelineCommand
       console.log(chalk.dim("  Path:"), absMediaPath);
       console.log(chalk.dim("  Duration:"), duration, "s");
     } catch (error) {
-      spinner.fail(chalk.red("Failed to add source"));
-      console.error(error);
-      process.exit(1);
+      spinner.fail("Failed to add source");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Failed to add source: ${msg}`));
     }
   });
 
@@ -88,8 +89,8 @@ timelineCommand
 
       const source = project.getSource(sourceId);
       if (!source) {
-        spinner.fail(chalk.red(`Source not found: ${sourceId}`));
-        process.exit(1);
+        spinner.fail(`Source not found: ${sourceId}`);
+        exitWithError(notFoundError(sourceId));
       }
 
       // Find track (images use video track, like REPL does)
@@ -98,8 +99,8 @@ timelineCommand
         const trackType = source.type === "audio" ? "audio" : "video";
         const tracks = project.getTracksByType(trackType);
         if (tracks.length === 0) {
-          spinner.fail(chalk.red(`No ${trackType} track found. Create one first.`));
-          process.exit(1);
+          spinner.fail(`No ${trackType} track found`);
+          exitWithError(usageError(`No ${trackType} track found. Create one first.`));
         }
         trackId = tracks[0].id;
       }
@@ -126,9 +127,9 @@ timelineCommand
       console.log(chalk.dim("  Start:"), startTime, "s");
       console.log(chalk.dim("  Duration:"), duration, "s");
     } catch (error) {
-      spinner.fail(chalk.red("Failed to add clip"));
-      console.error(error);
-      process.exit(1);
+      spinner.fail("Failed to add clip");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Failed to add clip: ${msg}`));
     }
   });
 
@@ -167,9 +168,9 @@ timelineCommand
       console.log(chalk.dim("  Name:"), track.name);
       console.log(chalk.dim("  Type:"), track.type);
     } catch (error) {
-      spinner.fail(chalk.red("Failed to add track"));
-      console.error(error);
-      process.exit(1);
+      spinner.fail("Failed to add track");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Failed to add track: ${msg}`));
     }
   });
 
@@ -195,8 +196,8 @@ timelineCommand
 
       const clip = project.getClip(clipId);
       if (!clip) {
-        spinner.fail(chalk.red(`Clip not found: ${clipId}`));
-        process.exit(1);
+        spinner.fail(`Clip not found: ${clipId}`);
+        exitWithError(notFoundError(clipId));
       }
 
       const startTime = parseFloat(options.start);
@@ -211,8 +212,8 @@ timelineCommand
       });
 
       if (!effect) {
-        spinner.fail(chalk.red("Failed to add effect"));
-        process.exit(1);
+        spinner.fail("Failed to add effect");
+        exitWithError(generalError("Failed to add effect"));
       }
 
       await writeFile(filePath, JSON.stringify(project.toJSON(), null, 2), "utf-8");
@@ -223,9 +224,9 @@ timelineCommand
       console.log(chalk.dim("  Start:"), startTime, "s");
       console.log(chalk.dim("  Duration:"), duration, "s");
     } catch (error) {
-      spinner.fail(chalk.red("Failed to add effect"));
-      console.error(error);
-      process.exit(1);
+      spinner.fail("Failed to add effect");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Failed to add effect: ${msg}`));
     }
   });
 
@@ -249,8 +250,8 @@ timelineCommand
 
       const clip = project.getClip(clipId);
       if (!clip) {
-        spinner.fail(chalk.red(`Clip not found: ${clipId}`));
-        process.exit(1);
+        spinner.fail(`Clip not found: ${clipId}`);
+        exitWithError(notFoundError(clipId));
       }
 
       if (options.start !== undefined) {
@@ -268,9 +269,9 @@ timelineCommand
       console.log(chalk.dim("  Start:"), updatedClip.startTime, "s");
       console.log(chalk.dim("  Duration:"), updatedClip.duration, "s");
     } catch (error) {
-      spinner.fail(chalk.red("Failed to trim clip"));
-      console.error(error);
-      process.exit(1);
+      spinner.fail("Failed to trim clip");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Failed to trim clip: ${msg}`));
     }
   });
 
@@ -342,9 +343,8 @@ timelineCommand
 
       console.log();
     } catch (error) {
-      console.error(chalk.red("Failed to list timeline"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Failed to list timeline: ${msg}`));
     }
   });
 
@@ -367,20 +367,20 @@ timelineCommand
 
       const clip = project.getClip(clipId);
       if (!clip) {
-        spinner.fail(chalk.red(`Clip not found: ${clipId}`));
-        process.exit(1);
+        spinner.fail(`Clip not found: ${clipId}`);
+        exitWithError(notFoundError(clipId));
       }
 
       const splitTime = parseFloat(options.time);
       if (splitTime <= 0 || splitTime >= clip.duration) {
-        spinner.fail(chalk.red(`Invalid split time. Must be between 0 and ${clip.duration}s`));
-        process.exit(1);
+        spinner.fail("Invalid split time");
+        exitWithError(usageError(`Invalid split time. Must be between 0 and ${clip.duration}s`));
       }
 
       const result = project.splitClip(clipId, splitTime);
       if (!result) {
-        spinner.fail(chalk.red("Failed to split clip"));
-        process.exit(1);
+        spinner.fail("Failed to split clip");
+        exitWithError(generalError("Failed to split clip"));
       }
 
       await writeFile(filePath, JSON.stringify(project.toJSON(), null, 2), "utf-8");
@@ -391,9 +391,9 @@ timelineCommand
       console.log(chalk.dim("  First clip:"), first.id, `(${first.duration.toFixed(2)}s)`);
       console.log(chalk.dim("  Second clip:"), second.id, `(${second.duration.toFixed(2)}s)`);
     } catch (error) {
-      spinner.fail(chalk.red("Failed to split clip"));
-      console.error(error);
-      process.exit(1);
+      spinner.fail("Failed to split clip");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Failed to split clip: ${msg}`));
     }
   });
 
@@ -416,16 +416,16 @@ timelineCommand
 
       const clip = project.getClip(clipId);
       if (!clip) {
-        spinner.fail(chalk.red(`Clip not found: ${clipId}`));
-        process.exit(1);
+        spinner.fail(`Clip not found: ${clipId}`);
+        exitWithError(notFoundError(clipId));
       }
 
       const offsetTime = options.time ? parseFloat(options.time) : undefined;
       const duplicated = project.duplicateClip(clipId, offsetTime);
 
       if (!duplicated) {
-        spinner.fail(chalk.red("Failed to duplicate clip"));
-        process.exit(1);
+        spinner.fail("Failed to duplicate clip");
+        exitWithError(generalError("Failed to duplicate clip"));
       }
 
       await writeFile(filePath, JSON.stringify(project.toJSON(), null, 2), "utf-8");
@@ -435,9 +435,9 @@ timelineCommand
       console.log(chalk.dim("  Start:"), duplicated.startTime, "s");
       console.log(chalk.dim("  Duration:"), duplicated.duration, "s");
     } catch (error) {
-      spinner.fail(chalk.red("Failed to duplicate clip"));
-      console.error(error);
-      process.exit(1);
+      spinner.fail("Failed to duplicate clip");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Failed to duplicate clip: ${msg}`));
     }
   });
 
@@ -459,23 +459,23 @@ timelineCommand
 
       const clip = project.getClip(clipId);
       if (!clip) {
-        spinner.fail(chalk.red(`Clip not found: ${clipId}`));
-        process.exit(1);
+        spinner.fail(`Clip not found: ${clipId}`);
+        exitWithError(notFoundError(clipId));
       }
 
       const removed = project.removeClip(clipId);
       if (!removed) {
-        spinner.fail(chalk.red("Failed to delete clip"));
-        process.exit(1);
+        spinner.fail("Failed to delete clip");
+        exitWithError(generalError("Failed to delete clip"));
       }
 
       await writeFile(filePath, JSON.stringify(project.toJSON(), null, 2), "utf-8");
 
       spinner.succeed(chalk.green("Clip deleted"));
     } catch (error) {
-      spinner.fail(chalk.red("Failed to delete clip"));
-      console.error(error);
-      process.exit(1);
+      spinner.fail("Failed to delete clip");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Failed to delete clip: ${msg}`));
     }
   });
 
@@ -500,8 +500,8 @@ timelineCommand
 
       const clip = project.getClip(clipId);
       if (!clip) {
-        spinner.fail(chalk.red(`Clip not found: ${clipId}`));
-        process.exit(1);
+        spinner.fail(`Clip not found: ${clipId}`);
+        exitWithError(notFoundError(clipId));
       }
 
       const newTime = options.time !== undefined ? parseFloat(options.time) : clip.startTime;
@@ -509,8 +509,8 @@ timelineCommand
 
       const moved = project.moveClip(clipId, newTrack, newTime);
       if (!moved) {
-        spinner.fail(chalk.red("Failed to move clip"));
-        process.exit(1);
+        spinner.fail("Failed to move clip");
+        exitWithError(generalError("Failed to move clip"));
       }
 
       await writeFile(filePath, JSON.stringify(project.toJSON(), null, 2), "utf-8");
@@ -521,9 +521,9 @@ timelineCommand
       console.log(chalk.dim("  Track:"), updated.trackId);
       console.log(chalk.dim("  Start:"), updated.startTime, "s");
     } catch (error) {
-      spinner.fail(chalk.red("Failed to move clip"));
-      console.error(error);
-      process.exit(1);
+      spinner.fail("Failed to move clip");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Failed to move clip: ${msg}`));
     }
   });
 

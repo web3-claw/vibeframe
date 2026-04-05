@@ -6,6 +6,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { Project, type ProjectFile } from "../engine/index.js";
 import { execSafe, ffprobeDuration } from "../utils/exec-safe.js";
+import { exitWithError, generalError, notFoundError, usageError } from "./output.js";
 
 /**
  * Resolve project file path - handles both file paths and directory paths
@@ -197,13 +198,8 @@ No API keys needed. Requires FFmpeg.`)
       // Check if FFmpeg is installed
       const ffmpegPath = await findFFmpeg();
       if (!ffmpegPath) {
-        spinner.fail(chalk.red("FFmpeg not found"));
-        console.error();
-        console.error(chalk.yellow("Please install FFmpeg:"));
-        console.error(chalk.dim("  macOS:   brew install ffmpeg"));
-        console.error(chalk.dim("  Ubuntu:  sudo apt install ffmpeg"));
-        console.error(chalk.dim("  Windows: winget install ffmpeg"));
-        process.exit(1);
+        spinner.fail("FFmpeg not found");
+        exitWithError(generalError("FFmpeg not found", "Install with: brew install ffmpeg (macOS), apt install ffmpeg (Linux), or winget install ffmpeg (Windows)"));
       }
 
       // Load project
@@ -216,8 +212,8 @@ No API keys needed. Requires FFmpeg.`)
       const summary = project.getSummary();
 
       if (summary.clipCount === 0) {
-        spinner.fail(chalk.red("Project has no clips to export"));
-        process.exit(1);
+        spinner.fail("Project has no clips to export");
+        exitWithError(usageError("Project has no clips to export"));
       }
 
       // Determine output path
@@ -248,8 +244,8 @@ No API keys needed. Requires FFmpeg.`)
               sourceAudioMap.set(source.id, await checkHasAudio(source.url));
             }
           } catch {
-            spinner.fail(chalk.red(`Source file not found: ${source.url}`));
-            process.exit(1);
+            spinner.fail(`Source file not found: ${source.url}`);
+            exitWithError(notFoundError(source.url));
           }
         }
       }
@@ -282,14 +278,9 @@ No API keys needed. Requires FFmpeg.`)
       console.log(chalk.dim("  Resolution:"), presetSettings.resolution);
       console.log();
     } catch (error) {
-      spinner.fail(chalk.red("Export failed"));
-      if (error instanceof Error) {
-        console.error(chalk.red(error.message));
-        if (process.env.DEBUG) {
-          console.error(error.stack);
-        }
-      }
-      process.exit(1);
+      spinner.fail("Export failed");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Export failed: ${msg}`));
     }
   });
 

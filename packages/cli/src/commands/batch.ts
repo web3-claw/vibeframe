@@ -5,6 +5,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { Project, type ProjectFile } from "../engine/index.js";
 import type { MediaType, EffectType } from "@vibeframe/core/timeline";
+import { exitWithError, generalError, usageError } from "./output.js";
 
 export const batchCommand = new Command("batch")
   .description("Batch operations for processing multiple items");
@@ -86,8 +87,8 @@ batchCommand
       await scanDir(dirPath);
 
       if (mediaFiles.length === 0) {
-        spinner.fail(chalk.red("No media files found in directory"));
-        process.exit(1);
+        spinner.fail("No media files found in directory");
+        exitWithError(usageError("No media files found in directory"));
       }
 
       // Sort files alphabetically
@@ -124,11 +125,9 @@ batchCommand
 
       console.log();
     } catch (error) {
-      spinner.fail(chalk.red("Import failed"));
-      if (error instanceof Error) {
-        console.error(chalk.red(error.message));
-      }
-      process.exit(1);
+      spinner.fail("Import failed");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Import failed: ${msg}`));
     }
   });
 
@@ -155,8 +154,8 @@ batchCommand
       const sources = project.getSources();
 
       if (sources.length === 0) {
-        spinner.fail(chalk.red("No sources in project"));
-        process.exit(1);
+        spinner.fail("No sources in project");
+        exitWithError(usageError("No sources in project"));
       }
 
       // Get sources to concatenate
@@ -167,8 +166,8 @@ batchCommand
           .filter((s): s is NonNullable<typeof s> => s !== undefined);
 
         if (selectedSources.length === 0) {
-          spinner.fail(chalk.red("No matching sources found"));
-          process.exit(1);
+          spinner.fail("No matching sources found");
+          exitWithError(usageError("No matching sources found"));
         }
       }
 
@@ -215,11 +214,9 @@ batchCommand
 
       console.log();
     } catch (error) {
-      spinner.fail(chalk.red("Concat failed"));
-      if (error instanceof Error) {
-        console.error(chalk.red(error.message));
-      }
-      process.exit(1);
+      spinner.fail("Concat failed");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Concat failed: ${msg}`));
     }
   });
 
@@ -253,8 +250,8 @@ batchCommand
         const clips = project.getClips();
 
         if (clips.length === 0) {
-          spinner.fail(chalk.red("No clips in project"));
-          process.exit(1);
+          spinner.fail("No clips in project");
+          exitWithError(usageError("No clips in project"));
         }
 
         // Get clips to apply effect to
@@ -265,8 +262,8 @@ batchCommand
             .filter((c): c is NonNullable<typeof c> => c !== undefined);
 
           if (selectedClips.length === 0) {
-            spinner.fail(chalk.red("No matching clips found"));
-            process.exit(1);
+            spinner.fail("No matching clips found");
+            exitWithError(usageError("No matching clips found"));
           }
         }
 
@@ -299,11 +296,9 @@ batchCommand
         console.log(chalk.dim("  Intensity:"), intensity);
         console.log();
       } catch (error) {
-        spinner.fail(chalk.red("Apply effect failed"));
-        if (error instanceof Error) {
-          console.error(chalk.red(error.message));
-        }
-        process.exit(1);
+        spinner.fail("Apply effect failed");
+        const msg = error instanceof Error ? error.message : String(error);
+        exitWithError(generalError(`Apply effect failed: ${msg}`));
       }
     }
   );
@@ -329,8 +324,8 @@ batchCommand
       const clips = project.getClips();
 
       if (clips.length === 0) {
-        spinner.fail(chalk.red("No clips in project"));
-        process.exit(1);
+        spinner.fail("No clips in project");
+        exitWithError(usageError("No clips in project"));
       }
 
       // Get clips to remove
@@ -347,8 +342,8 @@ batchCommand
       }
 
       if (clipsToRemove.length === 0) {
-        spinner.fail(chalk.red("No matching clips found"));
-        process.exit(1);
+        spinner.fail("No matching clips found");
+        exitWithError(usageError("No matching clips found"));
       }
 
       let removedCount = 0;
@@ -363,11 +358,9 @@ batchCommand
       spinner.succeed(chalk.green(`Removed ${removedCount} clips`));
       console.log();
     } catch (error) {
-      spinner.fail(chalk.red("Remove clips failed"));
-      if (error instanceof Error) {
-        console.error(chalk.red(error.message));
-      }
-      process.exit(1);
+      spinner.fail("Remove clips failed");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Remove clips failed: ${msg}`));
     }
   });
 
@@ -431,10 +424,8 @@ batchCommand
 
       console.log();
     } catch (error) {
-      spinner.fail(chalk.red("Failed to load project"));
-      if (error instanceof Error) {
-        console.error(chalk.red(error.message));
-      }
-      process.exit(1);
+      spinner.fail("Failed to load project");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Failed to load project: ${msg}`));
     }
   });

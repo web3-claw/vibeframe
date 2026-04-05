@@ -29,7 +29,7 @@ import { getApiKey, requireApiKey } from "../utils/api-key.js";
 import { execSafe, commandExists, execSafeSync } from "../utils/exec-safe.js";
 import { detectFormat, formatTranscript } from "../utils/subtitle.js";
 import { formatTime } from "./ai-helpers.js";
-import { isJsonMode, outputResult } from "./output.js";
+import { isJsonMode, outputResult, exitWithError, notFoundError, usageError, apiError, generalError } from "./output.js";
 import { rejectControlChars } from "./validate.js";
 
 export const audioCommand = new Command("audio")
@@ -85,8 +85,8 @@ audioCommand
       const result = await whisper.transcribe(audioBlob, options.language);
 
       if (result.status === "failed") {
-        spinner.fail(chalk.red(`Transcription failed: ${result.error}`));
-        process.exit(1);
+        spinner.fail("Transcription failed");
+        exitWithError(apiError(`Transcription failed: ${result.error}`, true));
       }
 
       spinner.succeed(chalk.green("Transcription complete"));
@@ -120,9 +120,8 @@ audioCommand
         console.log(chalk.green(`Saved ${format.toUpperCase()} to: ${outputPath}`));
       }
     } catch (error) {
-      console.error(chalk.red("Transcription failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Transcription failed: ${msg}`, true));
     }
   });
 
@@ -159,9 +158,8 @@ audioCommand
       }
       console.log();
     } catch (error) {
-      console.error(chalk.red("Failed to fetch voices"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Failed to fetch voices: ${msg}`, true));
     }
   });
 
@@ -196,8 +194,8 @@ audioCommand
       const result = await elevenlabs.isolateVocals(audioBuffer);
 
       if (!result.success || !result.audioBuffer) {
-        spinner.fail(chalk.red(result.error || "Audio isolation failed"));
-        process.exit(1);
+        spinner.fail(result.error || "Audio isolation failed");
+        exitWithError(apiError(result.error || "Audio isolation failed", true));
       }
 
       const outputPath = resolve(process.cwd(), options.output);
@@ -213,9 +211,8 @@ audioCommand
       console.log(chalk.green(`Saved to: ${outputPath}`));
       console.log();
     } catch (error) {
-      console.error(chalk.red("Audio isolation failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Audio isolation failed: ${msg}`, true));
     }
   });
 
@@ -268,15 +265,13 @@ audioCommand
 
       // Clone voice mode
       if (!options.name) {
-        console.error(chalk.red("Voice name is required. Use --name <name>"));
-        process.exit(1);
+        exitWithError(usageError("Voice name is required. Use --name <name>"));
       }
 
       rejectControlChars(options.name);
 
       if (!samples || samples.length === 0) {
-        console.error(chalk.red("At least one audio sample is required"));
-        process.exit(1);
+        exitWithError(usageError("At least one audio sample is required"));
       }
 
       const spinner = ora("Reading audio samples...").start();
@@ -285,8 +280,8 @@ audioCommand
       for (const samplePath of samples) {
         const absPath = resolve(process.cwd(), samplePath);
         if (!existsSync(absPath)) {
-          spinner.fail(chalk.red(`File not found: ${samplePath}`));
-          process.exit(1);
+          spinner.fail(`File not found: ${samplePath}`);
+          exitWithError(notFoundError(samplePath));
         }
         const buffer = await readFile(absPath);
         audioBuffers.push(buffer);
@@ -304,8 +299,8 @@ audioCommand
       });
 
       if (!result.success) {
-        spinner.fail(chalk.red(result.error || "Voice cloning failed"));
-        process.exit(1);
+        spinner.fail(result.error || "Voice cloning failed");
+        exitWithError(apiError(result.error || "Voice cloning failed", true));
       }
 
       spinner.succeed(chalk.green("Voice cloned successfully"));
@@ -325,9 +320,8 @@ audioCommand
       console.log(chalk.dim(`  pnpm vibe audio tts "Hello world" -v ${result.voiceId}`));
       console.log();
     } catch (error) {
-      console.error(chalk.red("Voice cloning failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Voice cloning failed: ${msg}`, true));
     }
   });
 
@@ -351,14 +345,12 @@ audioCommand
       }
 
       if (!options.language) {
-        console.error(chalk.red("Target language is required. Use -l or --language"));
-        process.exit(1);
+        exitWithError(usageError("Target language is required. Use -l or --language"));
       }
 
       const absPath = resolve(process.cwd(), mediaPath);
       if (!existsSync(absPath)) {
-        console.error(chalk.red(`File not found: ${mediaPath}`));
-        process.exit(1);
+        exitWithError(notFoundError(mediaPath));
       }
 
       // Check required API keys
@@ -382,8 +374,8 @@ audioCommand
           execSafeSync("ffmpeg", ["-i", absPath, "-vn", "-acodec", "mp3", "-y", tempAudioPath]);
           audioPath = tempAudioPath;
         } catch {
-          spinner.fail(chalk.red("Failed to extract audio from video"));
-          process.exit(1);
+          spinner.fail("Failed to extract audio from video");
+          exitWithError(generalError("Failed to extract audio from video", "Ensure FFmpeg is installed."));
         }
       }
 
@@ -398,8 +390,8 @@ audioCommand
       const transcriptResult = await whisper.transcribe(audioBlob, options.source);
 
       if (transcriptResult.status === "failed" || !transcriptResult.segments) {
-        spinner.fail(chalk.red(`Transcription failed: ${transcriptResult.error}`));
-        process.exit(1);
+        spinner.fail("Transcription failed");
+        exitWithError(apiError(`Transcription failed: ${transcriptResult.error}`, true));
       }
 
       // Step 3: Translate with Claude
@@ -557,9 +549,8 @@ audioCommand
         }
       }
     } catch (error) {
-      console.error(chalk.red("Dubbing failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Dubbing failed: ${msg}`, true));
     }
   });
 
@@ -588,14 +579,12 @@ audioCommand
       }
 
       if (!options.voice) {
-        console.error(chalk.red("Voice track required. Use --voice <path>"));
-        process.exit(1);
+        exitWithError(usageError("Voice track required. Use --voice <path>"));
       }
 
       // Check FFmpeg availability
       if (!commandExists("ffmpeg")) {
-        console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-        process.exit(1);
+        exitWithError(generalError("FFmpeg not found", "Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"));
       }
 
       const spinner = ora("Processing audio ducking...").start();
@@ -637,8 +626,7 @@ audioCommand
       console.log(chalk.green(`Output: ${outputPath}`));
       console.log();
     } catch (error) {
-      console.error(chalk.red("Audio ducking failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Audio ducking failed: ${msg}`));
     }
   });

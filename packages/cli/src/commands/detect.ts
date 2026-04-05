@@ -5,6 +5,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { Project, type ProjectFile } from "../engine/index.js";
 import { execSafe, commandExists, ffprobeDuration } from "../utils/exec-safe.js";
+import { exitWithError, generalError } from "./output.js";
 
 export const detectCommand = new Command("detect")
   .description("Auto-detect scenes, beats, and silences in media");
@@ -25,8 +26,8 @@ detectCommand
     try {
       // Check if FFmpeg is available
       if (!commandExists("ffmpeg")) {
-        spinner.fail(chalk.red("FFmpeg not found. Please install FFmpeg."));
-        process.exit(1);
+        spinner.fail("FFmpeg not found");
+        exitWithError(generalError("FFmpeg not found", "Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"));
       }
 
       const absPath = resolve(process.cwd(), videoPath);
@@ -137,9 +138,9 @@ detectCommand
         console.log(chalk.green(`Added ${scenes.length} clips to project`));
       }
     } catch (error) {
-      spinner.fail(chalk.red("Scene detection failed"));
-      console.error(error);
-      process.exit(1);
+      spinner.fail("Scene detection failed");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Scene detection failed: ${msg}`));
     }
   });
 
@@ -221,9 +222,9 @@ detectCommand
         console.log(chalk.green(`Saved to: ${outputPath}`));
       }
     } catch (error) {
-      spinner.fail(chalk.red("Silence detection failed"));
-      console.error(error);
-      process.exit(1);
+      spinner.fail("Silence detection failed");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Silence detection failed: ${msg}`));
     }
   });
 
@@ -316,9 +317,9 @@ detectCommand
         console.log(chalk.green(`Saved to: ${outputPath}`));
       }
     } catch (error) {
-      spinner.fail(chalk.red("Beat detection failed"));
-      console.error(error);
-      process.exit(1);
+      spinner.fail("Beat detection failed");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Beat detection failed: ${msg}`));
     }
   });
 

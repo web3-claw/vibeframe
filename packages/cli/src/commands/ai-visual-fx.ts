@@ -25,6 +25,7 @@ import { getApiKey } from '../utils/api-key.js';
 import { execSafe, commandExists } from '../utils/exec-safe.js';
 import { formatTime, downloadVideo } from './ai-helpers.js';
 import { applyTextOverlays, type TextOverlayStyle } from './ai-edit.js';
+import { exitWithError, usageError, authError, apiError, generalError } from './output.js';
 
 export function registerVisualFxCommands(ai: Command): void {
 
@@ -43,17 +44,12 @@ ai
   .action(async (videoPath: string, options) => {
     try {
       if (!options.style && !options.preset) {
-        console.error(chalk.red("Either --style or --preset is required"));
-        console.log(chalk.dim("Examples:"));
-        console.log(chalk.dim('  pnpm vibe ai grade video.mp4 --style "warm sunset"'));
-        console.log(chalk.dim("  pnpm vibe ai grade video.mp4 --preset cinematic-warm"));
-        process.exit(1);
+        exitWithError(usageError("Either --style or --preset is required", 'Examples: vibe edit grade video.mp4 --style "warm sunset" or --preset cinematic-warm'));
       }
 
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
-        console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-        process.exit(1);
+        exitWithError(generalError("FFmpeg not found", "Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"));
       }
 
       const spinner = ora("Analyzing color grade...").start();
@@ -100,9 +96,8 @@ ai
       console.log(chalk.green(`Output: ${outputPath}`));
       console.log();
     } catch (error) {
-      console.error(chalk.red("Color grading failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Color grading failed: ${msg}`, true));
     }
   });
 
@@ -122,16 +117,12 @@ ai
   .action(async (videoPath: string, options) => {
     try {
       if (!options.text || options.text.length === 0) {
-        console.error(chalk.red("At least one --text option is required"));
-        console.log(chalk.dim("Example:"));
-        console.log(chalk.dim('  pnpm vibe ai text-overlay video.mp4 -t "NEXUS AI" -t "Intelligence, Unleashed" --style center-bold'));
-        process.exit(1);
+        exitWithError(usageError("At least one --text option is required", 'Example: vibe edit text-overlay video.mp4 -t "NEXUS AI" --style center-bold'));
       }
 
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
-        console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-        process.exit(1);
+        exitWithError(generalError("FFmpeg not found", "Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"));
       }
 
       const absPath = resolve(process.cwd(), videoPath);
@@ -154,8 +145,8 @@ ai
       });
 
       if (!result.success) {
-        spinner.fail(chalk.red(result.error || "Text overlay failed"));
-        process.exit(1);
+        spinner.fail(result.error || "Text overlay failed");
+        exitWithError(apiError(result.error || "Text overlay failed", true));
       }
 
       spinner.succeed(chalk.green("Text overlays applied"));
@@ -167,9 +158,8 @@ ai
       console.log(`Output: ${result.outputPath}`);
       console.log();
     } catch (error) {
-      console.error(chalk.red("Text overlay failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Text overlay failed: ${msg}`));
     }
   });
 
@@ -189,20 +179,17 @@ ai
     try {
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
-        console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-        process.exit(1);
+        exitWithError(generalError("FFmpeg not found", "Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"));
       }
 
       const openaiApiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
       if (!openaiApiKey) {
-        console.error(chalk.red("OpenAI API key required for Whisper transcription. Set OPENAI_API_KEY in .env or run: vibe setup"));
-        process.exit(1);
+        exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
       }
 
       const claudeApiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic", options.apiKey);
       if (!claudeApiKey) {
-        console.error(chalk.red("Anthropic API key required for speed analysis. Set ANTHROPIC_API_KEY in .env or run: vibe setup"));
-        process.exit(1);
+        exitWithError(authError("ANTHROPIC_API_KEY", "Anthropic"));
       }
 
       const absPath = resolve(process.cwd(), videoPath);
@@ -214,11 +201,8 @@ ai
         "-v", "error", "-select_streams", "a", "-show_entries", "stream=codec_type", "-of", "csv=p=0", absPath,
       ]);
       if (!speedRampProbe.trim()) {
-        spinner.fail(chalk.yellow("Video has no audio track — cannot use Whisper transcription"));
-        console.log(chalk.yellow("\n⚠ This video has no audio stream."));
-        console.log(chalk.dim("  Speed ramping requires audio for content-aware analysis."));
-        console.log(chalk.dim("  Please use a video with an audio track.\n"));
-        process.exit(1);
+        spinner.fail("Video has no audio track");
+        exitWithError(usageError("Video has no audio stream. Speed ramping requires audio for content-aware analysis.", "Please use a video with an audio track."));
       }
 
       const tempAudio = absPath.replace(/(\.[^.]+)$/, "-temp-audio.mp3");
@@ -236,15 +220,15 @@ ai
       const transcript = await whisper.transcribe(audioBlob, options.language);
 
       if (!transcript.segments || transcript.segments.length === 0) {
-        spinner.fail(chalk.red("No transcript segments found"));
-        process.exit(1);
+        spinner.fail("No transcript segments found");
+        exitWithError(apiError("No transcript segments found", true));
       }
 
       // Step 3: Analyze with Claude
       spinner.text = "Analyzing for speed ramping...";
 
       const claude = new ClaudeProvider();
-      await claude.initialize({ apiKey: claudeApiKey });
+      await claude.initialize({ apiKey: claudeApiKey! });
 
       const speedResult = await claude.analyzeForSpeedRamp(transcript.segments, {
         style: options.style as "dramatic" | "smooth" | "action",
@@ -309,9 +293,8 @@ ai
       console.log(chalk.dim(`Average speed: ${avgSpeed.toFixed(2)}x`));
       console.log();
     } catch (error) {
-      console.error(chalk.red("Speed ramping failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Speed ramping failed: ${msg}`));
     }
   });
 
@@ -330,8 +313,7 @@ ai
     try {
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
-        console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-        process.exit(1);
+        exitWithError(generalError("FFmpeg not found", "Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"));
       }
 
       const absPath = resolve(process.cwd(), videoPath);
@@ -466,9 +448,8 @@ ai
       console.log(chalk.dim(`Crop: ${cropWidth}x${cropHeight} at (${avgCropX}, ${avgCropY})`));
       console.log();
     } catch (error) {
-      console.error(chalk.red("Reframe failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Reframe failed: ${msg}`));
     }
   });
 
@@ -485,15 +466,12 @@ ai
   .action(async (videoPath: string, options) => {
     try {
       if (!options.style) {
-        console.error(chalk.red("Style required. Use --style <image-path> or --style <prompt>"));
-        process.exit(1);
+        exitWithError(usageError("Style required. Use --style <image-path> or --style <prompt>"));
       }
 
       const apiKey = await getApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("Replicate API token required."));
-        console.error(chalk.dim("Set REPLICATE_API_TOKEN environment variable"));
-        process.exit(1);
+        exitWithError(authError("REPLICATE_API_TOKEN", "Replicate"));
       }
 
       const spinner = ora("Initializing style transfer...").start();
@@ -509,9 +487,8 @@ ai
         styleRef = options.style;
       } else if (existsSync(resolve(process.cwd(), options.style))) {
         // It's a local file - need to upload or base64
-        spinner.fail(chalk.yellow("Local style images must be URLs for Replicate."));
-        console.log(chalk.dim("Upload your style image to a URL and try again."));
-        process.exit(1);
+        spinner.fail("Local style images must be URLs for Replicate");
+        exitWithError(usageError("Local style images must be URLs for Replicate.", "Upload your style image to a URL and try again."));
       } else {
         // Treat as text prompt
         stylePrompt = options.style;
@@ -522,9 +499,8 @@ ai
       if (videoPath.startsWith("http://") || videoPath.startsWith("https://")) {
         videoUrl = videoPath;
       } else {
-        spinner.fail(chalk.yellow("Video must be a URL for Replicate processing."));
-        console.log(chalk.dim("Upload your video to a URL and try again."));
-        process.exit(1);
+        spinner.fail("Video must be a URL for Replicate processing");
+        exitWithError(usageError("Video must be a URL for Replicate processing.", "Upload your video to a URL and try again."));
       }
 
       spinner.text = "Starting style transfer...";
@@ -537,8 +513,8 @@ ai
       });
 
       if (result.status === "failed") {
-        spinner.fail(chalk.red(result.error || "Style transfer failed"));
-        process.exit(1);
+        spinner.fail(result.error || "Style transfer failed");
+        exitWithError(apiError(result.error || "Style transfer failed", true));
       }
 
       console.log();
@@ -568,8 +544,8 @@ ai
       );
 
       if (finalResult.status !== "completed") {
-        spinner.fail(chalk.red(finalResult.error || "Style transfer failed"));
-        process.exit(1);
+        spinner.fail(finalResult.error || "Style transfer failed");
+        exitWithError(apiError(finalResult.error || "Style transfer failed", true));
       }
 
       spinner.succeed(chalk.green("Style transfer complete"));
@@ -592,9 +568,8 @@ ai
       }
       console.log();
     } catch (error) {
-      console.error(chalk.red("Style transfer failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Style transfer failed: ${msg}`, true));
     }
   });
 

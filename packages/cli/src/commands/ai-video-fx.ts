@@ -19,6 +19,7 @@ import { ReplicateProvider } from "@vibeframe/ai-providers";
 import { getApiKey } from "../utils/api-key.js";
 import { execSafe } from "../utils/exec-safe.js";
 import { downloadVideo } from "./ai-helpers.js";
+import { exitWithError, usageError, authError, apiError, generalError } from "./output.js";
 
 // ── Register all video FX commands ───────────────────────────────────────────
 
@@ -39,8 +40,7 @@ export function registerVideoFxCommands(ai: Command): void {
         const scale = parseInt(options.scale);
 
         if (scale !== 2 && scale !== 4) {
-          console.error(chalk.red("Scale must be 2 or 4"));
-          process.exit(1);
+          exitWithError(usageError("Scale must be 2 or 4"));
         }
 
         // Use FFmpeg if requested (free fallback)
@@ -66,9 +66,9 @@ export function registerVideoFxCommands(ai: Command): void {
             spinner.succeed(chalk.green(`Upscaled to ${newWidth}x${newHeight}`));
             console.log(`Output: ${outputPath}`);
           } catch (err) {
-            spinner.fail(chalk.red("FFmpeg upscaling failed"));
-            console.error(err);
-            process.exit(1);
+            spinner.fail("FFmpeg upscaling failed");
+            const msg = err instanceof Error ? err.message : String(err);
+            exitWithError(generalError(`FFmpeg upscaling failed: ${msg}`));
           }
           return;
         }
@@ -76,10 +76,7 @@ export function registerVideoFxCommands(ai: Command): void {
         // Use Replicate API
         const apiKey = await getApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Replicate API token required for AI upscaling."));
-          console.error(chalk.dim("Use --api-key or set REPLICATE_API_TOKEN"));
-          console.error(chalk.dim("Or use --ffmpeg for free FFmpeg upscaling"));
-          process.exit(1);
+          exitWithError(authError("REPLICATE_API_TOKEN", "Replicate"));
         }
 
         const spinner = ora("Initializing Replicate...").start();
@@ -92,18 +89,11 @@ export function registerVideoFxCommands(ai: Command): void {
         spinner.text = "Note: Replicate requires video URL. Reading file...";
 
         // For now, we'll show an error suggesting URL or ffmpeg
-        spinner.fail(chalk.yellow("Replicate requires a video URL"));
-        console.log();
-        console.log(chalk.dim("Options:"));
-        console.log(chalk.dim("  1. Use --ffmpeg for local processing"));
-        console.log(chalk.dim("  2. Upload video to a URL and run:"));
-        console.log(chalk.dim(`     pnpm vibe ai video-upscale https://example.com/video.mp4 -s ${scale}`));
-        console.log();
-        process.exit(1);
+        spinner.fail("Replicate requires a video URL");
+        exitWithError(usageError("Replicate requires a video URL", "Use --ffmpeg for local processing, or upload video to a URL."));
       } catch (error) {
-        console.error(chalk.red("Video upscaling failed"));
-        console.error(error);
-        process.exit(1);
+        const msg = error instanceof Error ? error.message : String(error);
+        exitWithError(generalError(`Video upscaling failed: ${msg}`));
       }
     });
 
@@ -121,8 +111,7 @@ export function registerVideoFxCommands(ai: Command): void {
         const factor = parseInt(options.factor);
 
         if (![2, 4, 8].includes(factor)) {
-          console.error(chalk.red("Factor must be 2, 4, or 8"));
-          process.exit(1);
+          exitWithError(usageError("Factor must be 2, 4, or 8"));
         }
 
         const outputPath = options.output
@@ -159,18 +148,17 @@ export function registerVideoFxCommands(ai: Command): void {
           console.log(`Output: ${outputPath}`);
           console.log();
         } catch (err: unknown) {
-          spinner.fail(chalk.red("Frame interpolation failed"));
+          spinner.fail("Frame interpolation failed");
           if (err instanceof Error && err.message.includes("timeout")) {
-            console.error(chalk.yellow("Processing timed out. Try with a shorter video or --quality fast"));
+            exitWithError(generalError("Frame interpolation timed out", "Try with a shorter video or --quality fast"));
           } else {
-            console.error(err);
+            const msg = err instanceof Error ? err.message : String(err);
+            exitWithError(generalError(`Frame interpolation failed: ${msg}`));
           }
-          process.exit(1);
         }
       } catch (error) {
-        console.error(chalk.red("Frame interpolation failed"));
-        console.error(error);
-        process.exit(1);
+        const msg = error instanceof Error ? error.message : String(error);
+        exitWithError(generalError(`Frame interpolation failed: ${msg}`));
       }
     });
 
@@ -187,18 +175,12 @@ export function registerVideoFxCommands(ai: Command): void {
     .action(async (videoPath: string, options) => {
       try {
         if (!options.target && !options.mask) {
-          console.error(chalk.red("Either --target or --mask is required"));
-          console.error(chalk.dim("Examples:"));
-          console.error(chalk.dim('  pnpm vibe ai video-inpaint video.mp4 --target "watermark"'));
-          console.error(chalk.dim("  pnpm vibe ai video-inpaint video.mp4 --mask mask.mp4"));
-          process.exit(1);
+          exitWithError(usageError("Either --target or --mask is required", 'Example: vibe ai video-inpaint video.mp4 --target "watermark"'));
         }
 
         const apiKey = await getApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Replicate API token required for video inpainting."));
-          console.error(chalk.dim("Use --api-key or set REPLICATE_API_TOKEN"));
-          process.exit(1);
+          exitWithError(authError("REPLICATE_API_TOKEN", "Replicate"));
         }
 
         const spinner = ora("Initializing Replicate...").start();
@@ -212,12 +194,8 @@ export function registerVideoFxCommands(ai: Command): void {
         if (videoPath.startsWith("http://") || videoPath.startsWith("https://")) {
           videoUrl = videoPath;
         } else {
-          spinner.fail(chalk.yellow("Video inpainting requires a video URL"));
-          console.log();
-          console.log(chalk.dim("Upload your video to a URL and run:"));
-          console.log(chalk.dim(`  pnpm vibe ai video-inpaint https://example.com/video.mp4 --mask https://example.com/mask.mp4`));
-          console.log();
-          process.exit(1);
+          spinner.fail("Video inpainting requires a video URL");
+          exitWithError(usageError("Video inpainting requires a video URL", "Upload your video to a URL and try again."));
         }
 
         let maskVideo: string | undefined;
@@ -225,8 +203,8 @@ export function registerVideoFxCommands(ai: Command): void {
           if (options.mask.startsWith("http://") || options.mask.startsWith("https://")) {
             maskVideo = options.mask;
           } else {
-            spinner.fail(chalk.yellow("Mask must also be a URL"));
-            process.exit(1);
+            spinner.fail("Mask must also be a URL");
+            exitWithError(usageError("Mask must also be a URL"));
           }
         }
 
@@ -238,8 +216,8 @@ export function registerVideoFxCommands(ai: Command): void {
         });
 
         if (result.status === "failed") {
-          spinner.fail(chalk.red(result.error || "Failed to start inpainting"));
-          process.exit(1);
+          spinner.fail(result.error || "Failed to start inpainting");
+          exitWithError(apiError(result.error || "Failed to start inpainting", true));
         }
 
         console.log();
@@ -267,8 +245,8 @@ export function registerVideoFxCommands(ai: Command): void {
         );
 
         if (finalResult.status !== "completed") {
-          spinner.fail(chalk.red(finalResult.error || "Inpainting failed"));
-          process.exit(1);
+          spinner.fail(finalResult.error || "Inpainting failed");
+          exitWithError(apiError(finalResult.error || "Inpainting failed", true));
         }
 
         spinner.succeed(chalk.green("Video inpainting complete"));
@@ -292,9 +270,8 @@ export function registerVideoFxCommands(ai: Command): void {
         }
         console.log();
       } catch (error) {
-        console.error(chalk.red("Video inpainting failed"));
-        console.error(error);
-        process.exit(1);
+        const msg = error instanceof Error ? error.message : String(error);
+        exitWithError(apiError(`Video inpainting failed: ${msg}`, true));
       }
     });
 
@@ -312,19 +289,12 @@ export function registerVideoFxCommands(ai: Command): void {
     .action(async (videoPath: string, options) => {
       try {
         if (!options.point && !options.box && !options.prompt) {
-          console.error(chalk.red("Tracking target required. Use --point, --box, or --prompt"));
-          console.log(chalk.dim("Examples:"));
-          console.log(chalk.dim("  pnpm vibe ai track-object video.mp4 --point 500,300"));
-          console.log(chalk.dim("  pnpm vibe ai track-object video.mp4 --box 100,100,200,200"));
-          console.log(chalk.dim('  pnpm vibe ai track-object video.mp4 --prompt "the person"'));
-          process.exit(1);
+          exitWithError(usageError("Tracking target required. Use --point, --box, or --prompt"));
         }
 
         const apiKey = await getApiKey("REPLICATE_API_TOKEN", "Replicate", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Replicate API token required."));
-          console.error(chalk.dim("Set REPLICATE_API_TOKEN environment variable"));
-          process.exit(1);
+          exitWithError(authError("REPLICATE_API_TOKEN", "Replicate"));
         }
 
         const spinner = ora("Initializing object tracking...").start();
@@ -337,9 +307,8 @@ export function registerVideoFxCommands(ai: Command): void {
         if (videoPath.startsWith("http://") || videoPath.startsWith("https://")) {
           videoUrl = videoPath;
         } else {
-          spinner.fail(chalk.yellow("Video must be a URL for Replicate processing."));
-          console.log(chalk.dim("Upload your video to a URL and try again."));
-          process.exit(1);
+          spinner.fail("Video must be a URL for Replicate processing");
+          exitWithError(usageError("Video must be a URL for Replicate processing.", "Upload your video to a URL and try again."));
         }
 
         // Parse tracking target
@@ -366,8 +335,8 @@ export function registerVideoFxCommands(ai: Command): void {
         });
 
         if (result.status === "failed") {
-          spinner.fail(chalk.red(result.error || "Object tracking failed"));
-          process.exit(1);
+          spinner.fail(result.error || "Object tracking failed");
+          exitWithError(apiError(result.error || "Object tracking failed", true));
         }
 
         console.log();
@@ -403,8 +372,8 @@ export function registerVideoFxCommands(ai: Command): void {
         }
 
         if (pollResult.status !== "completed") {
-          spinner.fail(chalk.red(pollResult.error || "Tracking failed or timed out"));
-          process.exit(1);
+          spinner.fail(pollResult.error || "Tracking failed or timed out");
+          exitWithError(apiError(pollResult.error || "Tracking failed or timed out", true));
         }
 
         spinner.succeed(chalk.green("Object tracking complete"));
@@ -437,9 +406,8 @@ export function registerVideoFxCommands(ai: Command): void {
         }
         console.log();
       } catch (error) {
-        console.error(chalk.red("Object tracking failed"));
-        console.error(error);
-        process.exit(1);
+        const msg = error instanceof Error ? error.message : String(error);
+        exitWithError(apiError(`Object tracking failed: ${msg}`, true));
       }
     });
 }

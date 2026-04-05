@@ -42,6 +42,7 @@ import { getApiKey } from "../utils/api-key.js";
 import { ffprobeDuration } from "../utils/exec-safe.js";
 import { getAudioDuration } from "../utils/audio.js";
 import { formatTime } from "./ai-helpers.js";
+import { exitWithError, notFoundError, usageError, apiError, generalError } from "./output.js";
 
 // ==========================================
 // Auto-Narrate Feature Types and Functions
@@ -291,8 +292,7 @@ ai
     try {
       const absPath = resolve(process.cwd(), inputPath);
       if (!existsSync(absPath)) {
-        console.error(chalk.red(`File not found: ${absPath}`));
-        process.exit(1);
+        exitWithError(notFoundError(absPath));
       }
 
       console.log();
@@ -314,14 +314,12 @@ ai
         const videoSource = sources.find((s) => s.type === "video");
 
         if (!videoSource) {
-          console.error(chalk.red("No video source found in project"));
-          process.exit(1);
+          exitWithError(generalError("No video source found in project"));
         }
 
         videoPath = resolve(dirname(absPath), videoSource.url);
         if (!existsSync(videoPath)) {
-          console.error(chalk.red(`Video file not found: ${videoPath}`));
-          process.exit(1);
+          exitWithError(notFoundError(videoPath));
         }
 
         // Use project directory as output if not specified
@@ -342,16 +340,14 @@ ai
         duration = await ffprobeDuration(videoPath);
         durationSpinner.succeed(chalk.green(`Duration: ${formatTime(duration)}`));
       } catch {
-        durationSpinner.fail(chalk.red("Failed to get video duration"));
-        process.exit(1);
+        durationSpinner.fail("Failed to get video duration");
+        exitWithError(generalError("Failed to get video duration", "Ensure FFmpeg is installed and the video file is valid."));
       }
 
       // Validate style option
       const validStyles = ["informative", "energetic", "calm", "dramatic"];
       if (!validStyles.includes(options.style)) {
-        console.error(chalk.red(`Invalid style: ${options.style}`));
-        console.error(chalk.dim(`Valid styles: ${validStyles.join(", ")}`));
-        process.exit(1);
+        exitWithError(usageError(`Invalid style: ${options.style}`, `Valid styles: ${validStyles.join(", ")}`));
       }
 
       // Generate narration
@@ -369,8 +365,8 @@ ai
       });
 
       if (!result.success) {
-        generateSpinner.fail(chalk.red(`Failed: ${result.error}`));
-        process.exit(1);
+        generateSpinner.fail(result.error || "Narration generation failed");
+        exitWithError(apiError(result.error || "Narration generation failed", true));
       }
 
       generateSpinner.succeed(chalk.green("Narration generated successfully"));
@@ -442,9 +438,7 @@ ai
 
       console.log();
     } catch (error) {
-      console.error(chalk.red("Auto-narrate failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(generalError(error instanceof Error ? error.message : "Auto-narrate failed"));
     }
   });
 

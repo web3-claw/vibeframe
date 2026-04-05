@@ -31,7 +31,7 @@ import { registerHighlightsCommands } from "./ai-highlights.js";
 import { registerViralCommand } from "./ai-viral.js";
 import { registerBrollCommand } from "./ai-broll.js";
 import { executeAnimatedCaption, type AnimatedCaptionStyle } from "./ai-animated-caption.js";
-import { isJsonMode, outputResult } from "./output.js";
+import { isJsonMode, outputResult, exitWithError, notFoundError, usageError, apiError, generalError } from "./output.js";
 
 export const pipelineCommand = new Command("pipeline")
   .alias("pipe")
@@ -98,8 +98,7 @@ pipelineCommand
 
       const absPath = resolve(process.cwd(), inputPath);
       if (!existsSync(absPath)) {
-        console.error(chalk.red(`File not found: ${absPath}`));
-        process.exit(1);
+        exitWithError(notFoundError(absPath));
       }
 
       if (options.dryRun) {
@@ -126,14 +125,12 @@ pipelineCommand
         const videoSource = sources.find((s) => s.type === "video");
 
         if (!videoSource) {
-          console.error(chalk.red("No video source found in project"));
-          process.exit(1);
+          exitWithError(usageError("No video source found in project"));
         }
 
         videoPath = resolve(dirname(absPath), videoSource.url);
         if (!existsSync(videoPath)) {
-          console.error(chalk.red(`Video file not found: ${videoPath}`));
-          process.exit(1);
+          exitWithError(notFoundError(videoPath));
         }
 
         // Use project directory as output if not specified
@@ -154,16 +151,14 @@ pipelineCommand
         duration = await ffprobeDuration(videoPath);
         durationSpinner.succeed(chalk.green(`Duration: ${formatTime(duration)}`));
       } catch {
-        durationSpinner.fail(chalk.red("Failed to get video duration"));
-        process.exit(1);
+        durationSpinner.fail("Failed to get video duration");
+        exitWithError(generalError("Failed to get video duration", "Ensure the file is a valid video and FFmpeg is installed."));
       }
 
       // Validate style option
       const validStyles = ["informative", "energetic", "calm", "dramatic"];
       if (!validStyles.includes(options.style)) {
-        console.error(chalk.red(`Invalid style: ${options.style}`));
-        console.error(chalk.dim(`Valid styles: ${validStyles.join(", ")}`));
-        process.exit(1);
+        exitWithError(usageError(`Invalid style: ${options.style}`, `Valid styles: ${validStyles.join(", ")}`));
       }
 
       // Generate narration
@@ -181,8 +176,8 @@ pipelineCommand
       });
 
       if (!result.success) {
-        generateSpinner.fail(chalk.red(`Failed: ${result.error}`));
-        process.exit(1);
+        generateSpinner.fail(`Failed: ${result.error}`);
+        exitWithError(apiError(`Narration failed: ${result.error}`, true));
       }
 
       generateSpinner.succeed(chalk.green("Narration generated successfully"));
@@ -259,9 +254,8 @@ pipelineCommand
 
       console.log();
     } catch (error) {
-      console.error(chalk.red("Auto-narrate failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Auto-narrate failed: ${msg}`));
     }
   });
 
@@ -306,15 +300,12 @@ Required API Key: OPENAI_API_KEY (Whisper transcription)
     try {
       const absVideoPath = resolve(process.cwd(), videoPath);
       if (!existsSync(absVideoPath)) {
-        console.error(chalk.red(`File not found: ${absVideoPath}`));
-        process.exit(1);
+        exitWithError(notFoundError(absVideoPath));
       }
 
       // Validate style
       if (!ANIMATED_CAPTION_STYLES.includes(options.style)) {
-        console.error(chalk.red(`Invalid style: ${options.style}`));
-        console.error(chalk.dim(`Valid styles: ${ANIMATED_CAPTION_STYLES.join(", ")}`));
-        process.exit(1);
+        exitWithError(usageError(`Invalid style: ${options.style}`, `Valid styles: ${ANIMATED_CAPTION_STYLES.join(", ")}`));
       }
 
       const outputFile = options.output || videoPath.replace(/(\.\w+)$/, "-captioned$1");
@@ -363,8 +354,8 @@ Required API Key: OPENAI_API_KEY (Whisper transcription)
       });
 
       if (!result.success) {
-        spinner.fail(chalk.red(result.error || "Animated caption failed"));
-        process.exit(1);
+        spinner.fail(result.error || "Animated caption failed");
+        exitWithError(apiError(result.error || "Animated caption failed", true));
       }
 
       spinner.succeed(chalk.green("Animated captions applied successfully"));
@@ -391,8 +382,7 @@ Required API Key: OPENAI_API_KEY (Whisper transcription)
       console.log(`  Tier:    ${result.tier}`);
       console.log();
     } catch (error) {
-      console.error(chalk.red("Animated caption failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Animated caption failed: ${msg}`));
     }
   });

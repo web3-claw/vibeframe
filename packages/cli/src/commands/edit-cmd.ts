@@ -40,7 +40,7 @@ import { formatTime } from "./ai-helpers.js";
 import { applyTextOverlays, type TextOverlayStyle } from "./ai-edit.js";
 import { registerEditCommands } from "./ai-edit-cli.js";
 import { registerFillGapsCommand } from "./ai-fill-gaps.js";
-import { isJsonMode, outputResult, exitWithError, usageError, notFoundError, apiError } from "./output.js";
+import { isJsonMode, outputResult, exitWithError, usageError, notFoundError, apiError, generalError } from "./output.js";
 import { rejectControlChars } from "./validate.js";
 
 export const editCommand = new Command("edit")
@@ -208,18 +208,14 @@ editCommand
   .action(async (videoPath: string, options) => {
     try {
       if (!options.text || options.text.length === 0) {
-        console.error(chalk.red("At least one --text option is required"));
-        console.log(chalk.dim("Example:"));
-        console.log(chalk.dim('  pnpm vibe edit text-overlay video.mp4 -t "NEXUS AI" -t "Intelligence, Unleashed" --style center-bold'));
-        process.exit(1);
+        exitWithError(usageError("At least one --text option is required", 'Example: vibe edit text-overlay video.mp4 -t "NEXUS AI" --style center-bold'));
       }
 
       for (const t of options.text) rejectControlChars(t);
 
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
-        console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-        process.exit(1);
+        exitWithError(generalError("FFmpeg not found", "Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"));
       }
 
       if (options.dryRun) {
@@ -260,8 +256,8 @@ editCommand
       });
 
       if (!result.success) {
-        spinner.fail(chalk.red(result.error || "Text overlay failed"));
-        process.exit(1);
+        spinner.fail(result.error || "Text overlay failed");
+        exitWithError(apiError(result.error || "Text overlay failed", true));
       }
 
       spinner.succeed(chalk.green("Text overlays applied"));
@@ -284,9 +280,8 @@ editCommand
       console.log(`Output: ${result.outputPath}`);
       console.log();
     } catch (error) {
-      console.error(chalk.red("Text overlay failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Text overlay failed: ${msg}`));
     }
   });
 
@@ -308,8 +303,7 @@ editCommand
     try {
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
-        console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-        process.exit(1);
+        exitWithError(generalError("FFmpeg not found", "Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"));
       }
 
       if (options.dryRun) {
@@ -339,11 +333,8 @@ editCommand
         "-v", "error", "-select_streams", "a", "-show_entries", "stream=codec_type", "-of", "csv=p=0", absPath,
       ]);
       if (!speedRampProbe.trim()) {
-        spinner.fail(chalk.yellow("Video has no audio track — cannot use Whisper transcription"));
-        console.log(chalk.yellow("\nThis video has no audio stream."));
-        console.log(chalk.dim("  Speed ramping requires audio for content-aware analysis."));
-        console.log(chalk.dim("  Please use a video with an audio track.\n"));
-        process.exit(1);
+        spinner.fail("Video has no audio track");
+        exitWithError(usageError("Video has no audio stream. Speed ramping requires audio for content-aware analysis.", "Please use a video with an audio track."));
       }
 
       const tempAudio = absPath.replace(/(\.[^.]+)$/, "-temp-audio.mp3");
@@ -361,8 +352,8 @@ editCommand
       const transcript = await whisper.transcribe(audioBlob, options.language);
 
       if (!transcript.segments || transcript.segments.length === 0) {
-        spinner.fail(chalk.red("No transcript segments found"));
-        process.exit(1);
+        spinner.fail("No transcript segments found");
+        exitWithError(apiError("No transcript segments found", true));
       }
 
       // Step 3: Analyze with Claude
@@ -448,9 +439,8 @@ editCommand
       console.log(chalk.dim(`Average speed: ${avgSpeed.toFixed(2)}x`));
       console.log();
     } catch (error) {
-      console.error(chalk.red("Speed ramping failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Speed ramping failed: ${msg}`));
     }
   });
 
@@ -471,8 +461,7 @@ editCommand
     try {
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
-        console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-        process.exit(1);
+        exitWithError(generalError("FFmpeg not found", "Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"));
       }
 
       if (options.dryRun) {
@@ -643,8 +632,8 @@ editCommand
       console.log();
     } catch (error) {
       console.error(chalk.red("Reframe failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Reframe failed: ${msg}`));
     }
   });
 
@@ -665,8 +654,7 @@ editCommand
     try {
       // Last argument is the prompt, rest are image paths
       if (args.length < 2) {
-        console.error(chalk.red("Need at least one image and a prompt"));
-        process.exit(1);
+        exitWithError(usageError("Need at least one image and a prompt"));
       }
 
       const prompt = args[args.length - 1];
@@ -676,9 +664,7 @@ editCommand
 
       // Grok only supports 1 image
       if (provider === "grok" && imagePaths.length > 1) {
-        console.error(chalk.red("Grok supports only 1 input image for editing."));
-        console.log(chalk.dim("Use -p gemini (up to 14 images) or -p openai (up to 16 images) for multi-image editing."));
-        process.exit(1);
+        exitWithError(usageError("Grok supports only 1 input image for editing.", "Use -p gemini (up to 14 images) or -p openai (up to 16 images) for multi-image editing."));
       }
 
       if (options.dryRun) {
@@ -763,8 +749,8 @@ editCommand
       }
 
       if (!result.success || !result.images || result.images.length === 0) {
-        spinner.fail(chalk.red(result.error || "Image editing failed"));
-        process.exit(1);
+        spinner.fail(result.error || "Image editing failed");
+        exitWithError(apiError(result.error || "Image editing failed", true));
       }
 
       spinner.succeed(chalk.green("Image edited"));
@@ -806,9 +792,8 @@ editCommand
       await saveImage();
       console.log(chalk.green(`Saved to: ${outputPath}`));
     } catch (error) {
-      console.error(chalk.red("Image editing failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Image editing failed: ${msg}`, true));
     }
   });
 
@@ -829,8 +814,7 @@ editCommand
       const factor = parseInt(options.factor);
 
       if (![2, 4, 8].includes(factor)) {
-        console.error(chalk.red("Factor must be 2, 4, or 8"));
-        process.exit(1);
+        exitWithError(usageError("Factor must be 2, 4, or 8"));
       }
 
       if (options.dryRun) {
@@ -893,18 +877,17 @@ editCommand
         console.log(`Output: ${outputPath}`);
         console.log();
       } catch (err: unknown) {
-        spinner.fail(chalk.red("Frame interpolation failed"));
+        spinner.fail("Frame interpolation failed");
         if (err instanceof Error && err.message.includes("timeout")) {
-          console.error(chalk.yellow("Processing timed out. Try with a shorter video or --quality fast"));
+          exitWithError(generalError("Frame interpolation timed out", "Try with a shorter video or --quality fast"));
         } else {
-          console.error(err);
+          const msg = err instanceof Error ? err.message : String(err);
+          exitWithError(generalError(`Frame interpolation failed: ${msg}`));
         }
-        process.exit(1);
       }
     } catch (error) {
-      console.error(chalk.red("Frame interpolation failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Frame interpolation failed: ${msg}`));
     }
   });
 
@@ -927,8 +910,7 @@ editCommand
       const scale = parseInt(options.scale);
 
       if (scale !== 2 && scale !== 4) {
-        console.error(chalk.red("Scale must be 2 or 4"));
-        process.exit(1);
+        exitWithError(usageError("Scale must be 2 or 4"));
       }
 
       if (options.dryRun) {
@@ -978,9 +960,9 @@ editCommand
 
           console.log(`Output: ${outputPath}`);
         } catch (err) {
-          spinner.fail(chalk.red("FFmpeg upscaling failed"));
-          console.error(err);
-          process.exit(1);
+          spinner.fail("FFmpeg upscaling failed");
+          const msg = err instanceof Error ? err.message : String(err);
+          exitWithError(generalError(`FFmpeg upscaling failed: ${msg}`));
         }
         return;
       }
@@ -998,17 +980,10 @@ editCommand
       spinner.text = "Note: Replicate requires video URL. Reading file...";
 
       // For now, we'll show an error suggesting URL or ffmpeg
-      spinner.fail(chalk.yellow("Replicate requires a video URL"));
-      console.log();
-      console.log(chalk.dim("Options:"));
-      console.log(chalk.dim("  1. Use --ffmpeg for local processing"));
-      console.log(chalk.dim("  2. Upload video to a URL and run:"));
-      console.log(chalk.dim(`     pnpm vibe edit upscale-video https://example.com/video.mp4 -s ${scale}`));
-      console.log();
-      process.exit(1);
+      spinner.fail("Replicate requires a video URL");
+      exitWithError(usageError("Replicate requires a video URL", "Use --ffmpeg for local processing, or upload video to a URL."));
     } catch (error) {
-      console.error(chalk.red("Video upscaling failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Video upscaling failed: ${msg}`));
     }
   });

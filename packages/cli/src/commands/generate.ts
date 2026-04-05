@@ -43,7 +43,7 @@ import { requireApiKey, hasApiKey } from "../utils/api-key.js";
 import { hasTTY, prompt as promptText } from "../utils/tty.js";
 import { getApiKeyFromConfig } from "../config/index.js";
 import { sanitizeLLMResponse } from "./sanitize.js";
-import { isJsonMode, outputResult, log, exitWithError, usageError, apiError } from "./output.js";
+import { isJsonMode, outputResult, log, exitWithError, usageError, apiError, generalError, authError, notFoundError } from "./output.js";
 import { commandExists } from "../utils/exec-safe.js";
 import { uploadToImgbb } from "./ai-script-pipeline.js";
 import { downloadVideo, formatTime } from "./ai-helpers.js";
@@ -210,8 +210,8 @@ Examples:
         });
 
         if (!result.success || !result.images) {
-          spinner.fail(chalk.red(result.error || "Image generation failed"));
-          process.exit(1);
+          spinner.fail(result.error || "Image generation failed");
+          exitWithError(apiError(result.error || "Image generation failed", true));
         }
 
         spinner.succeed(chalk.green(`Generated ${result.images.length} image(s) with OpenAI GPT Image 1.5`));
@@ -288,8 +288,7 @@ Examples:
         // Validate aspect ratio
         const validRatios = ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9"];
         if (options.ratio && !validRatios.includes(options.ratio)) {
-          console.error(chalk.red(`Invalid ratio "${options.ratio}". Valid: ${validRatios.join(", ")}`));
-          process.exit(1);
+          exitWithError(usageError(`Invalid ratio "${options.ratio}". Valid: ${validRatios.join(", ")}`));
         }
 
         const gemini = new GeminiProvider();
@@ -321,8 +320,8 @@ Examples:
         }
 
         if (!result.success || !result.images) {
-          spinner.fail(chalk.red(result.error || "Image generation failed"));
-          process.exit(1);
+          spinner.fail(result.error || "Image generation failed");
+          exitWithError(apiError(result.error || "Image generation failed", true));
         }
 
         spinner.succeed(chalk.green(`Generated ${result.images.length} image(s) with Gemini (${usedLabel})`));
@@ -383,8 +382,8 @@ Examples:
         });
 
         if (!result.success || !result.images) {
-          spinner.fail(chalk.red(result.error || "Image generation failed"));
-          process.exit(1);
+          spinner.fail(result.error || "Image generation failed");
+          exitWithError(apiError(result.error || "Image generation failed", true));
         }
 
         spinner.succeed(chalk.green(`Generated ${result.images.length} image(s) with xAI Grok`));
@@ -453,8 +452,8 @@ Examples:
         const scriptPath = resolve(__dirname, "../../../../.claude/skills/runway-video/scripts/image.py");
 
         if (!options.output) {
-          spinner.fail(chalk.red("Output path required for Runway. Use -o option."));
-          process.exit(1);
+          spinner.fail("Output path required for Runway");
+          exitWithError(usageError("Output path required for Runway. Use -o option."));
         }
 
         const outputPath = resolve(process.cwd(), options.output);
@@ -644,9 +643,7 @@ Examples:
       // Runway gen4_turbo requires an input image; gen4.5 supports text-to-video
       const runwayModel = (options.runwayModel as string) || "gen4.5";
       if (provider === "runway" && !options.image && runwayModel !== "gen4.5") {
-        console.error(chalk.red(`Runway ${runwayModel} requires an input image. Use -i <image> or use gen4.5 for text-to-video.`));
-        console.error(chalk.dim("Example: vibe generate video \"prompt\" -p runway -i image.png -o out.mp4"));
-        process.exit(1);
+        exitWithError(usageError(`Runway ${runwayModel} requires an input image. Use -i <image> or use gen4.5 for text-to-video.`));
       }
 
       const spinner = ora(`Initializing ${providerName}...`).start();
@@ -670,8 +667,8 @@ Examples:
         });
 
         if (result.status === "failed") {
-          spinner.fail(chalk.red(result.error || "Failed to start generation"));
-          process.exit(1);
+          spinner.fail(result.error || "Failed to start generation");
+          exitWithError(apiError(result.error || "Failed to start generation", true));
         }
 
         console.log();
@@ -705,8 +702,8 @@ Examples:
         await kling.initialize({ apiKey });
 
         if (!kling.isConfigured()) {
-          spinner.fail(chalk.red("Invalid API key format. Use ACCESS_KEY:SECRET_KEY"));
-          process.exit(1);
+          spinner.fail("Invalid API key format");
+          exitWithError(authError("KLING_API_KEY", "Kling"));
         }
 
         // Kling v2.x requires image URL, not base64 — auto-upload to ImgBB
@@ -715,17 +712,16 @@ Examples:
           spinner.text = "Uploading image to ImgBB for Kling...";
           const imgbbKey = (await getApiKeyFromConfig("imgbb")) || process.env.IMGBB_API_KEY;
           if (!imgbbKey) {
-            spinner.fail(chalk.red("Kling requires image URL. Set IMGBB_API_KEY for auto-upload."));
-            console.error(chalk.dim("Run: vibe setup --full  to configure ImgBB"));
-            process.exit(1);
+            spinner.fail("ImgBB API key required");
+            exitWithError(authError("IMGBB_API_KEY", "ImgBB"));
           }
           // Extract raw base64 from data URI
           const base64Data = klingImage.split(",")[1];
           const imageBuffer = Buffer.from(base64Data, "base64");
           const uploadResult = await uploadToImgbb(imageBuffer, imgbbKey);
           if (!uploadResult.success || !uploadResult.url) {
-            spinner.fail(chalk.red(`ImgBB upload failed: ${uploadResult.error}`));
-            process.exit(1);
+            spinner.fail("ImgBB upload failed");
+            exitWithError(apiError(`ImgBB upload failed: ${uploadResult.error}`, true));
           }
           klingImage = uploadResult.url;
           spinner.text = "Starting video generation...";
@@ -741,8 +737,8 @@ Examples:
         });
 
         if (result.status === "failed") {
-          spinner.fail(chalk.red(result.error || "Failed to start generation"));
-          process.exit(1);
+          spinner.fail(result.error || "Failed to start generation");
+          exitWithError(apiError(result.error || "Failed to start generation", true));
         }
 
         console.log();
@@ -823,8 +819,8 @@ Examples:
         });
 
         if (result.status === "failed") {
-          spinner.fail(chalk.red(result.error || "Failed to start generation"));
-          process.exit(1);
+          spinner.fail(result.error || "Failed to start generation");
+          exitWithError(apiError(result.error || "Failed to start generation", true));
         }
 
         console.log();
@@ -861,8 +857,8 @@ Examples:
         });
 
         if (result.status === "failed") {
-          spinner.fail(chalk.red(result.error || "Failed to start generation"));
-          process.exit(1);
+          spinner.fail(result.error || "Failed to start generation");
+          exitWithError(apiError(result.error || "Failed to start generation", true));
         }
 
         console.log();
@@ -891,8 +887,8 @@ Examples:
       }
 
       if (!finalResult || finalResult.status !== "completed") {
-        spinner.fail(chalk.red(finalResult?.error || "Generation failed"));
-        process.exit(1);
+        spinner.fail(finalResult?.error || "Generation failed");
+        exitWithError(apiError(finalResult?.error || "Generation failed", true));
       }
 
       spinner.succeed(chalk.green("Video generated"));
@@ -1007,8 +1003,8 @@ generateCommand
       });
 
       if (!result.success || !result.audioBuffer) {
-        spinner.fail(chalk.red(result.error || "TTS generation failed"));
-        process.exit(1);
+        spinner.fail(result.error || "TTS generation failed");
+        exitWithError(apiError(result.error || "TTS generation failed", true));
       }
 
       const outputPath = resolve(process.cwd(), options.output);
@@ -1056,9 +1052,8 @@ generateCommand
       console.log(chalk.green(`Saved to: ${outputPath}`));
       console.log();
     } catch (error) {
-      console.error(chalk.red("TTS generation failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`TTS generation failed: ${msg}`, true));
     }
   });
 
@@ -1098,8 +1093,8 @@ generateCommand
       });
 
       if (!result.success || !result.audioBuffer) {
-        spinner.fail(chalk.red(result.error || "Sound effect generation failed"));
-        process.exit(1);
+        spinner.fail(result.error || "Sound effect generation failed");
+        exitWithError(apiError(result.error || "Sound effect generation failed", true));
       }
 
       const outputPath = resolve(process.cwd(), options.output);
@@ -1115,9 +1110,8 @@ generateCommand
       console.log(chalk.green(`Saved to: ${outputPath}`));
       console.log();
     } catch (error) {
-      console.error(chalk.red("Sound effect generation failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Sound effect generation failed: ${msg}`, true));
     }
   });
 
@@ -1165,8 +1159,8 @@ generateCommand
         });
 
         if (!result.success || !result.audioBuffer) {
-          spinner.fail(chalk.red(result.error || "Music generation failed"));
-          process.exit(1);
+          spinner.fail(result.error || "Music generation failed");
+          exitWithError(apiError(result.error || "Music generation failed", true));
         }
 
         const outputPath = resolve(process.cwd(), options.output);
@@ -1201,12 +1195,10 @@ generateCommand
           spinner.text = "Uploading melody reference...";
           const absPath = resolve(process.cwd(), options.melody);
           if (!existsSync(absPath)) {
-            spinner.fail(chalk.red(`Melody file not found: ${options.melody}`));
-            process.exit(1);
+            spinner.fail(`Melody file not found: ${options.melody}`);
+            exitWithError(notFoundError(options.melody));
           }
-          console.log(chalk.yellow("Note: Melody conditioning requires a publicly accessible URL"));
-          console.log(chalk.yellow("Please upload your melody file and provide the URL"));
-          process.exit(1);
+          exitWithError(usageError("Melody conditioning requires a publicly accessible URL", "Please upload your melody file and provide the URL."));
         }
 
         const result = await replicate.generateMusic(prompt, {
@@ -1215,8 +1207,8 @@ generateCommand
         });
 
         if (!result.success || !result.taskId) {
-          spinner.fail(chalk.red(result.error || "Music generation failed"));
-          process.exit(1);
+          spinner.fail(result.error || "Music generation failed");
+          exitWithError(apiError(result.error || "Music generation failed", true));
         }
 
         if (!options.wait) {
@@ -1232,16 +1224,16 @@ generateCommand
         const finalResult = await replicate.waitForMusic(result.taskId);
 
         if (!finalResult.success || !finalResult.audioUrl) {
-          spinner.fail(chalk.red(finalResult.error || "Music generation failed"));
-          process.exit(1);
+          spinner.fail(finalResult.error || "Music generation failed");
+          exitWithError(apiError(finalResult.error || "Music generation failed", true));
         }
 
         spinner.text = "Downloading generated audio...";
 
         const response = await fetch(finalResult.audioUrl);
         if (!response.ok) {
-          spinner.fail(chalk.red("Failed to download generated audio"));
-          process.exit(1);
+          spinner.fail("Failed to download generated audio");
+          exitWithError(apiError("Failed to download generated audio", true));
         }
 
         const audioBuffer = Buffer.from(await response.arrayBuffer());
@@ -1262,9 +1254,8 @@ generateCommand
         console.log();
       }
     } catch (error) {
-      console.error(chalk.red("Music generation failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Music generation failed: ${msg}`, true));
     }
   });
 
@@ -1308,9 +1299,8 @@ generateCommand
       }
       console.log();
     } catch (error) {
-      console.error(chalk.red("Failed to get music status"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Failed to get music status: ${msg}`, true));
     }
   });
 
@@ -1335,8 +1325,7 @@ generateCommand
       // Validate creativity level
       const creativity = options.creativity?.toLowerCase();
       if (creativity && creativity !== "low" && creativity !== "high") {
-        console.error(chalk.red("Invalid creativity level. Use 'low' or 'high'."));
-        process.exit(1);
+        exitWithError(usageError("Invalid creativity level. Use 'low' or 'high'."));
       }
 
       let textContent = content;
@@ -1367,8 +1356,8 @@ generateCommand
       );
 
       if (segments.length === 0) {
-        spinner.fail(chalk.red("Could not generate storyboard"));
-        process.exit(1);
+        spinner.fail("Could not generate storyboard");
+        exitWithError(apiError("Could not generate storyboard", true));
       }
 
       spinner.succeed(chalk.green(`Generated ${segments.length} segments`));
@@ -1412,9 +1401,8 @@ generateCommand
         console.log(chalk.green(`Saved to: ${resolve(process.cwd(), options.output)}`));
       }
     } catch (error) {
-      console.error(chalk.red("Storyboard generation failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Storyboard generation failed: ${msg}`, true));
     }
   });
 
@@ -1446,13 +1434,11 @@ generateCommand
       if (options.bestFrame) {
         const absVideoPath = resolve(process.cwd(), options.bestFrame);
         if (!existsSync(absVideoPath)) {
-          console.error(chalk.red(`Video not found: ${absVideoPath}`));
-          process.exit(1);
+          exitWithError(notFoundError(absVideoPath));
         }
 
         if (!commandExists("ffmpeg")) {
-          console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-          process.exit(1);
+          exitWithError(generalError("FFmpeg not found", "Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"));
         }
 
         const apiKey = await requireApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
@@ -1471,8 +1457,8 @@ generateCommand
         });
 
         if (!result.success) {
-          spinner.fail(chalk.red(result.error || "Best frame extraction failed"));
-          process.exit(1);
+          spinner.fail(result.error || "Best frame extraction failed");
+          exitWithError(apiError(result.error || "Best frame extraction failed", true));
         }
 
         spinner.succeed(chalk.green("Best frame extracted"));
@@ -1494,9 +1480,7 @@ generateCommand
 
       // Generation mode: create thumbnail with DALL-E
       if (!description) {
-        console.error(chalk.red("Description required for thumbnail generation."));
-        console.error(chalk.dim("Usage: vibe generate thumbnail <description> or vibe generate thumbnail --best-frame <video>"));
-        process.exit(1);
+        exitWithError(usageError("Description required for thumbnail generation.", "Usage: vibe generate thumbnail <description> or vibe generate thumbnail --best-frame <video>"));
       }
 
       const apiKey = await requireApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
@@ -1509,8 +1493,8 @@ generateCommand
       const result = await openaiImage.generateThumbnail(description, options.style);
 
       if (!result.success || !result.images) {
-        spinner.fail(chalk.red(result.error || "Thumbnail generation failed"));
-        process.exit(1);
+        spinner.fail(result.error || "Thumbnail generation failed");
+        exitWithError(apiError(result.error || "Thumbnail generation failed", true));
       }
 
       spinner.succeed(chalk.green("Thumbnail generated"));
@@ -1568,9 +1552,8 @@ generateCommand
         }
       }
     } catch (error) {
-      console.error(chalk.red("Thumbnail generation failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Thumbnail generation failed: ${msg}`, true));
     }
   });
 
@@ -1605,8 +1588,8 @@ generateCommand
       const result = await openaiImage.generateBackground(description, options.aspect);
 
       if (!result.success || !result.images) {
-        spinner.fail(chalk.red(result.error || "Background generation failed"));
-        process.exit(1);
+        spinner.fail(result.error || "Background generation failed");
+        exitWithError(apiError(result.error || "Background generation failed", true));
       }
 
       spinner.succeed(chalk.green("Background generated"));
@@ -1664,9 +1647,8 @@ generateCommand
         }
       }
     } catch (error) {
-      console.error(chalk.red("Background generation failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Background generation failed: ${msg}`, true));
     }
   });
 
@@ -1873,13 +1855,11 @@ generateCommand
           }
         }
       } else {
-        console.error(chalk.red(`Invalid provider: ${provider}. Use grok, runway, or kling.`));
-        process.exit(1);
+        exitWithError(usageError(`Invalid provider: ${provider}. Use grok, runway, or kling.`));
       }
     } catch (error) {
-      console.error(chalk.red("Failed to get status"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Failed to get status: ${msg}`, true));
     }
   });
 
@@ -1914,8 +1894,8 @@ generateCommand
             return;
           }
         } else {
-          spinner.fail(chalk.red("Failed to cancel generation"));
-          process.exit(1);
+          spinner.fail("Failed to cancel generation");
+          exitWithError(apiError("Failed to cancel generation", true));
         }
       } else if (provider === "runway") {
         const apiKey = await requireApiKey("RUNWAY_API_SECRET", "Runway", options.apiKey);
@@ -1932,17 +1912,15 @@ generateCommand
             return;
           }
         } else {
-          spinner.fail(chalk.red("Failed to cancel generation"));
-          process.exit(1);
+          spinner.fail("Failed to cancel generation");
+          exitWithError(apiError("Failed to cancel generation", true));
         }
       } else {
-        console.error(chalk.red(`Invalid provider: ${provider}. Use grok or runway.`));
-        process.exit(1);
+        exitWithError(usageError(`Invalid provider: ${provider}. Use grok or runway.`));
       }
     } catch (error) {
-      console.error(chalk.red("Failed to cancel"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Failed to cancel: ${msg}`, true));
     }
   });
 
@@ -1982,8 +1960,8 @@ generateCommand
         await kling.initialize({ apiKey });
 
         if (!kling.isConfigured()) {
-          spinner.fail(chalk.red("Invalid API key format. Use ACCESS_KEY:SECRET_KEY"));
-          process.exit(1);
+          spinner.fail("Invalid API key format");
+          exitWithError(authError("KLING_API_KEY", "Kling"));
         }
 
         spinner.text = "Starting video extension...";
@@ -1995,8 +1973,8 @@ generateCommand
         });
 
         if (result.status === "failed") {
-          spinner.fail(chalk.red(result.error || "Failed to start extension"));
-          process.exit(1);
+          spinner.fail(result.error || "Failed to start extension");
+          exitWithError(apiError(result.error || "Failed to start extension", true));
         }
 
         console.log();
@@ -2025,8 +2003,8 @@ generateCommand
         );
 
         if (finalResult.status !== "completed") {
-          spinner.fail(chalk.red(finalResult.error || "Extension failed"));
-          process.exit(1);
+          spinner.fail(finalResult.error || "Extension failed");
+          exitWithError(apiError(finalResult.error || "Extension failed", true));
         }
 
         spinner.succeed(chalk.green("Video extended"));
@@ -2085,8 +2063,8 @@ generateCommand
         });
 
         if (result.status === "failed") {
-          spinner.fail(chalk.red(result.error || "Failed to start extension"));
-          process.exit(1);
+          spinner.fail(result.error || "Failed to start extension");
+          exitWithError(apiError(result.error || "Failed to start extension", true));
         }
 
         console.log();
@@ -2114,8 +2092,8 @@ generateCommand
         );
 
         if (finalResult.status !== "completed") {
-          spinner.fail(chalk.red(finalResult.error || "Extension failed"));
-          process.exit(1);
+          spinner.fail(finalResult.error || "Extension failed");
+          exitWithError(apiError(finalResult.error || "Extension failed", true));
         }
 
         spinner.succeed(chalk.green("Video extended"));
@@ -2149,12 +2127,10 @@ generateCommand
           }
         }
       } else {
-        console.error(chalk.red(`Invalid provider: ${provider}. Video extend supports: kling, veo`));
-        process.exit(1);
+        exitWithError(usageError(`Invalid provider: ${provider}. Video extend supports: kling, veo`));
       }
     } catch (error) {
-      console.error(chalk.red("Video extension failed"));
-      console.error(error);
-      process.exit(1);
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(apiError(`Video extension failed: ${msg}`, true));
     }
   });

@@ -9,6 +9,7 @@
  */
 
 import { Command } from "commander";
+import { exitWithError, generalError, usageError } from "./output.js";
 
 export const schemaCommand = new Command("schema")
   .description("Show JSON schema for a CLI command")
@@ -17,8 +18,7 @@ export const schemaCommand = new Command("schema")
   .action((commandPath: string | undefined, options: { list?: boolean }) => {
     const program = schemaCommand.parent;
     if (!program) {
-      console.error("Schema command must be registered on a program");
-      process.exit(1);
+      exitWithError(generalError("Schema command must be registered on a program"));
     }
 
     if (options.list || !commandPath) {
@@ -34,9 +34,7 @@ export const schemaCommand = new Command("schema")
         (c: Command) => c.name() === parts[0]
       );
       if (!cmd) {
-        console.error(`Unknown command: ${parts[0]}`);
-        console.error(`Run 'vibe schema --list' to see all available commands.`);
-        process.exit(1);
+        exitWithError(usageError(`Unknown command: ${parts[0]}`, `Run 'vibe schema --list' to see all available commands.`));
       }
       const schema = buildSchema(cmd as Command, parts[0]);
       console.log(JSON.stringify(schema, null, 2));
@@ -44,11 +42,10 @@ export const schemaCommand = new Command("schema")
     }
 
     if (parts.length !== 2) {
-      console.error(
-        `Invalid command path: ${commandPath}. Use format: group.action (e.g., generate.image)`
-      );
-      console.error(`Run 'vibe schema --list' to see all available commands.`);
-      process.exit(1);
+      exitWithError(usageError(
+        `Invalid command path: ${commandPath}. Use format: group.action (e.g., generate.image)`,
+        `Run 'vibe schema --list' to see all available commands.`
+      ));
     }
 
     const [groupName, actionName] = parts;
@@ -57,27 +54,21 @@ export const schemaCommand = new Command("schema")
       (c: Command) => c.name() === groupName
     );
     if (!groupCmd) {
-      console.error(`Unknown group: ${groupName}`);
-      console.error(
-        `Available groups: ${program.commands
-          .filter((c: Command) => (c as Command).commands.length > 0)
-          .map((c: Command) => c.name())
-          .join(", ")}`
-      );
-      process.exit(1);
+      const availableGroups = program.commands
+        .filter((c: Command) => (c as Command).commands.length > 0)
+        .map((c: Command) => c.name())
+        .join(", ");
+      exitWithError(usageError(`Unknown group: ${groupName}`, `Available groups: ${availableGroups}`));
     }
 
     const actionCmd = (groupCmd as Command).commands.find(
       (c: Command) => c.name() === actionName
     );
     if (!actionCmd) {
-      console.error(`Unknown action: ${actionName} in group ${groupName}`);
-      console.error(
-        `Available actions: ${(groupCmd as Command).commands
-          .map((c: Command) => c.name())
-          .join(", ")}`
-      );
-      process.exit(1);
+      const availableActions = (groupCmd as Command).commands
+        .map((c: Command) => c.name())
+        .join(", ");
+      exitWithError(usageError(`Unknown action: ${actionName} in group ${groupName}`, `Available actions: ${availableActions}`));
     }
 
     const toolName = `${groupName}_${actionName.replace(/-/g, "_")}`;

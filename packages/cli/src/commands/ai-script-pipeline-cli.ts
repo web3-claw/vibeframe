@@ -38,6 +38,7 @@ import {
   generateVideoWithRetryRunway,
 } from "./ai-script-pipeline.js";
 import { downloadVideo } from "./ai-helpers.js";
+import { exitWithError, authError, notFoundError, usageError, apiError, generalError } from "./output.js";
 
 export function registerScriptPipelineCommands(aiCommand: Command): void {
 // Script-to-Video command
@@ -77,24 +78,20 @@ aiCommand
       if (storyboardProvider === "openai") {
         storyboardApiKey = (await getApiKey("OPENAI_API_KEY", "OpenAI")) ?? undefined;
         if (!storyboardApiKey) {
-          console.error(chalk.red("OpenAI API key required for storyboard generation (-s openai). Set OPENAI_API_KEY in .env or run: vibe setup"));
-          process.exit(1);
+          exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
         }
       } else if (storyboardProvider === "gemini") {
         storyboardApiKey = (await getApiKey("GOOGLE_API_KEY", "Google")) ?? undefined;
         if (!storyboardApiKey) {
-          console.error(chalk.red("Google API key required for storyboard generation (-s gemini). Set GOOGLE_API_KEY in .env or run: vibe setup"));
-          process.exit(1);
+          exitWithError(authError("GOOGLE_API_KEY", "Google"));
         }
       } else if (storyboardProvider === "claude") {
         storyboardApiKey = (await getApiKey("ANTHROPIC_API_KEY", "Anthropic")) ?? undefined;
         if (!storyboardApiKey) {
-          console.error(chalk.red("Anthropic API key required for storyboard generation. Set ANTHROPIC_API_KEY in .env or run: vibe setup"));
-          process.exit(1);
+          exitWithError(authError("ANTHROPIC_API_KEY", "Anthropic"));
         }
       } else {
-        console.error(chalk.red(`Unknown storyboard provider: ${storyboardProvider}. Use claude, openai, or gemini`));
-        process.exit(1);
+        exitWithError(usageError(`Unknown storyboard provider: ${storyboardProvider}`, "Use claude, openai, or gemini"));
       }
 
       // Get image provider API key
@@ -104,32 +101,27 @@ aiCommand
       if (imageProvider === "openai" || imageProvider === "dalle") {
         imageApiKey = (await getApiKey("OPENAI_API_KEY", "OpenAI")) ?? undefined;
         if (!imageApiKey) {
-          console.error(chalk.red("OpenAI API key required for DALL-E image generation. Set OPENAI_API_KEY in .env or run: vibe setup"));
-          process.exit(1);
+          exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
         }
       } else if (imageProvider === "gemini") {
         imageApiKey = (await getApiKey("GOOGLE_API_KEY", "Google")) ?? undefined;
         if (!imageApiKey) {
-          console.error(chalk.red("Google API key required for Gemini image generation. Set GOOGLE_API_KEY in .env or run: vibe setup"));
-          process.exit(1);
+          exitWithError(authError("GOOGLE_API_KEY", "Google"));
         }
       } else if (imageProvider === "grok") {
         imageApiKey = (await getApiKey("XAI_API_KEY", "xAI")) ?? undefined;
         if (!imageApiKey) {
-          console.error(chalk.red("xAI API key required for Grok image generation. Set XAI_API_KEY in .env or run: vibe setup"));
-          process.exit(1);
+          exitWithError(authError("XAI_API_KEY", "xAI"));
         }
       } else {
-        console.error(chalk.red(`Unknown image provider: ${imageProvider}. Use openai, gemini, or grok`));
-        process.exit(1);
+        exitWithError(usageError(`Unknown image provider: ${imageProvider}`, "Use openai, gemini, or grok"));
       }
 
       let elevenlabsApiKey: string | undefined;
       if (options.voiceover !== false) {
         const key = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs");
         if (!key) {
-          console.error(chalk.red("ElevenLabs API key required for voiceover (or use --no-voiceover). Set ELEVENLABS_API_KEY in .env or run: vibe setup"));
-          process.exit(1);
+          exitWithError(authError("ELEVENLABS_API_KEY", "ElevenLabs"));
         }
         elevenlabsApiKey = key;
       }
@@ -139,15 +131,13 @@ aiCommand
         if (options.generator === "kling") {
           const key = await getApiKey("KLING_API_KEY", "Kling");
           if (!key) {
-            console.error(chalk.red("Kling API key required (or use --images-only). Set KLING_API_KEY in .env or run: vibe setup"));
-            process.exit(1);
+            exitWithError(authError("KLING_API_KEY", "Kling"));
           }
           videoApiKey = key;
         } else {
           const key = await getApiKey("RUNWAY_API_SECRET", "Runway");
           if (!key) {
-            console.error(chalk.red("Runway API key required (or use --images-only). Set RUNWAY_API_SECRET in .env or run: vibe setup"));
-            process.exit(1);
+            exitWithError(authError("RUNWAY_API_SECRET", "Runway"));
           }
           videoApiKey = key;
         }
@@ -181,8 +171,7 @@ aiCommand
       // Validate creativity level
       const creativity = options.creativity?.toLowerCase();
       if (creativity && creativity !== "low" && creativity !== "high") {
-        console.error(chalk.red("Invalid creativity level. Use 'low' or 'high'."));
-        process.exit(1);
+        exitWithError(usageError("Invalid creativity level.", "Use 'low' or 'high'."));
       }
 
       console.log();
@@ -219,8 +208,8 @@ aiCommand
       }
 
       if (segments.length === 0) {
-        storyboardSpinner.fail(chalk.red("Failed to generate storyboard (check API key and error above)"));
-        process.exit(1);
+        storyboardSpinner.fail("Failed to generate storyboard");
+        exitWithError(apiError("Failed to generate storyboard (check API key and error above)", true));
       }
 
       let totalDuration = segments.reduce((sum, seg) => sum + seg.duration, 0);
@@ -502,8 +491,8 @@ aiCommand
           await kling.initialize({ apiKey: videoApiKey });
 
           if (!kling.isConfigured()) {
-            videoSpinner.fail(chalk.red("Invalid Kling API key format. Use ACCESS_KEY:SECRET_KEY"));
-            process.exit(1);
+            videoSpinner.fail("Invalid Kling API key format");
+            exitWithError(authError("KLING_API_KEY", "Kling"));
           }
 
           // Check for ImgBB API key for image-to-video support (from config or env)
@@ -1146,9 +1135,7 @@ aiCommand
       }
       console.log();
     } catch (error) {
-      console.error(chalk.red("Script-to-Video failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(generalError(error instanceof Error ? error.message : "Script-to-Video failed"));
     }
   });
 
@@ -1175,21 +1162,17 @@ aiCommand
 
       // Validate project directory
       if (!existsSync(outputDir)) {
-        console.error(chalk.red(`Project directory not found: ${outputDir}`));
-        process.exit(1);
+        exitWithError(notFoundError(outputDir));
       }
 
       if (!existsSync(storyboardPath)) {
-        console.error(chalk.red(`Storyboard not found: ${storyboardPath}`));
-        console.error(chalk.dim("This command requires a storyboard.json file from script-to-video output"));
-        process.exit(1);
+        exitWithError(notFoundError(storyboardPath));
       }
 
       // Parse scene number(s) - supports "3" or "3,4,5"
       const sceneNums = options.scene.split(",").map((s: string) => parseInt(s.trim())).filter((n: number) => !isNaN(n) && n >= 1);
       if (sceneNums.length === 0) {
-        console.error(chalk.red("Scene number must be a positive integer (1-based), e.g., --scene 3 or --scene 3,4,5"));
-        process.exit(1);
+        exitWithError(usageError("Scene number must be a positive integer (1-based)", "e.g., --scene 3 or --scene 3,4,5"));
       }
 
       // Load storyboard
@@ -1199,8 +1182,7 @@ aiCommand
       // Validate all scene numbers
       for (const sceneNum of sceneNums) {
         if (sceneNum > segments.length) {
-          console.error(chalk.red(`Scene ${sceneNum} does not exist. Storyboard has ${segments.length} scenes.`));
-          process.exit(1);
+          exitWithError(usageError(`Scene ${sceneNum} does not exist. Storyboard has ${segments.length} scenes.`));
         }
       }
 
@@ -1227,20 +1209,17 @@ aiCommand
         if (imageProvider === "openai" || imageProvider === "dalle") {
           imageApiKey = (await getApiKey("OPENAI_API_KEY", "OpenAI")) ?? undefined;
           if (!imageApiKey) {
-            console.error(chalk.red("OpenAI API key required for image generation. Set OPENAI_API_KEY in .env or run: vibe setup"));
-            process.exit(1);
+            exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
           }
         } else if (imageProvider === "gemini") {
           imageApiKey = (await getApiKey("GOOGLE_API_KEY", "Google")) ?? undefined;
           if (!imageApiKey) {
-            console.error(chalk.red("Google API key required for Gemini image generation. Set GOOGLE_API_KEY in .env or run: vibe setup"));
-            process.exit(1);
+            exitWithError(authError("GOOGLE_API_KEY", "Google"));
           }
         } else if (imageProvider === "grok") {
           imageApiKey = (await getApiKey("XAI_API_KEY", "xAI")) ?? undefined;
           if (!imageApiKey) {
-            console.error(chalk.red("xAI API key required for Grok image generation. Set XAI_API_KEY in .env or run: vibe setup"));
-            process.exit(1);
+            exitWithError(authError("XAI_API_KEY", "xAI"));
           }
         }
       }
@@ -1249,15 +1228,13 @@ aiCommand
         if (options.generator === "kling") {
           const key = await getApiKey("KLING_API_KEY", "Kling");
           if (!key) {
-            console.error(chalk.red("Kling API key required. Set KLING_API_KEY in .env or run: vibe setup"));
-            process.exit(1);
+            exitWithError(authError("KLING_API_KEY", "Kling"));
           }
           videoApiKey = key;
         } else {
           const key = await getApiKey("RUNWAY_API_SECRET", "Runway");
           if (!key) {
-            console.error(chalk.red("Runway API key required. Set RUNWAY_API_SECRET in .env or run: vibe setup"));
-            process.exit(1);
+            exitWithError(authError("RUNWAY_API_SECRET", "Runway"));
           }
           videoApiKey = key;
         }
@@ -1266,8 +1243,7 @@ aiCommand
       if (regenerateNarration) {
         const key = await getApiKey("ELEVENLABS_API_KEY", "ElevenLabs");
         if (!key) {
-          console.error(chalk.red("ElevenLabs API key required for narration. Set ELEVENLABS_API_KEY in .env or run: vibe setup"));
-          process.exit(1);
+          exitWithError(authError("ELEVENLABS_API_KEY", "ElevenLabs"));
         }
         elevenlabsApiKey = key;
       }
@@ -1296,8 +1272,8 @@ aiCommand
         });
 
         if (!ttsResult.success || !ttsResult.audioBuffer) {
-          ttsSpinner.fail(chalk.red(`Failed to generate narration: ${ttsResult.error || "Unknown error"}`));
-          process.exit(1);
+          ttsSpinner.fail(`Failed to generate narration: ${ttsResult.error || "Unknown error"}`);
+          exitWithError(apiError(`Failed to generate narration: ${ttsResult.error || "Unknown error"}`, true));
         }
 
         await writeFile(narrationPath, ttsResult.audioBuffer);
@@ -1456,8 +1432,8 @@ Generate the single-person scene image now.`;
           imageSpinner.succeed(chalk.green("Generated image"));
         } else {
           const errorMsg = imageError || "Unknown error";
-          imageSpinner.fail(chalk.red(`Failed to generate image: ${errorMsg}`));
-          process.exit(1);
+          imageSpinner.fail(`Failed to generate image: ${errorMsg}`);
+          exitWithError(apiError(`Failed to generate image: ${errorMsg}`, true));
         }
       }
 
@@ -1469,9 +1445,8 @@ Generate the single-person scene image now.`;
 
         // Check if image exists
         if (!existsSync(imagePath)) {
-          videoSpinner.fail(chalk.red(`Reference image not found: ${imagePath}`));
-          console.error(chalk.dim("Generate an image first with --image-only or regenerate all assets"));
-          process.exit(1);
+          videoSpinner.fail(`Reference image not found: ${imagePath}`);
+          exitWithError(notFoundError(imagePath));
         }
 
         const imageBuffer = await readFile(imagePath);
@@ -1489,8 +1464,8 @@ Generate the single-person scene image now.`;
           await kling.initialize({ apiKey: videoApiKey });
 
           if (!kling.isConfigured()) {
-            videoSpinner.fail(chalk.red("Invalid Kling API key format. Use ACCESS_KEY:SECRET_KEY"));
-            process.exit(1);
+            videoSpinner.fail("Invalid Kling API key format");
+            exitWithError(authError("KLING_API_KEY", "Kling"));
           }
 
           // Try to use image-to-video if ImgBB API key is available
@@ -1619,8 +1594,8 @@ Generate the single-person scene image now.`;
         if (videoGenerated) {
           videoSpinner.succeed(chalk.green("Generated video"));
         } else {
-          videoSpinner.fail(chalk.red("Failed to generate video after all retries"));
-          process.exit(1);
+          videoSpinner.fail("Failed to generate video after all retries");
+          exitWithError(apiError("Failed to generate video after all retries", true));
         }
       }
 
@@ -1701,9 +1676,7 @@ Generate the single-person scene image now.`;
       console.log(chalk.dim(`  vibe export ${outputDir}/ -o final.mp4`));
       console.log();
     } catch (error) {
-      console.error(chalk.red("Scene regeneration failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(generalError(error instanceof Error ? error.message : "Scene regeneration failed"));
     }
   });
 

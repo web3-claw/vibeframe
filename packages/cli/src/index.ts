@@ -102,7 +102,7 @@ program.hook("preAction", async (thisCommand) => {
   // Show first-run banner for non-setup/doctor commands
   const cmdName = thisCommand.name();
   const skipBannerCommands = ["setup", "doctor", "help"];
-  if (!skipBannerCommands.includes(cmdName) && process.stdin.isTTY) {
+  if (!skipBannerCommands.includes(cmdName) && process.stdin.isTTY && process.stdout.isTTY) {
     try {
       if (await isFirstRun()) {
         showFirstRunBanner();

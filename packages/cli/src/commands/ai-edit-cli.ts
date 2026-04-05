@@ -26,7 +26,7 @@ import {
   executeJumpCut,
   type CaptionStyle,
 } from './ai-edit.js';
-import { isJsonMode, outputResult } from "./output.js";
+import { isJsonMode, outputResult, exitWithError, authError, notFoundError, apiError, usageError, generalError } from "./output.js";
 import { rejectControlChars } from "./validate.js";
 
 // ── Command registrations ───────────────────────────────────────────────────
@@ -62,14 +62,12 @@ No API key needed (FFmpeg only). Use --use-gemini for smart detection (requires 
     try {
       const absVideoPath = resolve(process.cwd(), videoPath);
       if (!existsSync(absVideoPath)) {
-        console.error(chalk.red(`Video not found: ${absVideoPath}`));
-        process.exit(1);
+        exitWithError(notFoundError(absVideoPath));
       }
 
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
-        console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-        process.exit(1);
+        exitWithError(generalError("FFmpeg not found. Please install FFmpeg."));
       }
 
       const ext = extname(videoPath);
@@ -113,8 +111,8 @@ No API key needed (FFmpeg only). Use --use-gemini for smart detection (requires 
       });
 
       if (!result.success) {
-        spinner.fail(chalk.red(result.error || "Silence cut failed"));
-        process.exit(1);
+        spinner.fail("Silence cut failed");
+        exitWithError(apiError(result.error || "Silence cut failed", true));
       }
 
       spinner.succeed(chalk.green("Silence detection complete"));
@@ -155,9 +153,7 @@ No API key needed (FFmpeg only). Use --use-gemini for smart detection (requires 
       }
       console.log();
     } catch (error) {
-      console.error(chalk.red("Silence cut failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Silence cut failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 
@@ -191,14 +187,12 @@ Requires: OPENAI_API_KEY (Whisper transcription) + FFmpeg`)
     try {
       const absVideoPath = resolve(process.cwd(), videoPath);
       if (!existsSync(absVideoPath)) {
-        console.error(chalk.red(`Video not found: ${absVideoPath}`));
-        process.exit(1);
+        exitWithError(notFoundError(absVideoPath));
       }
 
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
-        console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-        process.exit(1);
+        exitWithError(generalError("FFmpeg not found. Please install FFmpeg."));
       }
 
       if (options.dryRun) {
@@ -219,9 +213,7 @@ Requires: OPENAI_API_KEY (Whisper transcription) + FFmpeg`)
 
       const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("OpenAI API key required for Whisper transcription. Set OPENAI_API_KEY in .env or run: vibe setup"));
-        console.error(chalk.dim("Use --api-key or set OPENAI_API_KEY"));
-        process.exit(1);
+        exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
       }
 
       const ext = extname(videoPath);
@@ -242,8 +234,8 @@ Requires: OPENAI_API_KEY (Whisper transcription) + FFmpeg`)
       });
 
       if (!result.success) {
-        spinner.fail(chalk.red(result.error || "Caption failed"));
-        process.exit(1);
+        spinner.fail("Caption failed");
+        exitWithError(apiError(result.error || "Caption failed", true));
       }
 
       spinner.succeed(chalk.green("Captions applied"));
@@ -270,9 +262,7 @@ Requires: OPENAI_API_KEY (Whisper transcription) + FFmpeg`)
       }
       console.log();
     } catch (error) {
-      console.error(chalk.red("Caption failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Caption failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 
@@ -292,13 +282,11 @@ aiCommand
     try {
       const absInputPath = resolve(process.cwd(), inputPath);
       if (!existsSync(absInputPath)) {
-        console.error(chalk.red(`File not found: ${absInputPath}`));
-        process.exit(1);
+        exitWithError(notFoundError(absInputPath));
       }
 
       if (!commandExists("ffmpeg")) {
-        console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-        process.exit(1);
+        exitWithError(generalError("FFmpeg not found. Please install FFmpeg."));
       }
 
       if (options.dryRun) {
@@ -328,8 +316,8 @@ aiCommand
       });
 
       if (!result.success) {
-        spinner.fail(chalk.red(result.error || "Noise reduction failed"));
-        process.exit(1);
+        spinner.fail("Noise reduction failed");
+        exitWithError(apiError(result.error || "Noise reduction failed", true));
       }
 
       spinner.succeed(chalk.green("Noise reduction complete"));
@@ -352,9 +340,7 @@ aiCommand
       console.log(`Output: ${chalk.green(result.outputPath!)}`);
       console.log();
     } catch (error) {
-      console.error(chalk.red("Noise reduction failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(generalError(`Noise reduction failed: ${error instanceof Error ? error.message : String(error)}`));
     }
   });
 
@@ -376,13 +362,11 @@ aiCommand
     try {
       const absVideoPath = resolve(process.cwd(), videoPath);
       if (!existsSync(absVideoPath)) {
-        console.error(chalk.red(`Video not found: ${absVideoPath}`));
-        process.exit(1);
+        exitWithError(notFoundError(absVideoPath));
       }
 
       if (!commandExists("ffmpeg")) {
-        console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-        process.exit(1);
+        exitWithError(generalError("FFmpeg not found. Please install FFmpeg."));
       }
 
       if (options.dryRun) {
@@ -416,8 +400,8 @@ aiCommand
       });
 
       if (!result.success) {
-        spinner.fail(chalk.red(result.error || "Fade failed"));
-        process.exit(1);
+        spinner.fail("Fade failed");
+        exitWithError(generalError(result.error || "Fade failed"));
       }
 
       spinner.succeed(chalk.green("Fade effects applied"));
@@ -442,9 +426,7 @@ aiCommand
       console.log(`Output: ${chalk.green(result.outputPath!)}`);
       console.log();
     } catch (error) {
-      console.error(chalk.red("Fade failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(generalError(`Fade failed: ${error instanceof Error ? error.message : String(error)}`));
     }
   });
 
@@ -465,14 +447,12 @@ aiCommand
   .action(async (srtPath: string, options) => {
     try {
       if (!options.target) {
-        console.error(chalk.red("Target language required. Use -t or --target"));
-        process.exit(1);
+        exitWithError(usageError("Target language required. Use -t or --target"));
       }
 
       const absSrtPath = resolve(process.cwd(), srtPath);
       if (!existsSync(absSrtPath)) {
-        console.error(chalk.red(`SRT file not found: ${absSrtPath}`));
-        process.exit(1);
+        exitWithError(notFoundError(absSrtPath));
       }
 
       if (options.dryRun) {
@@ -495,9 +475,7 @@ aiCommand
 
       const apiKey = await getApiKey(envKey, providerName, options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red(`${providerName} API key required for translation. Set ${envKey} in .env or run: vibe setup`));
-        console.error(chalk.dim(`Use --api-key or set ${envKey}`));
-        process.exit(1);
+        exitWithError(authError(envKey, providerName));
       }
 
       const ext = extname(srtPath);
@@ -516,8 +494,8 @@ aiCommand
       });
 
       if (!result.success) {
-        spinner.fail(chalk.red(result.error || "Translation failed"));
-        process.exit(1);
+        spinner.fail("Translation failed");
+        exitWithError(apiError(result.error || "Translation failed", true));
       }
 
       spinner.succeed(chalk.green("Translation complete"));
@@ -542,9 +520,7 @@ aiCommand
       console.log(`Output: ${chalk.green(result.outputPath!)}`);
       console.log();
     } catch (error) {
-      console.error(chalk.red("Translation failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Translation failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 
@@ -569,14 +545,12 @@ aiCommand
 
       const absVideoPath = resolve(process.cwd(), videoPath);
       if (!existsSync(absVideoPath)) {
-        console.error(chalk.red(`Video not found: ${absVideoPath}`));
-        process.exit(1);
+        exitWithError(notFoundError(absVideoPath));
       }
 
       // Check FFmpeg
       if (!commandExists("ffmpeg")) {
-        console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-        process.exit(1);
+        exitWithError(generalError("FFmpeg not found. Please install FFmpeg."));
       }
 
       if (options.dryRun) {
@@ -599,9 +573,7 @@ aiCommand
 
       const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("OpenAI API key required for Whisper transcription. Set OPENAI_API_KEY in .env or run: vibe setup"));
-        console.error(chalk.dim("Use --api-key or set OPENAI_API_KEY"));
-        process.exit(1);
+        exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
       }
 
       const ext = extname(videoPath);
@@ -625,8 +597,8 @@ aiCommand
       });
 
       if (!result.success) {
-        spinner.fail(chalk.red(result.error || "Jump cut failed"));
-        process.exit(1);
+        spinner.fail("Jump cut failed");
+        exitWithError(apiError(result.error || "Jump cut failed", true));
       }
 
       spinner.succeed(chalk.green("Filler detection complete"));
@@ -666,9 +638,7 @@ aiCommand
       }
       console.log();
     } catch (error) {
-      console.error(chalk.red("Jump cut failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Jump cut failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 

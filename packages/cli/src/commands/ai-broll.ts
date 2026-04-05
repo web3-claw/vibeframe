@@ -28,6 +28,7 @@ import { Project } from "../engine/index.js";
 import { getApiKey } from "../utils/api-key.js";
 import { execSafe, commandExists, ffprobeDuration } from "../utils/exec-safe.js";
 import { formatTime } from "./ai-helpers.js";
+import { exitWithError, authError, notFoundError, apiError, usageError, generalError } from "./output.js";
 
 function truncate(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
@@ -115,29 +116,23 @@ export function registerBrollCommand(ai: Command): void {
 
         // Validate B-roll input
         if (!options.broll && !options.brollDir) {
-          console.error(chalk.red("B-roll files required. Use -b or --broll-dir"));
-          process.exit(1);
+          exitWithError(usageError("B-roll files required. Use -b or --broll-dir"));
         }
 
         // Check API keys
         const openaiApiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
         if (!openaiApiKey) {
-          console.error(chalk.red("OpenAI API key required for Whisper transcription. Set OPENAI_API_KEY in .env or run: vibe setup"));
-          console.error(chalk.dim("Set OPENAI_API_KEY environment variable"));
-          process.exit(1);
+          exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
         }
 
         const claudeApiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic");
         if (!claudeApiKey) {
-          console.error(chalk.red("Anthropic API key required for B-roll analysis. Set ANTHROPIC_API_KEY in .env or run: vibe setup"));
-          console.error(chalk.dim("Set ANTHROPIC_API_KEY environment variable"));
-          process.exit(1);
+          exitWithError(authError("ANTHROPIC_API_KEY", "Anthropic"));
         }
 
         // Check FFmpeg availability
         if (!commandExists("ffmpeg")) {
-          console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-          process.exit(1);
+          exitWithError(generalError("FFmpeg not found. Please install FFmpeg."));
         }
 
         console.log();
@@ -150,8 +145,8 @@ export function registerBrollCommand(ai: Command): void {
         const brollFiles = await discoverBrollFiles(options.broll, options.brollDir);
 
         if (brollFiles.length === 0) {
-          discoverSpinner.fail(chalk.red("No B-roll video files found"));
-          process.exit(1);
+          discoverSpinner.fail("No B-roll video files found");
+          exitWithError(usageError("No B-roll video files found"));
         }
 
         discoverSpinner.succeed(chalk.green(`Found ${brollFiles.length} B-roll file(s)`));
@@ -170,8 +165,8 @@ export function registerBrollCommand(ai: Command): void {
           // Transcribe audio with Whisper
           narrationFile = resolve(process.cwd(), narration);
           if (!existsSync(narrationFile)) {
-            narrationSpinner.fail(chalk.red(`Narration file not found: ${narrationFile}`));
-            process.exit(1);
+            narrationSpinner.fail("Narration file not found");
+            exitWithError(notFoundError(narrationFile));
           }
 
           narrationSpinner.text = "📝 Transcribing narration with Whisper...";
@@ -205,8 +200,8 @@ export function registerBrollCommand(ai: Command): void {
           }
 
           if (transcriptResult.status === "failed" || !transcriptResult.segments) {
-            narrationSpinner.fail(chalk.red(`Transcription failed: ${transcriptResult.error}`));
-            process.exit(1);
+            narrationSpinner.fail("Transcription failed");
+            exitWithError(apiError(`Transcription failed: ${transcriptResult.error}`, true));
           }
 
           narrationSegments = transcriptResult.segments.map((seg) => ({
@@ -224,8 +219,8 @@ export function registerBrollCommand(ai: Command): void {
           if (isScriptFile) {
             const scriptPath = resolve(process.cwd(), narration);
             if (!existsSync(scriptPath)) {
-              narrationSpinner.fail(chalk.red(`Script file not found: ${scriptPath}`));
-              process.exit(1);
+              narrationSpinner.fail("Script file not found");
+              exitWithError(notFoundError(scriptPath));
             }
             scriptContent = await readFile(scriptPath, "utf-8");
             narrationFile = scriptPath;
@@ -419,8 +414,8 @@ export function registerBrollCommand(ai: Command): void {
           const videoTrack = project.getTracks().find((t) => t.type === "video");
           const audioTrack = project.getTracks().find((t) => t.type === "audio");
           if (!videoTrack) {
-            projectSpinner.fail(chalk.red("Failed to create project"));
-            process.exit(1);
+            projectSpinner.fail("Failed to create project");
+            exitWithError(generalError("Failed to create project: no video track"));
           }
 
           // Add narration audio clip to audio track
@@ -482,9 +477,7 @@ export function registerBrollCommand(ai: Command): void {
         }
         console.log();
       } catch (error) {
-        console.error(chalk.red("B-Roll matching failed"));
-        console.error(error);
-        process.exit(1);
+        exitWithError(apiError(`B-Roll matching failed: ${error instanceof Error ? error.message : String(error)}`, true));
       }
     });
 }

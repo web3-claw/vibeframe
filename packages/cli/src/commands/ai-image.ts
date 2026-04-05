@@ -24,6 +24,7 @@ import {
 } from '@vibeframe/ai-providers';
 import { getApiKey } from '../utils/api-key.js';
 import { execSafe, commandExists } from '../utils/exec-safe.js';
+import { exitWithError, authError, notFoundError, apiError, usageError, generalError } from './output.js';
 
 function _registerImageCommands(aiCommand: Command): void {
 
@@ -45,9 +46,7 @@ aiCommand
       const provider = options.provider.toLowerCase();
       const validProviders = ["openai", "dalle", "gemini", "runway"];
       if (!validProviders.includes(provider)) {
-        console.error(chalk.red(`Invalid provider: ${provider}`));
-        console.error(chalk.dim(`Available providers: openai, gemini, runway`));
-        process.exit(1);
+        exitWithError(usageError(`Invalid provider: ${provider}`, "Available providers: openai, gemini, runway"));
       }
 
       // Show deprecation warning for "dalle"
@@ -73,9 +72,7 @@ aiCommand
 
       const apiKey = await getApiKey(envKey, providerName, options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red(`${providerName} API key required. Set ${envKey} in .env or run: vibe setup`));
-        console.error(chalk.dim(`Use --api-key or set ${envKey} environment variable`));
-        process.exit(1);
+        exitWithError(authError(envKey, providerName));
       }
 
       const spinner = ora(`Generating image with ${providerName}...`).start();
@@ -92,8 +89,8 @@ aiCommand
         });
 
         if (!result.success || !result.images) {
-          spinner.fail(chalk.red(result.error || "Image generation failed"));
-          process.exit(1);
+          spinner.fail("Image generation failed");
+          exitWithError(apiError(result.error || "Image generation failed", true));
         }
 
         spinner.succeed(chalk.green(`Generated ${result.images.length} image(s) with OpenAI GPT Image 1.5`));
@@ -151,8 +148,7 @@ aiCommand
         // Validate aspect ratio
         const validRatios = ["1:1", "1:4", "1:8", "2:3", "3:2", "3:4", "4:1", "4:3", "4:5", "5:4", "8:1", "9:16", "16:9", "21:9"];
         if (options.ratio && !validRatios.includes(options.ratio)) {
-          console.error(chalk.red(`Invalid ratio "${options.ratio}". Valid: ${validRatios.join(", ")}`));
-          process.exit(1);
+          exitWithError(usageError(`Invalid ratio "${options.ratio}". Valid: ${validRatios.join(", ")}`));
         }
 
         const gemini = new GeminiProvider();
@@ -184,8 +180,8 @@ aiCommand
         }
 
         if (!result.success || !result.images) {
-          spinner.fail(chalk.red(result.error || "Image generation failed"));
-          process.exit(1);
+          spinner.fail("Image generation failed");
+          exitWithError(apiError(result.error || "Image generation failed", true));
         }
 
         spinner.succeed(chalk.green(`Generated ${result.images.length} image(s) with Gemini (${usedLabel})`));
@@ -226,8 +222,8 @@ aiCommand
         const scriptPath = resolve(__dirname, "../../../../.claude/skills/runway-video/scripts/image.py");
 
         if (!options.output) {
-          spinner.fail(chalk.red("Output path required for Runway. Use -o option."));
-          process.exit(1);
+          spinner.fail("Output path required");
+          exitWithError(usageError("Output path required for Runway. Use -o option."));
         }
 
         const outputPath = resolve(process.cwd(), options.output);
@@ -271,9 +267,7 @@ aiCommand
         });
       }
     } catch (error) {
-      console.error(chalk.red("Image generation failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Image generation failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 
@@ -293,20 +287,16 @@ aiCommand
       if (options.bestFrame) {
         const absVideoPath = resolve(process.cwd(), options.bestFrame);
         if (!existsSync(absVideoPath)) {
-          console.error(chalk.red(`Video not found: ${absVideoPath}`));
-          process.exit(1);
+          exitWithError(notFoundError(absVideoPath));
         }
 
         if (!commandExists("ffmpeg")) {
-          console.error(chalk.red("FFmpeg not found. Please install FFmpeg."));
-          process.exit(1);
+          exitWithError(generalError("FFmpeg not found. Please install FFmpeg."));
         }
 
         const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
         if (!apiKey) {
-          console.error(chalk.red("Google API key required for Gemini video analysis. Set GOOGLE_API_KEY in .env or run: vibe setup"));
-          console.error(chalk.dim("Use --api-key or set GOOGLE_API_KEY"));
-          process.exit(1);
+          exitWithError(authError("GOOGLE_API_KEY", "Google"));
         }
 
         const name = basename(options.bestFrame, extname(options.bestFrame));
@@ -323,8 +313,8 @@ aiCommand
         });
 
         if (!result.success) {
-          spinner.fail(chalk.red(result.error || "Best frame extraction failed"));
-          process.exit(1);
+          spinner.fail("Best frame extraction failed");
+          exitWithError(apiError(result.error || "Best frame extraction failed", true));
         }
 
         spinner.succeed(chalk.green("Best frame extracted"));
@@ -341,15 +331,12 @@ aiCommand
 
       // Generation mode: create thumbnail with DALL-E
       if (!description) {
-        console.error(chalk.red("Description required for thumbnail generation."));
-        console.error(chalk.dim("Usage: vibe ai thumbnail <description> or vibe ai thumbnail --best-frame <video>"));
-        process.exit(1);
+        exitWithError(usageError("Description required for thumbnail generation.", "Usage: vibe ai thumbnail <description> or vibe ai thumbnail --best-frame <video>"));
       }
 
       const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("OpenAI API key required. Set OPENAI_API_KEY in .env or run: vibe setup"));
-        process.exit(1);
+        exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
       }
 
       const spinner = ora("Generating thumbnail...").start();
@@ -360,8 +347,8 @@ aiCommand
       const result = await openaiImage.generateThumbnail(description, options.style);
 
       if (!result.success || !result.images) {
-        spinner.fail(chalk.red(result.error || "Thumbnail generation failed"));
-        process.exit(1);
+        spinner.fail("Thumbnail generation failed");
+        exitWithError(apiError(result.error || "Thumbnail generation failed", true));
       }
 
       spinner.succeed(chalk.green("Thumbnail generated"));
@@ -398,9 +385,7 @@ aiCommand
         }
       }
     } catch (error) {
-      console.error(chalk.red("Thumbnail generation failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Thumbnail generation failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 
@@ -415,8 +400,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("OpenAI API key required. Set OPENAI_API_KEY in .env or run: vibe setup"));
-        process.exit(1);
+        exitWithError(authError("OPENAI_API_KEY", "OpenAI"));
       }
 
       const spinner = ora("Generating background...").start();
@@ -427,8 +411,8 @@ aiCommand
       const result = await openaiImage.generateBackground(description, options.aspect);
 
       if (!result.success || !result.images) {
-        spinner.fail(chalk.red(result.error || "Background generation failed"));
-        process.exit(1);
+        spinner.fail("Background generation failed");
+        exitWithError(apiError(result.error || "Background generation failed", true));
       }
 
       spinner.succeed(chalk.green("Background generated"));
@@ -465,9 +449,7 @@ aiCommand
         }
       }
     } catch (error) {
-      console.error(chalk.red("Background generation failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Background generation failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 // Gemini (Nano Banana) commands
@@ -487,9 +469,7 @@ aiCommand
     try {
       const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("Google API key required. Set GOOGLE_API_KEY in .env or run: vibe setup"));
-        console.error(chalk.dim("Use --api-key or set GOOGLE_API_KEY environment variable"));
-        process.exit(1);
+        exitWithError(authError("GOOGLE_API_KEY", "Google"));
       }
 
       const modelNames: Record<string, string> = {
@@ -525,8 +505,8 @@ aiCommand
       }
 
       if (!result.success || !result.images || result.images.length === 0) {
-        spinner.fail(chalk.red(result.error || "Image generation failed"));
-        process.exit(1);
+        spinner.fail("Image generation failed");
+        exitWithError(apiError(result.error || "Image generation failed", true));
       }
 
       spinner.succeed(chalk.green("Image generated"));
@@ -544,9 +524,7 @@ aiCommand
         console.log(chalk.green(`Saved to: ${outputPath}`));
       }
     } catch (error) {
-      console.error(chalk.red("Image generation failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Image generation failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 
@@ -563,8 +541,7 @@ aiCommand
     try {
       // Last argument is the prompt, rest are image paths
       if (args.length < 2) {
-        console.error(chalk.red("Need at least one image and a prompt"));
-        process.exit(1);
+        exitWithError(usageError("Need at least one image and a prompt"));
       }
 
       const prompt = args[args.length - 1];
@@ -572,8 +549,7 @@ aiCommand
 
       const apiKey = await getApiKey("GOOGLE_API_KEY", "Google", options.apiKey);
       if (!apiKey) {
-        console.error(chalk.red("Google API key required. Set GOOGLE_API_KEY in .env or run: vibe setup"));
-        process.exit(1);
+        exitWithError(authError("GOOGLE_API_KEY", "Google"));
       }
 
       const spinner = ora(`Reading ${imagePaths.length} image(s)...`).start();
@@ -616,8 +592,8 @@ aiCommand
       }
 
       if (!result.success || !result.images || result.images.length === 0) {
-        spinner.fail(chalk.red(result.error || "Image editing failed"));
-        process.exit(1);
+        spinner.fail("Image editing failed");
+        exitWithError(apiError(result.error || "Image editing failed", true));
       }
 
       spinner.succeed(chalk.green("Image edited"));
@@ -635,9 +611,7 @@ aiCommand
         console.log(chalk.green(`Saved to: ${outputPath}`));
       }
     } catch (error) {
-      console.error(chalk.red("Image editing failed"));
-      console.error(error);
-      process.exit(1);
+      exitWithError(apiError(`Image editing failed: ${error instanceof Error ? error.message : String(error)}`, true));
     }
   });
 

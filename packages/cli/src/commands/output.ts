@@ -63,7 +63,7 @@ export function generalError(msg: string, suggestion?: string): StructuredError 
 /** Output structured error then exit */
 export function exitWithError(err: StructuredError): never {
   if (isJsonMode()) {
-    console.log(JSON.stringify(err, null, 2));
+    console.error(JSON.stringify(err, null, 2));
   } else {
     console.error(chalk.red(`\n  ${err.error}`));
     if (err.suggestion) {
@@ -135,7 +135,7 @@ export function suggestNext(tip: string): void {
 /** Output an error - always outputs (JSON mode writes to stdout as JSON) */
 export function outputError(error: string, details?: Record<string, unknown>): void {
   if (isJsonMode()) {
-    console.log(JSON.stringify({ success: false, error, ...details }, null, 2));
+    console.error(JSON.stringify({ success: false, error, ...details }, null, 2));
   } else {
     console.error(error);
   }
