@@ -5,153 +5,793 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.26.1] - 2026-03-29
+## [Unreleased]
 
 ### Added
 
-**CLI UX**
-- Command aliases: `gen`, `ed`, `az`, `au`, `pipe` (groups) + `img`, `vid`, `tts`, `cap`, `sc`, `s2v`, `shorts` (subcommands)
-- Structured error system: `ExitCode` enum (0-6), `StructuredError` interface, factory functions (`usageError`, `authError`, `apiError`, `notFoundError`, `networkError`)
-- `exitWithError()` — JSON mode outputs structured error, human mode shows colored error + suggestion
-- Auto-JSON: automatic JSON output when stdout is not a TTY (piped/scripted)
-- `--quiet` / `-q` global flag — output only primary result value (path, URL, ID)
-- `--fields` global flag — filter JSON output to specific fields
-- Provider auto-fallback — if default provider's API key is missing, auto-select available one
-- `vibe doctor` command — system health check, configured providers, available commands
-- First-run welcome banner — guides new users to `vibe setup` and `vibe doctor`
-- Post-setup "Try it" suggestion — recommends a command based on configured API keys
-- Concise error output — missing args show brief error + `--help` hint instead of full help
-- Non-TTY prompt bypass — throws error instead of hanging in non-interactive mode
-- `hasApiKey()` — side-effect-free API key detection (no prompts)
-- `resolveProvider()` — synchronous provider auto-resolution
-- `suggestNext()` — post-command tip display (human mode + TTY only)
-
-**Claude Code Harness**
-- All 7 `.claude/rules/` files now path-scoped via `paths:` frontmatter (none load at session start)
-- PostToolUse lint hook — auto-runs ESLint on edited TypeScript files
-- Pre-push hook improved — added lint check, better error messages with fix commands
-- `/test` skill — run tests for specific package or all packages
-- `/release` skill — automated version bump workflow (bump, verify, build, lint, test, commit, tag)
-- `/sync-check` skill — SSOT consistency validation
-- `lint-fixer` agent — dedicated ESLint error fixing agent (haiku)
-- `code-reviewer` agent upgraded — persistent project memory
-- `pipeline-tester` agent upgraded — skills preloading
-- `.claude/README.md` — full harness structure documentation
-
-**Documentation**
-- `MODELS.md` benchmark rankings from Artificial Analysis (March 2026) — text-to-image, image editing, text-to-video, image-to-video leaderboards with VibeFrame coverage
-- `DEMO.md` — step-by-step CLI demonstration script
+- expand --dry-run to all 84 mutating commands and enhance AGENTS.md
+- add --stdin global flag for JSON input and fix path validation
 
 ### Changed
-- Default video provider changed from Runway to Grok Imagine Video (native audio, $0.07/sec)
-- `generate` help: `video-status`, `video-cancel`, `music-status`, `video-extend` hidden from help (still functional)
-- `pipeline viral`, `pipeline b-roll`, `pipeline narrate` marked deprecated in CLI reference
-- CLAUDE.md slimmed from 68 to 50 lines, removed all `@` rule imports (rules auto-load via path-scoping)
-- Provider skills (9) removed — CLI TypeScript source is the SSOT, Python reference scripts no longer needed
-- Rules frontmatter cleaned: removed unsupported `description` field, fixed `globs:` → `paths:`
-- `architecture.md` updated: removed deleted provider skills references, narrowed path scope
-- `agents.md` updated: error handling section reflects structured exit codes
-- `versioning.md` updated: added `/release` skill reference, removed stale skills scan
+
+- add output path validation to all commands with -o option
+- standardize error handling for agentic CLI compliance
+- derive landing page counts from source code at build time
+
+### Documentation
+
+- fix Audio provider count in MODELS.md (2 → 3)
+- replace hardcoded counts with build-time extraction
+- remove all hardcoded counts from README
+- replace hardcoded test count with dynamic CI badge
 
 ### Fixed
-- 5 ESLint errors: unused `extname`, `REMOTION_STYLES`, `createSpinner`, `__dirname`, `height`
-- `ApiKeyError` now carries structured payload with exit code 4 (AUTH)
+
+- structured JSON errors and proper exit codes for all Commander.js errors
+
+## [0.31.1] - 2026-04-05
+
+### Fixed
+
+- add SSOT count validation and sync tool/test counts
+
+## [0.31.0] - 2026-04-05
+
+### Added
+
+- make CLI fully self-discoverable for AI agents without CLAUDE.md
+
+### Fixed
+
+- add dry-run validation before npm publish
+
+## [0.30.0] - 2026-04-05
+
+### Added
+
+- improve schema introspection and subcommand help for AI agents
+
+### Documentation
+
+- add OpenRouter to landing page and ROADMAP
+
+## [0.29.0] - 2026-04-05
+
+### Added
+
+- add automated npm publish workflow on tag push
+
+## [0.28.1] - 2026-04-05
+
+### Documentation
+
+- add star/contributor badges and contributors section to README
+
+### Fixed
+
+- improve pre-push hooks and remove hardcoded version fallback
+
+## [0.28.0] - 2026-03-31
+
+### Added
+
+- add dynamic OG image and bump version to 0.28.0
+- add OpenRouter as 6th Agent LLM provider (#8)
+- add /demo showcase page with self-made demo video
+
+### Documentation
+
+- add real-time subject tracking to ROADMAP
+
+### Fixed
+
+- show Demo nav link on mobile devices
+- mark @vibeframe/cli as public for npm publishing
+
+### Maintenance
+
+- trigger Vercel redeploy
+- improve GitHub templates and contributor experience
+
+## [0.27.0] - 2026-03-28
+
+### Added
+
+- CLI UX improvements, structured errors, command aliases, and harness engineering
+
+## [0.26.1] - 2026-03-16
+
+### Fixed
+
+- OpenAI image edit MIME type and Veo/Runway 1:1 aspect ratio fallback
+- use atempo instead of hard-trimming audio in export pipeline
+
+## [0.26.0] - 2026-03-13
+
+### Added
+
+- auto-detect image aspect ratio for image-to-video generation
+
+### Documentation
+
+- add contextual help text to CLI command groups
+
+### Fixed
+
+- use object format for Grok image-to-video API
+
+## [0.25.0] - 2026-03-08
+
+### Added
+
+- add animated-caption pipeline + deprecate b-roll/narrate/viral
+
+### Fixed
+
+- derive landing page version from package.json at build time
+- update landing page version badge to v0.24.0
+
+## [0.24.0] - 2026-03-08
+
+### Added
+
+- update AI providers, skills docs, and agent tools
+- add pre-push SSOT validation hook and /sync-check skill
+
+### Changed
+
+- consolidate docs — reduce SSOT duplication across files
 
 ## [0.23.4] - 2026-03-08
 
 ### Fixed
-- Runway error message: gen4.5 no longer incorrectly requires an input image (gen4_turbo still does)
-- "Runway Gen-3" display string updated to show actual model name (gen4.5/gen4_turbo)
-- Agent tool Kling image-to-video now auto-uploads base64 images to ImgBB (was failing with base64 error)
-- KlingProvider comments updated to reflect current v2.5+ models (removed stale v1/v1.5/v1.6/v2.0/v2.1 references)
+
+- correct image-to-video provider docs, Runway error messages, and Kling agent ImgBB upload
+
+## [0.23.3] - 2026-03-08
+
+### Maintenance
+
+- require Node.js >=20 (drop EOL Node 18)
+
+## [0.23.2] - 2026-03-08
+
+### Fixed
+
+- correct deprecated models, broken hashes, and stale display names across providers
+
+## [0.23.1] - 2026-03-08
+
+### Fixed
+
+- align GrokProvider with xAI API spec (endpoints and response fields)
+
+## [0.23.0] - 2026-03-07
+
+### Added
+
+- Grok Imagine as default video provider, Audio column in MODELS.md, fix landing page
+
+## [0.22.1] - 2026-03-07
+
+### Added
+
+- apply input validation and response sanitization across CLI
+
+## [0.22.0] - 2026-03-07
+
+### Added
+
+- add --json output, --dry-run, input validation, and AGENTS.md
+- restructure CLI into 5 semantic command groups
+- add 'latest' model alias for Gemini image generation
+- add Gemini 3.1 Flash image model and Veo video API enhancements
+- add vibe setup --claude-code and CLI reference for Claude Code integration
+- show project .env keys in vibe setup --show
+- support project-scoped .env for API keys
 
 ### Changed
-- MODELS.md Image-to-Video section rewritten with per-provider table (image input type, I2V support)
-- Removed outdated `kling-v1-5` reference from MODELS.md
-- Added `grok` provider to legacy `vibe ai video` command (was only in `vibe generate video`)
-- CLI reference updated with Image-to-Video examples for all providers
+
+- enforce strict TypeScript, clean up imports, and update configs
+
+### Documentation
+
+- add -m latest examples to CLI reference for Claude Code discovery
+- restructure CLAUDE.md into modular rules, add OSS docs
+- update README with demo links and accurate stats
+- translate FUNC_TEST.md and CLAUDE_CODE_TEST.md to English, use vibe instead of pnpm vibe
+- translate QUICK_TEST.md to English and use vibe instead of pnpm vibe
+- restructure README and landing page to CLI → Claude Code → MCP → Agent order
+
+### Fixed
+
+- auto-upload images to ImgBB for Kling image-to-video
+- add auth headers when downloading Veo videos from Google API
+- add auto-fallback and better error messages for Gemini image generation
+- improve vibe setup --claude-code UX for overwrites
+- add build step before typecheck to resolve cross-package imports *(ci)*
+- use H.264 codec (avc1) instead of AV1 for yt-dlp in FUNC_TEST
+- add vibe setup --show to install script Quick Start
+- auto-create output directories for image commands
+- add setup --show hint after setup wizard completes
+- suppress dotenv debug log and improve setup --show source display
+- improve landing page mobile responsiveness
+- commit pending package.json changes to match lockfile
+- sync pnpm-lock.yaml with mcp-server package.json
+
+### Maintenance
+
+- add .mcp.json and demo/ to .gitignore to prevent secret leaks
+
+## [0.20.0] - 2026-02-24
+
+### Added
+
+- expand MCP server from 12 to 28 tools with AI editing, analysis, and pipeline capabilities
 
 ## [0.19.4] - 2026-02-24
 
-### Security
-- Eliminated 95+ command injection vulnerabilities across 20 files
-- Replaced all `exec()`/`execSync()` template literal calls with safe `execFile`-based `execSafe()` utility
-- Shell `rm`/`rmdir`/`mv` commands replaced with `node:fs/promises` equivalents
-
 ### Added
-- `packages/cli/src/utils/exec-safe.ts` — safe subprocess execution utilities
-- `bugs` field in all package.json files
-- CODE_OF_CONDUCT.md (Contributor Covenant v2.1)
 
-## [0.19.3] - 2026-02-24
+- add --storyboard-provider option to script-to-video
+- OSS quality improvements, diverse motion styles, and test guides
+
+### CI/CD
+
+- enforce test failures and update Node matrix to 20/22
 
 ### Changed
-- Refactored `ai.ts` (9000+ lines) into 10 focused modules
-- Removed deprecated REPL mode (-2,198 lines)
-- Updated default OpenAI Agent model from GPT-4.5 to GPT-4o
-- Documented GPT-5.2 model options in MODELS.md
+
+- split ClaudeProvider, GeminiProvider, and ai-edit into modules
+- split agent/tools/ai.ts into 3+1 modules (2,558 -> 21 lines)
+- split ai-script-pipeline.ts into logic + CLI modules
+- split ai.ts into 7 modules (3,549 -> 307 lines)
+- extract analyze, highlights, review, script-pipeline, video modules from ai.ts
+- extract edit commands + execute functions into ai-edit.ts (-1,790 lines)
+- extract image commands into ai-image.ts (-1,050 lines)
+- extract audio commands into ai-audio.ts (-891 lines)
+- extract motion command into ai-motion.ts
+- remove deprecated repl/ directory (-2,198 lines)
+
+### Documentation
+
+- add JSDoc module headers and interface documentation
+- add package metadata, CHANGELOG, SECURITY, and enhance CONTRIBUTING
+- add missing AI editing commands to GUIDE.md
+- update version references to 0.19.3
 
 ### Fixed
-- LICENSE now correctly references "VibeFrame Contributors"
-- Removed stray test artifacts from repository root
 
-### Added
-- `ai-analyze.ts` - unified media analysis (image/video/YouTube)
-- `ai-highlights.ts` - highlight extraction and auto-shorts
-- `ai-review.ts` - AI video review and auto-fix
-- `ai-script-pipeline.ts` - full script-to-video pipeline
-- `ai-video.ts` - video generation (Runway, Kling, Grok)
-- `ai-edit.ts` - post-production editing commands
-- `ai-image.ts` - image generation commands
-- `ai-audio.ts` - audio generation commands
-- `ai-motion.ts` - motion graphics commands
+- eliminate command injection across 95+ exec call sites
+- add missing logo assets to web public directory
+
+### Maintenance
+
+- cleanup for OSS release
+
+## [0.19.3] - 2026-02-20
+
+### Documentation
+
+- update version references to 0.19.2
+
+### Fixed
+
+- Gemini silence detection clamps timestamps before validation
+- silence-cut uses trim+concat instead of broken aselect filter
+
+## [0.19.2] - 2026-02-20
+
+### Fixed
+
+- use valid Remotion composition ID for video-wrapped components
+- motion composite uses video-embedded rendering instead of broken alpha overlay
+- add fps requirement to motion graphics system prompt
+
+## [0.19.1] - 2026-02-20
+
+### Documentation
+
+- fix filming script — version, export syntax, .env note, mp4 output
+
+### Fixed
+
+- Remotion caption renders video+captions in single composition
+- remotion CLI detection uses --help instead of --version
+
+### Maintenance
+
+- update landing page version badge to 0.19.1
 
 ## [0.19.0] - 2026-02-20
 
 ### Added
-- OSS quality improvements and diverse motion styles
-- Test guides for contributors
-- GitHub Actions CI with Node 20/22 matrix
-- `ai translate-srt` command for subtitle translation
-- `ai thumbnail` command for thumbnail generation/extraction
 
-## [0.18.0] - 2026-02-15
+- add --use-gemini flag to silence-cut for context-aware detection
 
-### Added
-- MCP server published as `@vibeframe/mcp-server` on npm
-- Agent mode with 5 LLM providers (OpenAI, Claude, Gemini, Ollama, xAI)
-- 58 agent tools across 7 categories
-- `ai motion` command for Remotion-based motion graphics
-- `ai caption` command for Whisper + FFmpeg caption burning
-- `ai noise-reduce` command for audio/video noise removal
-- `ai fade` command for fade in/out effects
+### Documentation
 
-## [0.17.0] - 2026-02-10
+- update ROADMAP and README for Remotion caption fallback
+
+## [0.18.0] - 2026-02-20
 
 ### Added
-- `ai script-to-video` pipeline (storyboard -> TTS -> images -> video)
-- `ai highlights` command for extracting video highlights
-- `ai auto-shorts` command for generating short-form content
-- `ai review` command with Gemini video analysis
-- Kling v2.5/v2.6 video generation support
-- xAI Grok video generation via Grok Imagine
 
-## [0.16.0] - 2026-02-05
+- caption via Remotion fallback when FFmpeg lacks libass/freetype
+- upgrade demo script with Act 4 (Motion Graphics) and recording guide
+
+### Documentation
+
+- add filming script, English-only demo, and recording tools
+
+### Fixed
+
+- detect missing FFmpeg subtitle support in caption command
+- caption subtitle filter quoting for FFmpeg 8.x, update demo to Tim Urban TED
+- silence-cut re-encode for clean cuts, update demo sample to TED Talk
+
+### Maintenance
+
+- update landing page version badge to v0.17.1
+
+## [0.17.1] - 2026-02-20
+
+### Documentation
+
+- sync feature counts, add missing commands, deprecate URL-only commands
+
+### Maintenance
+
+- update landing page version badge to v0.17.0
+
+## [0.17.0] - 2026-02-19
 
 ### Added
-- `ai silence-cut` command (FFmpeg + Gemini smart detection)
-- `ai jump-cut` command (Whisper filler word detection)
-- `ai text-overlay` command (FFmpeg drawtext)
-- Gemini multi-image editing (`ai gemini-edit`)
-- Video analysis with Gemini (`ai gemini-video`, `ai analyze`)
 
-## [0.15.0] - 2026-01-28
+- add Remotion motion graphics render & composite pipeline
+- add wow demo script for screen recording
+
+## [0.16.0] - 2026-02-19
 
 ### Added
-- Initial CLI with project, timeline, and export commands
-- Core timeline data structures with Zustand + Immer
-- FFmpeg-based video export
-- OpenAI, Claude, Gemini AI provider integrations
-- ElevenLabs TTS and SFX support
-- Stability AI image editing
-- Remotion motion graphics foundation
+
+- add noise-reduce, fade, thumbnail best-frame, and translate-srt commands
+
+### Testing
+
+- add unit tests for jump-cut detectFillerRanges and CLI validation
+
+## [0.15.0] - 2026-02-19
+
+### Added
+
+- add jump-cut command to remove filler words from video
+
+### Documentation
+
+- add analyze command to CLI guide
+- add analyze command to roadmap
+
+### Maintenance
+
+- remove progress.md, use ROADMAP.md as single progress tracker
+- update landing page version badge to v0.14.0
+
+## [0.14.0] - 2026-02-19
+
+### Added
+
+- add unified `vibe ai analyze` command for image/video/YouTube analysis
+- comprehensive e2e-tester covering all 52 AI commands
+- add pipeline-tester agent with Gemini quality gate
+- add text overlay auto-composition and Gemini video review feedback loop
+- add version-checker subagent for release sync validation
+- publish MCP server to npm and restructure docs
+- add Google Analytics 4 (G-FMDTLFTKXM)
+- add sitemap.xml and robots.txt for Google Search Console
+
+### Documentation
+
+- sync README CLI reference with actual commands and fix counts
+- sync README Kling version to v2.5/v2.6
+- move cloud roadmap to internal-only file
+- update landing page with latest project state
+
+### Fixed
+
+- auto-shorts output path missing .mp4 extension
+- add drawtext filter check in text-overlay and clean up README
+- prefer ~/.local/bin over /usr/local/bin in install script
+- update landing page version badge to v0.13.6
+- sync landing page info with README/MODELS.md
+- sync pnpm-lock.yaml with mcp-server package.json
+- update MODELS.md video default to Kling
+- change default video provider to Kling (faster, cheaper)
+- correct README inaccuracies found via E2E testing
+
+### Maintenance
+
+- clean up generated files and update .gitignore
+
+## [0.13.5] - 2026-02-19
+
+### Documentation
+
+- update roadmap.md with E2E-verified status and missing commands
+- update progress.md with full E2E test results and 7 bug fixes
+
+### Fixed
+
+- resolve 7 bugs found during full E2E testing (85 tests)
+
+### Maintenance
+
+- add tiktok/ to gitignore
+
+## [0.13.4] - 2026-02-06
+
+### Fixed
+
+- enforce JSON-only response and add error logging *(storyboard)*
+
+## [0.13.3] - 2026-02-06
+
+### Documentation
+
+- sync landing page version to 0.13.2 and add sync rule to CLAUDE.md
+
+## [0.13.2] - 2026-02-06
+
+### Documentation
+
+- add demo GIF for README
+
+### Fixed
+
+- improve narration-video sync with 5 targeted fixes *(script-to-video)*
+- sync video duration with narration *(script-to-video)*
+
+## [0.13.0] - 2026-02-05
+
+### Added
+
+- improve file reading and add storyboard creativity option *(agent)*
+- add character consistency with reference images *(regenerate-scene)*
+- add ai_regenerate_scene tool *(agent)*
+- improve regenerate-scene command *(ai)*
+- add --sequential option to script-to-video *(ai)*
+- add ImgBB API key to config *(setup)*
+- add --show option for config diagnostics *(setup)*
+- add auto-narrate for videos without voiceover *(ai)*
+- add fill-gaps command for AI video generation *(ai)*
+- improve character consistency in script-to-video *(cli)*
+- add ImgBB upload for Kling image-to-video *(cli)*
+- enable Kling image-to-video and add scene continuity *(cli)*
+
+### Documentation
+
+- add README.md sync rule and fix tool count
+- improve system prompt with filesystem guidance *(agent)*
+- add viral optimizer fix to progress log
+- improve version management instructions to prevent sync issues
+
+### Fixed
+
+- use ~/.local/bin to avoid sudo requirement *(install)*
+- fix sudo password prompt when running via curl pipe *(install)*
+- change default providers to kling and gemini *(ai)*
+- use relative path for auto-generated narration source *(viral)*
+- include audio clips in platform variants *(viral)*
+- prioritize audio sources over video for transcription *(viral)*
+- fill timeline gaps with black frames *(export)*
+- include narration audio in project output *(b-roll)*
+- handle videos without audio streams *(export)*
+- accept both 'project' and 'path' parameter names *(agent)*
+- include video audio in export when no separate audio clips *(cli)*
+
+## [0.8.5] - 2026-02-05
+
+### Changed
+
+- rename DalleProvider to OpenAIImageProvider *(ai-providers)*
+
+## [0.8.4] - 2026-02-05
+
+### Fixed
+
+- handle GPT Image 1.5 base64 response in script-to-video *(cli)*
+
+## [0.8.3] - 2026-02-05
+
+### Changed
+
+- rename dalle → openai as default image provider *(cli)*
+
+### Fixed
+
+- parse OpenAI error JSON for detailed error messages *(ai-providers)*
+- show image generation error details in script-to-video *(cli)*
+
+## [0.8.1] - 2026-02-05
+
+### Added
+
+- add SSOT docs, gemini-edit tool, and openai provider naming *(cli)*
+
+### Changed
+
+- rename cli-guide.md to guide.md *(docs)*
+
+### Documentation
+
+- add demo GIF to README
+- update landing page stats to v0.8 *(web)*
+- clarify vibe vs vibe agent usage *(roadmap)*
+- update CLI status to reflect Agent mode as default *(roadmap)*
+- add test addition entry for v0.8.0 *(progress)*
+- update test counts to 281
+- update with v0.8.0 changes *(readme)*
+- update v0.8.0 changelog with all today's changes *(progress)*
+- enforce models.md as SSOT with clear rules and code comments
+
+### Fixed
+
+- update OpenAI DALL-E image sizes for API changes *(ai-providers)*
+- update ASCII banner to VIBEFRAME and fix ai_video tool *(cli)*
+- sync version and counts across all docs
+
+### Maintenance
+
+- update code comments from REPL to Agent *(web)*
+
+### Testing
+
+- add smoke tests for core, ai-providers, and mcp-server packages
+
+## [0.7.0] - 2026-02-05
+
+### Added
+
+- add Veo provider and fix Kling base64 support *(video)*
+- add xAI Grok as LLM provider *(agent)*
+- add xAI Grok Imagine and Google Veo 3, remove gen3a_turbo *(video)*
+- upgrade to Runway Gen-4.5 and add Google Veo 3.1 *(video)*
+- upgrade to GPT Image 1.5 and update Gemini models *(image)*
+- upgrade to v2.5 turbo with text2video support *(kling)*
+
+### Changed
+
+- limit to v2.5 and v2.6 models only *(kling)*
+
+### Documentation
+
+- add v0.6.2 changes - xAI Grok, DALL-E fix, Runway update *(progress)*
+- update Agent LLM model names to actual versions
+- update supported models and capabilities documentation
+- add XAI_API_KEY to .env.example
+- update AI provider models in CLAUDE.md and cli-guide.md
+
+### Fixed
+
+- update model name to gen4_turbo *(runway)*
+- support GPT Image 1.5 API changes *(dalle)*
+- update Runway model name Gen-3 → Gen-4.5 *(test)*
+- load .env file for API keys *(agent)*
+
+## [0.4.2] - 2026-02-04
+
+### Added
+
+- update landing page for v0.4 *(web)*
+
+### Documentation
+
+- add v0.4.1 changes *(progress)*
+
+## [0.4.1] - 2026-02-04
+
+### Documentation
+
+- add VibeFrame Cloud business direction
+- update v0.4.0 and translate to English *(cli-guide)*
+- add v0.4.0 changes *(progress)*
+
+## [0.4.0] - 2026-02-04
+
+### Added
+
+- improve media pipeline and add 7 new tools *(agent)*
+- add export reminder in system prompt *(agent)*
+- add clarification prompts for vague requests *(agent)*
+- improve welcome banner with ASCII art and status *(agent)*
+- implement Claude Code-like agentic mode as default entry point *(agent)*
+- add 4 AI pipeline tools and integration tests *(agent)*
+- add natural language support for regenerate-scene command *(repl)*
+- add retry logic and regenerate-scene command for script-to-video *(cli)*
+- improve scene continuity and narration alignment for script-to-video *(ai)*
+- implement per-scene TTS for script-to-video *(cli)*
+
+### Changed
+
+- convert Korean text to English in system prompt *(agent)*
+
+### Documentation
+
+- add v0.3.0 changes *(progress)*
+- update for Agent mode and improve workflow examples *(cli-guide)*
+- add regenerate-scene command to CLI guide
+- add progress entry for narration field fix
+- add progress entries for export fixes
+- clarify script-to-video output in cli-guide.md
+- add progress entry for Runway ratio fix
+- reorganize cli-guide.md to reduce duplication
+- add progress entry for TTS/SFX filename fix
+- add progress entries for detect docs and trim fix
+- add detect command documentation to cli-guide
+- fix trim command option in cli-guide
+- add progress entry for version and track fixes
+- add progress entry for cli-guide fixes
+- fix cli-guide inconsistencies and add documentation guidelines
+- add natural language export examples to roadmap
+- add progress entry for export natural language routing fix
+
+### Fixed
+
+- disable ora discardStdin to preserve readline input *(agent)*
+- add rl.resume() before prompt after async operations *(agent)*
+- add keepalive timer and stdin.ref() to prevent premature exit *(agent)*
+- keep event loop alive until readline closes *(agent)*
+- use null instead of undefined for projectPath in e2e tests *(agent)*
+- use 10s video when narration exceeds 5s in script-to-video *(cli)*
+- add narration field to storyboard for proper voiceover *(ai)*
+- export mixed resolution videos with scale filter *(cli)*
+- support directory paths in project info/set/export commands *(cli)*
+- export FFmpeg error with mixed media + script-to-video output path *(cli)*
+- create output directory for script-to-video if it doesn't exist *(cli)*
+- map aspect ratio to API format *(runway)*
+- route "ai voices" to list voices and enable video generation *(repl)*
+- generate unique filenames for TTS and SFX *(repl)*
+- read version from package.json and fix image track matching *(cli)*
+- handle image files correctly in video export *(export)*
+- route "export the video" natural language to export handler *(repl)*
+- improve natural language routing to prevent greedy builtin matching *(repl)*
+
+### Maintenance
+
+- update music.mp3
+
+## [0.2.1] - 2026-02-02
+
+### Added
+
+- add natural language "add X to project" support *(repl)*
+
+## [0.2.0] - 2026-02-02
+
+### Added
+
+- LLM-unified natural language command routing *(repl)*
+
+## [0.1.1] - 2026-02-02
+
+### Added
+
+- add AI generation command support *(repl)*
+- change default image provider from DALL-E to Gemini *(cli)*
+- add Docker test environment for workflow testing *(docker)*
+- add multi-provider support to script-to-video and Gemini Video to highlights/auto-shorts *(cli)*
+- add 4 missing scripts for complete CLI coverage *(skills)*
+- add 15 helper scripts for complete CLI coverage *(skills)*
+- add video understanding capabilities *(gemini)*
+- add Nano Banana Pro support and image editing *(gemini)*
+- add multi-provider demo script and fix Kling mode *(cli)*
+- add Runway image generation and CLI support *(skills)*
+- add Claude Code skills and multi-provider CLI support
+- improve user experience with better onboarding and docs *(cli)*
+- add Ollama provider for local LLM support *(ai-providers)*
+- use configured LLM provider for natural language commands *(cli)*
+- add install.sh to public for CLI installation *(web)*
+- enhance landing page with interactive REPL demo *(web)*
+- add interactive REPL mode and install script *(cli)*
+- add smart editing commands *(ai)*
+- add voice and audio processing commands *(ai)*
+- add video understanding and generation commands *(ai)*
+- add landing page for open source launch *(web)*
+- add Viral Optimizer command for Phase 4 *(ai)*
+- add B-Roll Matcher command for Phase 4 *(ai)*
+- add Auto Highlights command for Phase 4 *(ai)*
+- add Script-to-Video command for Phase 4 *(ai)*
+- add DALL-E, Runway, Kling providers and MCP server
+- add Phase 2 AI provider extensions *(ai)*
+- add Claude integration with Remotion motion graphics *(ai)*
+- add OpenAI GPT, ElevenLabs TTS, and scene detection *(ai)*
+- add batch operations command *(cli)*
+- add timeline operations (split, duplicate, delete, move) *(cli)*
+- add export command with FFmpeg.wasm *(cli)*
+- add media info command *(cli)*
+- add CLI package for headless video editing
+
+### Changed
+
+- remove Korean text from source code
+- update terminal ASCII art to full VIBE FRAME logo *(web)*
+
+### Documentation
+
+- add "When Do You Need a Project?" section *(cli-guide)*
+- add supported REPL patterns section *(cli-guide)*
+- show realistic REPL output format *(cli-guide)*
+- add Core Concepts section explaining projects *(cli-guide)*
+- fix REPL example to generate media first *(cli-guide)*
+- add setup vs setup --full comparison *(cli-guide)*
+- convert Korean text to English in documentation
+- add comprehensive CLI Mode + REPL Mode examples *(cli-guide)*
+- enhance CLI guide with step-by-step tutorial and workflow examples
+- update progress.md with Gemini and Stability changes
+- add CLAUDE.md with Skills → CLI → REPL architecture
+- add advanced multi-provider workflow to CLI guide
+- add export command fix to progress.md
+- update roadmap.md with llama3.2 as default Ollama model
+- update progress.md with llama3.2 as default Ollama model
+- mark Ollama provider complete in roadmap
+- add Ollama provider feature to progress log
+- add LLM provider feature to progress log
+- rename mcp-guide.md to mcp.md
+- update test count to 157
+- enhance MCP integration guide and documentation
+- revamp README for open source launch
+- sync README with docs/roadmap.md
+- sync README with docs/roadmap.md
+- address roadmap feedback on technical constraints
+- expand roadmap with AI-native vision
+- update roadmap with CLI progress
+- translate Korean text to English in README
+- reorganize documentation structure
+
+### Fixed
+
+- prevent exit after AI generation commands *(repl)*
+- use AI providers directly instead of subprocess *(repl)*
+- add default voice (Rachel) to TTS command *(cli)*
+- update model versions to latest *(replicate)*
+- correct API endpoint format for SD3.5 models *(stability)*
+- rewrite Runway with SDK, complete video gen tests *(skills)*
+- add text_to_video endpoint for Runway *(skills)*
+- update Stability and Replicate API integrations *(skills)*
+- fix JSON parsing in Claude API scripts *(skills)*
+- use system FFmpeg instead of FFmpeg.wasm for export *(cli)*
+- change Ollama default model to llama3.2 *(ai-providers)*
+- resolve ESLint errors across all packages
+- add OpenAI to optional providers in setup --full *(cli)*
+- ensure setup exits cleanly and fix ASCII logo *(cli)*
+- resolve REPL hang and API key masking issues *(cli)*
+- redirect stdin from /dev/tty for vibe setup *(install)*
+- actually open /dev/tty to verify accessibility *(tty)*
+- improve TTY input handling and simplify setup UX *(cli)*
+- use /dev/tty for input when stdin is piped *(setup)*
+- use NodeNext module resolution for production CLI *(esm)*
+- remove .js extension from ESM imports *(ai-providers)*
+- use explicit ESM imports for interface directory *(ai-providers)*
+- fix curl pipe execution and update branding *(install)*
+- correct LICENSE copyright year to 2026
+- resolve ESLint errors in web package
+
+### Maintenance
+
+- add generated output directories to gitignore
+- sync install.sh to web public directory
+- rebrand vibe-edit to vibeframe
+- replace editor links with CLI/MCP docs *(web)*
+- add REPLICATE_API_TOKEN to .env.example
+- add vitest coverage support to CLI
+
+### Testing
+
+- add integration tests for CLI commands
+- add unit tests for CLI Project engine
+
+### Debug
+
+- add REPL startup logging
+
+

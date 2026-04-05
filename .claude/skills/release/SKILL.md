@@ -16,8 +16,9 @@ Steps:
 6. **Build**: `pnpm build` — must pass
 7. **Lint**: `pnpm lint` — must pass (0 errors)
 8. **Test**: `pnpm -F @vibeframe/cli exec vitest run` — must pass
-9. **Stage**: `git add package.json packages/*/package.json apps/*/package.json`
-10. **Commit**: `git commit -m "chore: bump version to X.Y.Z"`
-11. **Tag**: `git tag vX.Y.Z`
+9. **Generate CHANGELOG**: `git-cliff --tag vX.Y.Z -o CHANGELOG.md` — auto-generate from conventional commits
+10. **Stage**: `git add package.json packages/*/package.json apps/*/package.json CHANGELOG.md`
+11. **Commit**: `git commit -m "chore: bump version to X.Y.Z"`
+12. **Tag**: `git tag vX.Y.Z`
 
 Report the new version number. Do NOT push — the user will push when ready.
