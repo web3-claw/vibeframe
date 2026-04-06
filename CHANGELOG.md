@@ -5,22 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.32.0] - 2026-04-05
+## [0.33.0] - 2026-04-06
 
 ### Added
 
+- add Grok as default video generator for pipeline script-to-video
+- arrow key navigation for setup wizard select prompts
+- rich context in setup wizard key collection
+- redesign setup wizard with mix-and-match AI feature selection
+- use-case-based setup wizard for API key onboarding
 - auto-generate CHANGELOG from conventional commits via git-cliff
 - expand --dry-run to all 84 mutating commands and enhance AGENTS.md
 - add --stdin global flag for JSON input and fix path validation
 
 ### Changed
 
+- de-emphasize agent mode, make CLI-first the default
+- consolidate 7 rules into 4, remove 534 lines
 - add output path validation to all commands with -o option
 - standardize error handling for agentic CLI compliance
 - derive landing page counts from source code at build time
 
 ### Documentation
 
+- add AI agent integration section to DEMO.md
+- update DEMO.md setup section to match arrow-key wizard
+- rewrite DEMO.md as a story from install to wow moment
+- rewrite DEMO.md to match use-case-based setup flow
+- slim CLAUDE.md from 62 to 33 lines
+- fix outdated references in .claude agents and README
 - fix Audio provider count in MODELS.md (2 → 3)
 - replace hardcoded counts with build-time extraction
 - remove all hardcoded counts from README
@@ -28,7 +41,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- multi-track audio mixing in export engine
+- remove all hardcoded Runway fallback in pipeline CLI wrapper
+- add XAI_API_KEY and OPENROUTER_API_KEY to config lookup map
+- revert symlink to copy for install.sh (CI prebuild needs real file)
+- improve setup wizard accuracy and .env key detection
+- rename "Smart editing" to "AI editing + motion" in setup wizard
+- clarify AI feature labels in setup wizard
+- polish onboarding flow
+- update setup --claude-code and improve onboarding UX
 - structured JSON errors and proper exit codes for all Commander.js errors
+
+### Maintenance
+
+- symlink apps/web/public/install.sh to scripts/install.sh
+- add CHANGELOG sync check to pre-push hook
 
 ## [0.31.1] - 2026-04-05
 
