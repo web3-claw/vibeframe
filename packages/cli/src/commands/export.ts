@@ -626,6 +626,15 @@ function buildFFmpegArgs(
         const trimStart = clip.sourceStartOffset;
         const trimEnd = clip.sourceStartOffset + clip.duration;
         videoFilter = `[${srcIdx}:v]trim=start=${trimStart}:end=${trimEnd},setpts=PTS-STARTPTS`;
+
+        // If video source is shorter than clip duration, freeze last frame to fill
+        // This prevents black frames when narration is longer than generated video
+        const sourceDuration = source.duration || 0;
+        const availableDuration = sourceDuration - clip.sourceStartOffset;
+        if (availableDuration > 0 && availableDuration < clip.duration - 0.1) {
+          const padDuration = clip.duration - availableDuration;
+          videoFilter += `,tpad=stop_mode=clone:stop_duration=${padDuration.toFixed(3)}`;
+        }
       }
 
       // Scale to target resolution for concat compatibility (force same size, pad if needed)
