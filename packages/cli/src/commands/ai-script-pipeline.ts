@@ -201,6 +201,54 @@ export async function extendVideoToTarget(
 }
 
 /**
+ * Generate video with retry logic for Grok provider
+ */
+export async function generateVideoWithRetryGrok(
+  grok: GrokProvider,
+  segment: StoryboardSegment,
+  options: {
+    duration: number;
+    aspectRatio: "16:9" | "9:16" | "1:1";
+    referenceImage?: string;
+  },
+  maxRetries: number,
+  onProgress?: (message: string) => void
+): Promise<{ requestId: string } | null> {
+  const prompt = segment.visualStyle
+    ? `${segment.visuals}. Style: ${segment.visualStyle}`
+    : segment.visuals;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const result = await grok.generateVideo(prompt, {
+        prompt,
+        duration: options.duration,
+        aspectRatio: options.aspectRatio,
+        referenceImage: options.referenceImage,
+      });
+
+      if (result.status !== "failed" && result.id) {
+        return { requestId: result.id };
+      }
+
+      if (attempt < maxRetries) {
+        onProgress?.(`⚠ Retry ${attempt + 1}/${maxRetries}...`);
+        await sleep(RETRY_DELAY_MS);
+      }
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (attempt < maxRetries) {
+        onProgress?.(`⚠ Error: ${errMsg.slice(0, 50)}... retry ${attempt + 1}/${maxRetries}`);
+        await sleep(RETRY_DELAY_MS);
+      } else {
+        console.error(chalk.dim(`\n  [Grok error: ${errMsg}]`));
+      }
+    }
+  }
+  return null;
+}
+
+/**
  * Generate video with retry logic for Kling provider
  * Supports image-to-video with URL (v2.5/v2.6 models)
  */
@@ -411,7 +459,7 @@ export interface ScriptToVideoOptions {
   /** ElevenLabs voice name or ID */
   voice?: string;
   /** Video generation provider */
-  generator?: "runway" | "kling" | "veo";
+  generator?: "grok" | "runway" | "kling" | "veo";
   /** Image generation provider */
   imageProvider?: "openai" | "dalle" | "gemini" | "grok";
   /** Video aspect ratio */
@@ -562,21 +610,20 @@ export async function executeScriptToVideo(
 
     let videoApiKey: string | undefined;
     if (!options.imagesOnly) {
-      if (options.generator === "kling") {
-        videoApiKey = (await getApiKey("KLING_API_KEY", "Kling")) ?? undefined;
-        if (!videoApiKey) {
-          return { success: false, outputDir, scenes: 0, error: "Kling API key required (or use imagesOnly option). Run 'vibe setup' or set KLING_API_KEY in .env" };
-        }
-      } else if (options.generator === "veo") {
-        videoApiKey = (await getApiKey("GOOGLE_API_KEY", "Google")) ?? undefined;
-        if (!videoApiKey) {
-          return { success: false, outputDir, scenes: 0, error: "Google API key required for Veo video generation (or use imagesOnly option). Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
-        }
-      } else {
-        videoApiKey = (await getApiKey("RUNWAY_API_SECRET", "Runway")) ?? undefined;
-        if (!videoApiKey) {
-          return { success: false, outputDir, scenes: 0, error: "Runway API key required (or use imagesOnly option). Run 'vibe setup' or set RUNWAY_API_SECRET in .env" };
-        }
+      const generatorKeyMap: Record<string, { envVar: string; name: string }> = {
+        grok: { envVar: "XAI_API_KEY", name: "xAI (Grok)" },
+        kling: { envVar: "KLING_API_KEY", name: "Kling" },
+        runway: { envVar: "RUNWAY_API_SECRET", name: "Runway" },
+        veo: { envVar: "GOOGLE_API_KEY", name: "Google (Veo)" },
+      };
+      const generator = options.generator || "grok";
+      const generatorInfo = generatorKeyMap[generator];
+      if (!generatorInfo) {
+        return { success: false, outputDir, scenes: 0, error: `Invalid generator: ${options.generator}. Available: ${Object.keys(generatorKeyMap).join(", ")}` };
+      }
+      videoApiKey = (await getApiKey(generatorInfo.envVar, generatorInfo.name)) ?? undefined;
+      if (!videoApiKey) {
+        return { success: false, outputDir, scenes: 0, error: `${generatorInfo.name} API key required (or use imagesOnly option). Run 'vibe setup' or set ${generatorInfo.envVar} in .env` };
       }
     }
 
@@ -789,7 +836,66 @@ export async function executeScriptToVideo(
     const maxRetries = options.retries ?? DEFAULT_VIDEO_RETRIES;
 
     if (!options.imagesOnly && videoApiKey) {
-      if (options.generator === "kling") {
+      if (options.generator === "grok") {
+        const grok = new GrokProvider();
+        await grok.initialize({ apiKey: videoApiKey });
+
+        for (let i = 0; i < segments.length; i++) {
+          if (!imagePaths[i]) {
+            videoPaths.push("");
+            continue;
+          }
+
+          const segment = segments[i] as StoryboardSegment;
+          const videoDuration = Math.min(15, Math.max(1, segment.duration));
+
+          // Image-to-video: encode image as data URI
+          const imageBuffer = await readFile(imagePaths[i]);
+          const ext = extname(imagePaths[i]).toLowerCase().slice(1);
+          const mimeType = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : "image/png";
+          const referenceImage = `data:${mimeType};base64,${imageBuffer.toString("base64")}`;
+
+          const taskResult = await generateVideoWithRetryGrok(
+            grok,
+            segment,
+            { duration: videoDuration, aspectRatio: (options.aspectRatio || "16:9") as "16:9" | "9:16" | "1:1", referenceImage },
+            maxRetries
+          );
+
+          if (taskResult) {
+            try {
+              const waitResult = await grok.waitForCompletion(taskResult.requestId, undefined, 300000);
+              if (waitResult.status === "completed" && waitResult.videoUrl) {
+                const videoPath = resolve(absOutputDir, `scene-${i + 1}.mp4`);
+                const buffer = await downloadVideo(waitResult.videoUrl, videoApiKey);
+                await writeFile(videoPath, buffer);
+
+                const targetDuration = segment.duration;
+                const actualVideoDuration = await getVideoDuration(videoPath);
+
+                if (actualVideoDuration < targetDuration - 0.1) {
+                  const extendedPath = resolve(absOutputDir, `scene-${i + 1}-extended.mp4`);
+                  await extendVideoNaturally(videoPath, targetDuration, extendedPath);
+                  await unlink(videoPath);
+                  await rename(extendedPath, videoPath);
+                }
+
+                videoPaths.push(videoPath);
+                result.videos!.push(videoPath);
+              } else {
+                videoPaths.push("");
+                result.failedScenes!.push(i + 1);
+              }
+            } catch {
+              videoPaths.push("");
+              result.failedScenes!.push(i + 1);
+            }
+          } else {
+            videoPaths.push("");
+            result.failedScenes!.push(i + 1);
+          }
+        }
+      } else if (options.generator === "kling") {
         const kling = new KlingProvider();
         await kling.initialize({ apiKey: videoApiKey });
 
