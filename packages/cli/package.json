@@ -78,6 +78,10 @@
     "./commands/ai-animated-caption": {
       "import": "./src/commands/ai-animated-caption.ts",
       "types": "./src/commands/ai-animated-caption.ts"
+    },
+    "./commands/detect": {
+      "import": "./src/commands/detect.ts",
+      "types": "./src/commands/detect.ts"
     }
   },
   "scripts": {

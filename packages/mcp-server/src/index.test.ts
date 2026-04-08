@@ -16,8 +16,8 @@ describe("@vibeframe/mcp-server", () => {
       expect(tools.length).toBeGreaterThan(0);
     });
 
-    it("should have 30 tools total", () => {
-      expect(tools.length).toBe(30);
+    it("should have 33 tools total", () => {
+      expect(tools.length).toBe(33);
     });
 
     it("should have correct tool structure", () => {
@@ -79,6 +79,13 @@ describe("@vibeframe/mcp-server", () => {
       const toolNames = tools.map((t) => t.name);
       expect(toolNames).toContain("generate_motion");
       expect(toolNames).toContain("edit_animated_caption");
+    });
+
+    it("should have detection tools", () => {
+      const toolNames = tools.map((t) => t.name);
+      expect(toolNames).toContain("detect_scenes");
+      expect(toolNames).toContain("detect_silence");
+      expect(toolNames).toContain("detect_beats");
     });
 
     it("should have unique tool names", () => {

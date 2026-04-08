@@ -5,6 +5,7 @@ import { aiEditingTools, handleAiEditingToolCall } from "./ai-editing.js";
 import { aiAnalysisTools, handleAiAnalysisToolCall } from "./ai-analysis.js";
 import { aiPipelineTools, handleAiPipelineToolCall } from "./ai-pipelines.js";
 import { aiGenerationTools, handleAiGenerationToolCall } from "./ai-generation.js";
+import { detectionTools, handleDetectionToolCall } from "./detection.js";
 
 export const tools = [
   ...projectTools,
@@ -14,6 +15,7 @@ export const tools = [
   ...aiAnalysisTools,
   ...aiPipelineTools,
   ...aiGenerationTools,
+  ...detectionTools,
 ];
 
 type ToolHandler = (name: string, args: Record<string, unknown>) => Promise<string>;
@@ -26,6 +28,7 @@ for (const t of aiEditingTools) handlers[t.name] = handleAiEditingToolCall;
 for (const t of aiAnalysisTools) handlers[t.name] = handleAiAnalysisToolCall;
 for (const t of aiPipelineTools) handlers[t.name] = handleAiPipelineToolCall;
 for (const t of aiGenerationTools) handlers[t.name] = handleAiGenerationToolCall;
+for (const t of detectionTools) handlers[t.name] = handleDetectionToolCall;
 
 export async function handleToolCall(
   name: string,
