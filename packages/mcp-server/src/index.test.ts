@@ -16,8 +16,8 @@ describe("@vibeframe/mcp-server", () => {
       expect(tools.length).toBeGreaterThan(0);
     });
 
-    it("should have 27 tools total", () => {
-      expect(tools.length).toBe(27);
+    it("should have 30 tools total", () => {
+      expect(tools.length).toBe(30);
     });
 
     it("should have correct tool structure", () => {
@@ -72,7 +72,13 @@ describe("@vibeframe/mcp-server", () => {
       expect(toolNames).toContain("pipeline_script_to_video");
       expect(toolNames).toContain("pipeline_highlights");
       expect(toolNames).toContain("pipeline_auto_shorts");
-      expect(toolNames).not.toContain("pipeline_narrate");
+      expect(toolNames).toContain("pipeline_regenerate_scene");
+    });
+
+    it("should have AI generation tools", () => {
+      const toolNames = tools.map((t) => t.name);
+      expect(toolNames).toContain("generate_motion");
+      expect(toolNames).toContain("edit_animated_caption");
     });
 
     it("should have unique tool names", () => {

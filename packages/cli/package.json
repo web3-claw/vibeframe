@@ -70,6 +70,14 @@
     "./commands/ai-narrate": {
       "import": "./src/commands/ai-narrate.ts",
       "types": "./src/commands/ai-narrate.ts"
+    },
+    "./commands/ai-motion": {
+      "import": "./src/commands/ai-motion.ts",
+      "types": "./src/commands/ai-motion.ts"
+    },
+    "./commands/ai-animated-caption": {
+      "import": "./src/commands/ai-animated-caption.ts",
+      "types": "./src/commands/ai-animated-caption.ts"
     }
   },
   "scripts": {
