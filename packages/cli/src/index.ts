@@ -32,6 +32,7 @@ import { agentCommand } from "./commands/agent.js";
 import { ApiKeyError } from "./utils/api-key.js";
 import { isFirstRun, showFirstRunBanner } from "./utils/first-run.js";
 import { exitWithError, usageError } from "./commands/output.js";
+import { rejectControlChars } from "./utils/input-validation.js";
 
 /**
  * Read all data from stdin (non-blocking, only when stdin is piped).
@@ -76,29 +77,27 @@ program
   .addHelpText(
     "after",
     `
-Workflow commands:
-  vibe project create|info|set       Manage .vibe.json project files
-  vibe timeline add-source|add-clip|trim|split|list|delete  Edit project timeline
-  vibe export <project> -o out.mp4   Export project to video
-  vibe batch import|concat|apply-effect  Bulk operations
-  vibe detect scenes|silence|beats   Analyze media structure
-
-Utilities:
-  vibe setup                   Configure API keys and preferences
-  vibe setup --show            Show current API key status
-  vibe doctor --json           Check system health and available providers
-  vibe schema --list           List all commands with JSON schema
-  vibe schema <group.action>   Show JSON schema (e.g., vibe schema generate.image)
-
 Global flags (work with any command):
   --json         Output JSON (auto-enabled when piped)
   --fields       Limit output fields (e.g., --fields "path,duration")
-  --quiet        Output only the result value
+  --quiet        Output only the result value (path, URL, or ID)
   --stdin        Read options from stdin as JSON (for agent/script use)
   --dry-run      Preview without executing (most commands)
 
-Stdin JSON example:
-  echo '{"provider":"kling","duration":5}' | vibe generate video "prompt" --stdin
+Cost tiers:
+  Free     detect, edit (silence-cut/fade/noise-reduce), project, timeline, export
+  Low      analyze, audio transcribe, generate image               ~$0.01-$0.10
+  High     generate video, edit image                              ~$1-$5
+  V.High   pipeline (script-to-video, highlights, auto-shorts)    ~$5-$50+
+
+Quick start:
+  vibe doctor                  Check system health and API keys
+  vibe setup                   Configure API keys interactively
+  vibe schema --list           Discover all commands (69 commands)
+
+Agent integration:
+  echo '{"provider":"kling"}' | vibe generate video "prompt" --stdin --json
+  vibe schema generate.video   Get parameter schema for any command
 `
   );
 
@@ -141,6 +140,14 @@ program.hook("preAction", async (thisCommand, actionCommand) => {
       for (const [key, value] of Object.entries(json)) {
         // Convert kebab-case to camelCase (e.g., "api-key" → "apiKey")
         const camelKey = key.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+        // Reject control characters in string values from stdin
+        if (typeof value === "string") {
+          try {
+            rejectControlChars(value, key);
+          } catch {
+            exitWithError(usageError(`--stdin field '${key}' contains control characters.`, "Remove non-printable characters from the JSON value."));
+          }
+        }
         // Only set if not already explicitly specified via CLI flag
         const source = actionCommand.getOptionValueSource(camelKey);
         if (source === undefined || source === "default") {
@@ -180,14 +187,18 @@ program.addCommand(setupCommand);
 program.addCommand(doctorCommand);
 program.addCommand(agentCommand);
 
-// Infrastructure commands (hidden from --help, still fully functional)
-program.addCommand(projectCommand, { hidden: true });
-program.addCommand(timelineCommand, { hidden: true });
-program.addCommand(schemaCommand, { hidden: true });
+// Workflow commands
+program.addCommand(projectCommand);
+program.addCommand(timelineCommand);
+program.addCommand(exportCommand);
+program.addCommand(detectCommand);
+program.addCommand(batchCommand);
+
+// Agent integration commands
+program.addCommand(schemaCommand);
+
+// Utility commands (less commonly used directly)
 program.addCommand(mediaCommand, { hidden: true });
-program.addCommand(exportCommand, { hidden: true });
-program.addCommand(batchCommand, { hidden: true });
-program.addCommand(detectCommand, { hidden: true });
 
 // Propagate exitOverride and JSON-aware error output to all subcommands
 // Commander.js doesn't inherit these settings from the parent program
