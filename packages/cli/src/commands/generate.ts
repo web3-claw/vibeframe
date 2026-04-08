@@ -2155,3 +2155,162 @@ generateCommand
       exitWithError(apiError(`Video extension failed: ${msg}`, true));
     }
   });
+
+// ── Extracted execute functions for MCP/agent consumption ───────────────
+
+export interface ExecuteSpeechOptions {
+  text: string;
+  output?: string;
+  voice?: string;
+}
+export interface ExecuteSpeechResult {
+  success: boolean;
+  outputPath?: string;
+  characterCount?: number;
+  error?: string;
+}
+
+export async function executeSpeech(options: ExecuteSpeechOptions): Promise<ExecuteSpeechResult> {
+  try {
+    const apiKey = hasApiKey("ELEVENLABS_API_KEY")
+      ? (await getApiKeyFromConfig("elevenlabs") || process.env.ELEVENLABS_API_KEY!)
+      : null;
+    if (!apiKey) return { success: false, error: "ElevenLabs API key required. Set ELEVENLABS_API_KEY or run: vibe setup" };
+
+    const elevenlabs = new ElevenLabsProvider();
+    await elevenlabs.initialize({ apiKey });
+
+    const result = await elevenlabs.textToSpeech(options.text, {
+      voiceId: options.voice || "21m00Tcm4TlvDq8ikWAM",
+    });
+
+    if (!result.success || !result.audioBuffer) {
+      return { success: false, error: result.error || "TTS generation failed" };
+    }
+
+    const outputPath = resolve(process.cwd(), options.output || "output.mp3");
+    await writeFile(outputPath, result.audioBuffer);
+
+    return { success: true, outputPath, characterCount: result.characterCount };
+  } catch (error) {
+    return { success: false, error: `TTS failed: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
+export interface ExecuteSoundEffectOptions {
+  prompt: string;
+  output?: string;
+  duration?: number;
+  promptInfluence?: number;
+}
+export interface ExecuteSoundEffectResult {
+  success: boolean;
+  outputPath?: string;
+  error?: string;
+}
+
+export async function executeSoundEffect(options: ExecuteSoundEffectOptions): Promise<ExecuteSoundEffectResult> {
+  try {
+    const apiKey = hasApiKey("ELEVENLABS_API_KEY")
+      ? (await getApiKeyFromConfig("elevenlabs") || process.env.ELEVENLABS_API_KEY!)
+      : null;
+    if (!apiKey) return { success: false, error: "ElevenLabs API key required. Set ELEVENLABS_API_KEY or run: vibe setup" };
+
+    const elevenlabs = new ElevenLabsProvider();
+    await elevenlabs.initialize({ apiKey });
+
+    const result = await elevenlabs.generateSoundEffect(options.prompt, {
+      duration: options.duration,
+      promptInfluence: options.promptInfluence,
+    });
+
+    if (!result.success || !result.audioBuffer) {
+      return { success: false, error: result.error || "Sound effect generation failed" };
+    }
+
+    const outputPath = resolve(process.cwd(), options.output || "sound-effect.mp3");
+    await writeFile(outputPath, result.audioBuffer);
+
+    return { success: true, outputPath };
+  } catch (error) {
+    return { success: false, error: `SFX failed: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
+export interface ExecuteMusicOptions {
+  prompt: string;
+  output?: string;
+  duration?: number;
+  provider?: "elevenlabs" | "replicate";
+  instrumental?: boolean;
+}
+export interface ExecuteMusicResult {
+  success: boolean;
+  outputPath?: string;
+  provider?: string;
+  duration?: number;
+  error?: string;
+}
+
+export async function executeMusic(options: ExecuteMusicOptions): Promise<ExecuteMusicResult> {
+  try {
+    const provider = options.provider || "elevenlabs";
+
+    if (provider === "elevenlabs") {
+      const apiKey = hasApiKey("ELEVENLABS_API_KEY")
+        ? (await getApiKeyFromConfig("elevenlabs") || process.env.ELEVENLABS_API_KEY!)
+        : null;
+      if (!apiKey) return { success: false, error: "ElevenLabs API key required. Set ELEVENLABS_API_KEY or run: vibe setup" };
+
+      const elevenlabs = new ElevenLabsProvider();
+      await elevenlabs.initialize({ apiKey });
+
+      const duration = Math.max(3, Math.min(600, options.duration || 8));
+      const result = await elevenlabs.generateMusic(options.prompt, {
+        duration,
+        forceInstrumental: options.instrumental || false,
+      });
+
+      if (!result.success || !result.audioBuffer) {
+        return { success: false, error: result.error || "Music generation failed" };
+      }
+
+      const outputPath = resolve(process.cwd(), options.output || "music.mp3");
+      await writeFile(outputPath, result.audioBuffer);
+
+      return { success: true, outputPath, provider: "elevenlabs", duration };
+    }
+
+    // Replicate MusicGen
+    const apiKey = hasApiKey("REPLICATE_API_TOKEN")
+      ? (await getApiKeyFromConfig("replicate") || process.env.REPLICATE_API_TOKEN!)
+      : null;
+    if (!apiKey) return { success: false, error: "Replicate API token required. Set REPLICATE_API_TOKEN or run: vibe setup" };
+
+    const replicate = new ReplicateProvider();
+    await replicate.initialize({ apiKey });
+
+    const duration = Math.max(1, Math.min(30, options.duration || 8));
+    const result = await replicate.generateMusic(options.prompt, { duration });
+
+    if (!result.success || !result.taskId) {
+      return { success: false, error: result.error || "Music generation failed" };
+    }
+
+    const finalResult = await replicate.waitForMusic(result.taskId);
+    if (!finalResult.success || !finalResult.audioUrl) {
+      return { success: false, error: finalResult.error || "Music generation failed" };
+    }
+
+    const response = await fetch(finalResult.audioUrl);
+    if (!response.ok) return { success: false, error: "Failed to download generated audio" };
+
+    const audioBuffer = Buffer.from(await response.arrayBuffer());
+    const outputPath = resolve(process.cwd(), options.output || "music.mp3");
+    await writeFile(outputPath, audioBuffer);
+
+    return { success: true, outputPath, provider: "replicate", duration };
+  } catch (error) {
+    return { success: false, error: `Music failed: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}

@@ -82,6 +82,10 @@
     "./commands/detect": {
       "import": "./src/commands/detect.ts",
       "types": "./src/commands/detect.ts"
+    },
+    "./commands/generate": {
+      "import": "./src/commands/generate.ts",
+      "types": "./src/commands/generate.ts"
     }
   },
   "scripts": {

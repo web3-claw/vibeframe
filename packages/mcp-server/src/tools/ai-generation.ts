@@ -1,6 +1,7 @@
 import { executeMotion } from "@vibeframe/cli/commands/ai-motion";
 import { executeAnimatedCaption } from "@vibeframe/cli/commands/ai-animated-caption";
 import { executeRegenerateScene } from "@vibeframe/cli/commands/ai-script-pipeline";
+import { executeSpeech, executeSoundEffect, executeMusic } from "@vibeframe/cli/commands/generate";
 
 export const aiGenerationTools = [
   {
@@ -92,6 +93,52 @@ export const aiGenerationTools = [
       required: ["projectDir", "scenes"],
     },
   },
+  {
+    name: "generate_speech",
+    description: "Generate speech from text using ElevenLabs TTS. Requires ELEVENLABS_API_KEY.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        text: { type: "string", description: "Text to convert to speech" },
+        output: { type: "string", description: "Output audio file path (default: output.mp3)" },
+        voice: { type: "string", description: "Voice ID (default: Rachel)" },
+      },
+      required: ["text"],
+    },
+  },
+  {
+    name: "generate_sound_effect",
+    description: "Generate sound effects using ElevenLabs. Requires ELEVENLABS_API_KEY.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        prompt: { type: "string", description: "Description of the sound effect" },
+        output: { type: "string", description: "Output audio file path (default: sound-effect.mp3)" },
+        duration: { type: "number", description: "Duration in seconds (0.5-22, default: auto)" },
+        promptInfluence: { type: "number", description: "Prompt influence 0-1 (default: 0.3)" },
+      },
+      required: ["prompt"],
+    },
+  },
+  {
+    name: "generate_music",
+    description: "Generate background music from text prompt. ElevenLabs (default, up to 10min) or Replicate MusicGen (max 30s). Requires ELEVENLABS_API_KEY or REPLICATE_API_TOKEN.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        prompt: { type: "string", description: "Description of the music to generate" },
+        output: { type: "string", description: "Output audio file path (default: music.mp3)" },
+        duration: { type: "number", description: "Duration in seconds (elevenlabs: 3-600, replicate: 1-30)" },
+        provider: {
+          type: "string",
+          enum: ["elevenlabs", "replicate"],
+          description: "Provider (default: elevenlabs)",
+        },
+        instrumental: { type: "boolean", description: "Force instrumental, no vocals (ElevenLabs only)" },
+      },
+      required: ["prompt"],
+    },
+  },
 ];
 
 export async function handleAiGenerationToolCall(
@@ -165,6 +212,39 @@ export async function handleAiGenerationToolCall(
         regeneratedScenes: result.regeneratedScenes,
         failedScenes: result.failedScenes,
       });
+    }
+
+    case "generate_speech": {
+      const result = await executeSpeech({
+        text: args.text as string,
+        output: args.output as string | undefined,
+        voice: args.voice as string | undefined,
+      });
+      if (!result.success) return `Speech generation failed: ${result.error}`;
+      return JSON.stringify({ success: true, outputPath: result.outputPath, characterCount: result.characterCount });
+    }
+
+    case "generate_sound_effect": {
+      const result = await executeSoundEffect({
+        prompt: args.prompt as string,
+        output: args.output as string | undefined,
+        duration: args.duration as number | undefined,
+        promptInfluence: args.promptInfluence as number | undefined,
+      });
+      if (!result.success) return `Sound effect generation failed: ${result.error}`;
+      return JSON.stringify({ success: true, outputPath: result.outputPath });
+    }
+
+    case "generate_music": {
+      const result = await executeMusic({
+        prompt: args.prompt as string,
+        output: args.output as string | undefined,
+        duration: args.duration as number | undefined,
+        provider: args.provider as "elevenlabs" | "replicate" | undefined,
+        instrumental: args.instrumental as boolean | undefined,
+      });
+      if (!result.success) return `Music generation failed: ${result.error}`;
+      return JSON.stringify({ success: true, outputPath: result.outputPath, provider: result.provider, duration: result.duration });
     }
 
     default:
