@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.41.0] - 2026-04-11
+
+### Added
+
+- add generate_storyboard MCP tool (53 tools total)
+- expand MCP server from 47 to 52 tools — grade, speed-ramp, reframe, interpolate, upscale
+
 ## [0.40.0] - 2026-04-11
 
 ### Added
