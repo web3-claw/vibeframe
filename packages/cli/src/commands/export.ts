@@ -198,7 +198,8 @@ Examples:
   $ vibe export project.vibe.json -o output.mp4 -p high -y
   $ vibe export project.vibe.json -o output.webm -f webm
 
-No API keys needed. Requires FFmpeg.`)
+Cost: Free (no API keys needed). Requires FFmpeg.
+Run 'vibe schema export' for structured parameter info.`)
   .action(async (projectPath: string, options) => {
     const spinner = ora("Checking FFmpeg...").start();
 

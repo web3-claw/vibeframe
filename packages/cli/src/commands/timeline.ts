@@ -20,7 +20,8 @@ Examples:
   $ vibe timeline delete project.vibe.json <clip-id>
 
 Typical workflow: create project → add-source → add-clip → trim/split → export
-No API keys needed.`);
+Cost: Free (no API keys needed).
+Run 'vibe schema timeline.<command>' for structured parameter info.`);
 
 timelineCommand
   .command("add-source")

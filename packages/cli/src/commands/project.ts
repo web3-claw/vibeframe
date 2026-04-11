@@ -35,7 +35,8 @@ Examples:
   $ vibe project info project.vibe.json
   $ vibe project set project.vibe.json --fps 60
 
-No API keys needed. Projects are saved as .vibe.json files.`);
+Cost: Free (no API keys needed). Projects are saved as .vibe.json files.
+Run 'vibe schema project.<command>' for structured parameter info.`);
 
 projectCommand
   .command("create")

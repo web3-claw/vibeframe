@@ -29,6 +29,7 @@ import { detectCommand } from "./commands/detect.js";
 import { setupCommand } from "./commands/setup.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { demoCommand } from "./commands/demo.js";
+import { contextCommand } from "./commands/context.js";
 import { agentCommand } from "./commands/agent.js";
 import { ApiKeyError } from "./utils/api-key.js";
 import { isFirstRun, showFirstRunBanner, markBannerShown } from "./utils/first-run.js";
@@ -199,6 +200,7 @@ program.addCommand(batchCommand);
 
 // Agent integration commands
 program.addCommand(schemaCommand);
+program.addCommand(contextCommand);
 
 // Utility commands (less commonly used directly)
 program.addCommand(mediaCommand, { hidden: true });

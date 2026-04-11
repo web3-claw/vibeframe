@@ -57,8 +57,14 @@ Required API Keys (pipelines use multiple providers):
   auto-shorts:         GOOGLE_API_KEY + OPENAI_API_KEY (optional captions)
   animated-caption:    OPENAI_API_KEY (Whisper transcription)
 
+Cost tiers:
+  script-to-video:     $$$ Very High (~$5-$50+ per video)
+  highlights:          $   Low (~$0.05)
+  auto-shorts:         $$  Medium (~$0.10-$1)
+  animated-caption:    $   Low (~$0.01)
+
 Use '--dry-run' to preview parameters before execution.
-Run 'vibe setup --show' to check API key status.
+Run 'vibe schema pipeline.<command>' for structured parameter info.
 `
   );
 
