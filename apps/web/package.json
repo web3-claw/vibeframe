@@ -1,6 +1,6 @@
 {
   "name": "@vibeframe/web",
-  "version": "0.37.0",
+  "version": "0.38.0",
   "description": "VibeFrame Web - Next.js preview UI for video editing",
   "private": true,
   "keywords": [
