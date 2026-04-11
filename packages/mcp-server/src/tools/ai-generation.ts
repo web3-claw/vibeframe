@@ -1,7 +1,7 @@
 import { executeMotion } from "@vibeframe/cli/commands/ai-motion";
 import { executeAnimatedCaption } from "@vibeframe/cli/commands/ai-animated-caption";
 import { executeRegenerateScene } from "@vibeframe/cli/commands/ai-script-pipeline";
-import { executeSpeech, executeSoundEffect, executeMusic } from "@vibeframe/cli/commands/generate";
+import { executeSpeech, executeSoundEffect, executeMusic, executeStoryboard } from "@vibeframe/cli/commands/generate";
 import { executeImageGenerate, executeGeminiEdit } from "@vibeframe/cli/commands/ai-image";
 
 export const aiGenerationTools = [
@@ -186,6 +186,24 @@ export const aiGenerationTools = [
       required: ["imagePaths", "prompt"],
     },
   },
+  {
+    name: "generate_storyboard",
+    description: "Generate a video storyboard from text content using Claude. Returns scene segments with descriptions, visuals, and narration. Requires ANTHROPIC_API_KEY.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        content: { type: "string", description: "Text content to analyze (script, article, etc.)" },
+        duration: { type: "number", description: "Target total duration in seconds" },
+        creativity: {
+          type: "string",
+          enum: ["low", "high"],
+          description: "Creativity level (default: low — consistent; high — varied)",
+        },
+        output: { type: "string", description: "Output JSON file path" },
+      },
+      required: ["content"],
+    },
+  },
 ];
 
 export async function handleAiGenerationToolCall(
@@ -320,6 +338,17 @@ export async function handleAiGenerationToolCall(
       });
       if (!result.success) return `Image editing failed: ${result.error}`;
       return JSON.stringify({ success: true, outputPath: result.outputPath, model: result.model });
+    }
+
+    case "generate_storyboard": {
+      const result = await executeStoryboard({
+        content: args.content as string,
+        duration: args.duration as number | undefined,
+        creativity: args.creativity as "low" | "high" | undefined,
+        output: args.output as string | undefined,
+      });
+      if (!result.success) return `Storyboard generation failed: ${result.error}`;
+      return JSON.stringify({ success: true, segmentCount: result.segmentCount, outputPath: result.outputPath });
     }
 
     default:
