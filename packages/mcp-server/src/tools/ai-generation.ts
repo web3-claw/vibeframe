@@ -2,6 +2,7 @@ import { executeMotion } from "@vibeframe/cli/commands/ai-motion";
 import { executeAnimatedCaption } from "@vibeframe/cli/commands/ai-animated-caption";
 import { executeRegenerateScene } from "@vibeframe/cli/commands/ai-script-pipeline";
 import { executeSpeech, executeSoundEffect, executeMusic } from "@vibeframe/cli/commands/generate";
+import { executeImageGenerate, executeGeminiEdit } from "@vibeframe/cli/commands/ai-image";
 
 export const aiGenerationTools = [
   {
@@ -139,6 +140,52 @@ export const aiGenerationTools = [
       required: ["prompt"],
     },
   },
+  {
+    name: "generate_image",
+    description: "Generate an image using AI. Supports Gemini (free), OpenAI GPT Image, or Grok Imagine. Requires GOOGLE_API_KEY (Gemini), OPENAI_API_KEY (OpenAI), or XAI_API_KEY (Grok).",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        prompt: { type: "string", description: "Image description prompt" },
+        provider: {
+          type: "string",
+          enum: ["gemini", "openai", "grok"],
+          description: "Image provider (default: gemini)",
+        },
+        output: { type: "string", description: "Output file path" },
+        size: { type: "string", description: "Image size for OpenAI (1024x1024, 1536x1024, 1024x1536)" },
+        ratio: { type: "string", description: "Aspect ratio for Gemini (1:1, 16:9, 9:16, 4:3, 3:4, etc.)" },
+        quality: { type: "string", description: "Quality for OpenAI: standard, hd" },
+        count: { type: "number", description: "Number of images (default: 1)" },
+        model: { type: "string", description: "Gemini model: flash, 3.1-flash, latest, pro" },
+      },
+      required: ["prompt"],
+    },
+  },
+  {
+    name: "edit_image",
+    description: "Edit image(s) using Gemini (Nano Banana). Provide image paths and an edit prompt. Requires GOOGLE_API_KEY.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        imagePaths: {
+          type: "array",
+          items: { type: "string" },
+          description: "Input image file path(s)",
+        },
+        prompt: { type: "string", description: "Edit instruction" },
+        output: { type: "string", description: "Output file path (default: edited.png)" },
+        model: {
+          type: "string",
+          enum: ["flash", "3.1-flash", "latest", "pro"],
+          description: "Gemini model (default: flash)",
+        },
+        ratio: { type: "string", description: "Output aspect ratio" },
+        resolution: { type: "string", description: "Resolution: 1K, 2K, 4K (Pro only)" },
+      },
+      required: ["imagePaths", "prompt"],
+    },
+  },
 ];
 
 export async function handleAiGenerationToolCall(
@@ -245,6 +292,34 @@ export async function handleAiGenerationToolCall(
       });
       if (!result.success) return `Music generation failed: ${result.error}`;
       return JSON.stringify({ success: true, outputPath: result.outputPath, provider: result.provider, duration: result.duration });
+    }
+
+    case "generate_image": {
+      const result = await executeImageGenerate({
+        prompt: args.prompt as string,
+        provider: args.provider as "openai" | "gemini" | "grok" | undefined,
+        output: args.output as string | undefined,
+        size: args.size as string | undefined,
+        ratio: args.ratio as string | undefined,
+        quality: args.quality as string | undefined,
+        count: args.count as number | undefined,
+        model: args.model as string | undefined,
+      });
+      if (!result.success) return `Image generation failed: ${result.error}`;
+      return JSON.stringify({ success: true, outputPath: result.outputPath, provider: result.provider, model: result.model, imageCount: result.images?.length });
+    }
+
+    case "edit_image": {
+      const result = await executeGeminiEdit({
+        imagePaths: args.imagePaths as string[],
+        prompt: args.prompt as string,
+        output: args.output as string | undefined,
+        model: args.model as string | undefined,
+        ratio: args.ratio as string | undefined,
+        resolution: args.resolution as string | undefined,
+      });
+      if (!result.success) return `Image editing failed: ${result.error}`;
+      return JSON.stringify({ success: true, outputPath: result.outputPath, model: result.model });
     }
 
     default:

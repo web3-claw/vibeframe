@@ -86,6 +86,14 @@
     "./commands/generate": {
       "import": "./src/commands/generate.ts",
       "types": "./src/commands/generate.ts"
+    },
+    "./commands/ai-video": {
+      "import": "./src/commands/ai-video.ts",
+      "types": "./src/commands/ai-video.ts"
+    },
+    "./commands/ai-audio": {
+      "import": "./src/commands/ai-audio.ts",
+      "types": "./src/commands/ai-audio.ts"
     }
   },
   "scripts": {

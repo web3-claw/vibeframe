@@ -74,7 +74,7 @@ Model Context Protocol for extensible AI workflows.
 
 ### Implementation
 - [x] MCP server implementation (`packages/mcp-server/`)
-- [x] Tool definitions (28 tools: project, timeline, export, AI editing, AI analysis, AI pipelines)
+- [x] Tool definitions (47 tools: project, timeline, export, AI editing, AI analysis, AI pipelines, AI generation, AI video, AI audio, detection)
 - [x] Resource providers (project state, clips, sources, tracks, settings)
 - [x] Prompt templates (7 prompts for common editing tasks)
 - [x] Claude Desktop / Cursor configuration

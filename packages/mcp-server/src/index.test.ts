@@ -16,8 +16,8 @@ describe("@vibeframe/mcp-server", () => {
       expect(tools.length).toBeGreaterThan(0);
     });
 
-    it("should have 36 tools total", () => {
-      expect(tools.length).toBe(36);
+    it("should have 47 tools total", () => {
+      expect(tools.length).toBe(47);
     });
 
     it("should have correct tool structure", () => {
@@ -82,6 +82,25 @@ describe("@vibeframe/mcp-server", () => {
       expect(toolNames).toContain("generate_speech");
       expect(toolNames).toContain("generate_sound_effect");
       expect(toolNames).toContain("generate_music");
+      expect(toolNames).toContain("generate_image");
+      expect(toolNames).toContain("edit_image");
+    });
+
+    it("should have AI video tools", () => {
+      const toolNames = tools.map((t) => t.name);
+      expect(toolNames).toContain("generate_video");
+      expect(toolNames).toContain("generate_video_status");
+      expect(toolNames).toContain("generate_video_cancel");
+      expect(toolNames).toContain("generate_video_extend");
+    });
+
+    it("should have AI audio tools", () => {
+      const toolNames = tools.map((t) => t.name);
+      expect(toolNames).toContain("audio_transcribe");
+      expect(toolNames).toContain("audio_isolate");
+      expect(toolNames).toContain("audio_voice_clone");
+      expect(toolNames).toContain("audio_dub");
+      expect(toolNames).toContain("audio_duck");
     });
 
     it("should have detection tools", () => {
