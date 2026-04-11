@@ -202,6 +202,22 @@ Intelligence built into every interaction.
 - [x] **Post-Setup Suggestions** - "Try it" command suggestion after `vibe setup` based on configured providers
 - [x] **Concise Error Output** - Missing argument shows brief error + "--help" hint instead of full help
 - [x] **Non-TTY Prompt Bypass** - Throws error instead of hanging when prompts are used in non-interactive mode
+- [x] **`--describe` Flag** - Any command + `--describe` outputs JSON schema without executing
+- [x] **`vibe context`** - Print CLI guidelines for AI agent integration (`vibe context --json`)
+- [x] **`vibe demo`** - Run sample edits on generated test video (no API keys needed)
+- [x] **Cost Estimation** - `--dry-run` output includes estimated cost per command
+- [x] **Smart Error Hints** - Pattern-matched suggestions for 429, 401, timeout, content policy, etc.
+- [x] **Default Provider Settings** - `imageProvider`, `videoProvider` in `~/.vibeframe/config.yaml`
+- [x] **GIF Export** - `vibe export -f gif` for animated GIF output
+- [x] **Storyboard YAML** - Pipeline storyboards saved as human-editable YAML
+
+### Video as Code
+- [x] **`vibe run`** - Execute declarative YAML video pipelines (`vibe run pipeline.yaml`)
+  - 20+ actions mapping to CLI execute functions
+  - Variable references: `$step_id.output`, `${ENV_VAR}`
+  - Checkpointing with `.pipeline-state.yaml` for resumability
+  - `--dry-run` to preview plan, `--resume` to retry from failure
+  - Example pipelines in `examples/`
 
 ### Claude Code Harness
 - [x] **Path-Scoped Rules** - All 7 rules load on-demand via `paths:` frontmatter (no global loading)

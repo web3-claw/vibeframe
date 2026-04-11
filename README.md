@@ -105,7 +105,7 @@ No setup needed beyond installing the CLI. Claude Code discovers and runs `vibe`
 
 ## MCP Integration
 
-Works with Claude Desktop and Cursor via MCP. No clone needed — just add to your config and restart:
+Works with Claude Desktop and Cursor via MCP (53 MCP tools). No clone needed — just add to your config and restart:
 
 ```json
 {
@@ -127,6 +127,39 @@ See [packages/mcp-server/README.md](packages/mcp-server/README.md) for full tool
 
 ---
 
+## Video as Code
+
+Define reproducible video workflows in YAML. Each step maps to a CLI command.
+
+```yaml
+# promo.yaml
+name: promo-video
+steps:
+  - id: backdrop
+    action: generate-image
+    prompt: "modern tech studio"
+    output: backdrop.png
+  - id: narration
+    action: generate-tts
+    text: "Introducing the future of video editing."
+    output: voice.mp3
+  - id: video
+    action: generate-video
+    image: $backdrop.output     # reference previous step
+    prompt: "camera push in"
+    output: scene.mp4
+```
+
+```bash
+vibe run promo.yaml --dry-run     # preview plan + cost estimate
+vibe run promo.yaml               # execute pipeline
+vibe run promo.yaml --resume      # retry from last checkpoint
+```
+
+See [examples/](examples/) for ready-to-use pipeline templates.
+
+---
+
 ## AI Pipelines
 
 End-to-end workflows powered by multiple AI providers (Claude + ElevenLabs + Gemini + Kling/Runway):
@@ -139,6 +172,8 @@ vibe pipeline highlights interview.mp4 -d 90 --criteria emotional
 vibe pipeline auto-shorts podcast.mp4
 vibe pipeline animated-caption video.mp4 -s bounce -o captioned.mp4
 ```
+
+Storyboards are saved as YAML for easy editing and version control.
 
 ---
 
@@ -157,10 +192,11 @@ Every command supports `--help`. Run `vibe --help` for a full list.
 | **`vibe timeline`** | `add-source`, `add-clip`, `split`, `trim`, `move`, `delete`, `list` | `vibe timeline add-source project file` |
 | **`vibe batch`** | `import`, `concat`, `apply-effect` | `vibe batch import project dir/` |
 | **`vibe detect`** | `scenes`, `silence`, `beats` | `vibe detect scenes video.mp4` |
-| **`vibe export`** | - | `vibe export project.vibe.json -o out.mp4` |
+| **`vibe export`** | - | `vibe export project.vibe.json -o out.mp4` (supports mp4, webm, gif) |
+| **`vibe run`** | - | `vibe run pipeline.yaml` (Video as Code) |
 | **`vibe demo`** | - | `vibe demo` (no API keys needed) |
 
-Every command supports `--help`, `--json`, `--dry-run`, and `--stdin`. Run `vibe schema --list` for a full machine-readable command index.
+Every command supports `--help`, `--json`, `--dry-run`, `--stdin`, and `--describe`. Run `vibe schema --list` for a full machine-readable command index.
 
 See [Cookbook](docs/cookbook.md) for 10 practical recipes combining multiple commands.
 
