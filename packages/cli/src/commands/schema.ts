@@ -188,7 +188,7 @@ function inferType(
   return "boolean";
 }
 
-function buildSchema(
+export function buildSchema(
   cmd: Command,
   toolName: string
 ): Record<string, unknown> {

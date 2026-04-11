@@ -35,6 +35,7 @@ import { ApiKeyError } from "./utils/api-key.js";
 import { isFirstRun, showFirstRunBanner, markBannerShown } from "./utils/first-run.js";
 import { exitWithError, usageError } from "./commands/output.js";
 import { rejectControlChars } from "./utils/input-validation.js";
+import { buildSchema } from "./commands/schema.js";
 
 /**
  * Read all data from stdin (non-blocking, only when stdin is piped).
@@ -63,6 +64,7 @@ program
   .option("-q, --quiet", "Output only the primary result value (path, URL, or ID)")
   .option("--fields <fields>", "Limit JSON output to specific fields (comma-separated)")
   .option("--stdin", "Read options from stdin as JSON (for agent/script use)")
+  .option("--describe", "Show JSON schema for the command and exit (no execution)")
   .exitOverride() // Throw instead of calling process.exit, so we can catch and format
   .configureOutput({
     outputError: (str, write) => {
@@ -225,6 +227,31 @@ function propagateErrorHandling(cmd: Command): void {
   }
 }
 propagateErrorHandling(program);
+
+// Global --describe: resolve command and output schema without parsing args
+if (process.argv.includes("--describe")) {
+  const args = process.argv.slice(2).filter(a => a !== "--describe" && a !== "--json");
+  // Walk the command tree to find the target command
+  let cmd: Command = program;
+  const nameParts: string[] = [];
+  for (const arg of args) {
+    const sub = cmd.commands.find(c => c.name() === arg || c.aliases().includes(arg));
+    if (sub) {
+      cmd = sub;
+      nameParts.push(sub.name());
+    } else {
+      break; // Remaining args are arguments, not subcommands
+    }
+  }
+  if (nameParts.length > 0) {
+    const schema = buildSchema(cmd, nameParts.join("."));
+    console.log(JSON.stringify(schema, null, 2));
+    process.exit(0);
+  } else {
+    console.error("Usage: vibe <command> --describe");
+    process.exit(2);
+  }
+}
 
 // Check if any arguments provided
 if (process.argv.length <= 2) {

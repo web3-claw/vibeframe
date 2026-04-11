@@ -141,6 +141,63 @@ describe("@vibeframe/mcp-server", () => {
     });
   });
 
+  describe("schema consistency", () => {
+    it("every tool should have a registered handler (not unknown)", async () => {
+      // Call with empty args — handlers should fail with domain error, NOT "Unknown tool"
+      // Use Promise.allSettled to avoid timeout on slow handlers
+      const results = await Promise.all(
+        tools.map(async (tool) => {
+          try {
+            const result = await Promise.race([
+              handleToolCall(tool.name, {}),
+              new Promise<{ content: Array<{ type: string; text: string }> }>((resolve) =>
+                setTimeout(() => resolve({ content: [{ type: "text", text: "timeout-ok" }] }), 500)
+              ),
+            ]);
+            return { name: tool.name, text: result.content[0].text };
+          } catch {
+            return { name: tool.name, text: "error-ok" };
+          }
+        })
+      );
+      for (const r of results) {
+        expect(r.text).not.toContain("Unknown tool");
+      }
+    });
+
+    it("every tool inputSchema should have valid structure", () => {
+      for (const tool of tools) {
+        expect(tool.inputSchema).toBeDefined();
+        expect(tool.inputSchema.type).toBe("object");
+        expect(tool.inputSchema.properties).toBeDefined();
+        expect(typeof tool.inputSchema.properties).toBe("object");
+
+        // Required fields should reference existing properties
+        if (tool.inputSchema.required) {
+          for (const req of tool.inputSchema.required) {
+            expect(tool.inputSchema.properties).toHaveProperty(
+              req,
+              expect.anything(),
+            );
+          }
+        }
+
+        // Each property should have a type and description
+        for (const [, val] of Object.entries(tool.inputSchema.properties)) {
+          const prop = val as Record<string, unknown>;
+          expect(prop.type || prop.enum).toBeDefined();
+          expect(prop.description).toBeDefined();
+        }
+      }
+    });
+
+    it("tool names should follow snake_case convention", () => {
+      for (const tool of tools) {
+        expect(tool.name).toMatch(/^[a-z][a-z0-9_]*$/);
+      }
+    });
+  });
+
   describe("handleToolCall", () => {
     it("should handle unknown tool gracefully", async () => {
       const result = await handleToolCall("unknown_tool", {});
