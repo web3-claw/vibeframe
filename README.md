@@ -57,6 +57,25 @@ vibe pipeline script-to-video "A day in the life of a developer..." -a 9:16 -o .
 vibe export project.vibe.json -o output.mp4
 ```
 
+**Try without API keys** (FFmpeg only, free):
+
+```bash
+# Detect scene changes in a video
+vibe detect scenes video.mp4
+
+# Remove silence from an interview
+vibe edit silence-cut interview.mp4 -o clean.mp4
+
+# Add fade in/out effects
+vibe edit fade video.mp4 -o faded.mp4 --fade-in 1 --fade-out 1
+
+# Remove background noise
+vibe edit noise-reduce video.mp4 -o clean.mp4
+
+# Detect beats in audio
+vibe detect beats music.mp3
+```
+
 For development:
 
 ```bash
