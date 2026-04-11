@@ -1,0 +1,49 @@
+# VibeFrame Pipeline — AI Promo Video
+# Generates a full promo video from scratch using AI
+# Requires: GOOGLE_API_KEY, XAI_API_KEY, ELEVENLABS_API_KEY
+# Run: vibe run examples/promo-video.yaml --dry-run
+
+name: promo-video
+description: Generate a product promo video with AI-generated assets
+version: 1
+
+steps:
+  - id: backdrop
+    action: generate-image
+    prompt: "Modern tech product showcase, dark background with subtle gradient lighting, 4K quality"
+    provider: gemini
+    ratio: "16:9"
+    output: backdrop.png
+
+  - id: narration
+    action: generate-tts
+    text: "Introducing the future of video editing. AI-native. CLI-first. Ship videos, not clicks."
+    output: narration.mp3
+
+  - id: music
+    action: generate-music
+    prompt: "upbeat corporate technology background music, modern and clean"
+    duration: 15
+    instrumental: true
+    output: bgm.mp3
+
+  - id: video
+    action: generate-video
+    prompt: "Smooth camera push into a modern tech workspace, cinematic lighting"
+    image: $backdrop.output
+    duration: 10
+    provider: grok
+    ratio: "16:9"
+    output: scene.mp4
+
+  - id: mix
+    action: audio-duck
+    music: $music.output
+    voice: $narration.output
+    output: mixed-audio.mp3
+
+  - id: grade
+    action: edit-grade
+    input: $video.output
+    preset: cinematic-warm
+    output: graded.mp4

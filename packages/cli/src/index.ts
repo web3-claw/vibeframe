@@ -30,6 +30,7 @@ import { setupCommand } from "./commands/setup.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { demoCommand } from "./commands/demo.js";
 import { contextCommand } from "./commands/context.js";
+import { runCommand } from "./commands/run.js";
 import { agentCommand } from "./commands/agent.js";
 import { ApiKeyError } from "./utils/api-key.js";
 import { isFirstRun, showFirstRunBanner, markBannerShown } from "./utils/first-run.js";
@@ -191,6 +192,7 @@ program.addCommand(pipelineCommand);
 program.addCommand(setupCommand);
 program.addCommand(doctorCommand);
 program.addCommand(demoCommand);
+program.addCommand(runCommand);
 program.addCommand(agentCommand);
 
 // Workflow commands

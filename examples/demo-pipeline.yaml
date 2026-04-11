@@ -1,0 +1,23 @@
+# VibeFrame Pipeline — Demo (FFmpeg only, no API keys needed)
+# Run: vibe run examples/demo-pipeline.yaml
+
+name: demo-pipeline
+description: Detect scenes and clean up a video (free, FFmpeg only)
+
+steps:
+  - id: detect
+    action: detect-scenes
+    input: demo-video/vibeframe.mp4
+    threshold: 0.3
+
+  - id: clean
+    action: edit-silence-cut
+    input: demo-video/vibeframe.mp4
+    output: cleaned.mp4
+
+  - id: fade
+    action: edit-fade
+    input: $clean.output
+    fadeIn: 1
+    fadeOut: 1
+    output: final.mp4
