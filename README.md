@@ -158,8 +158,11 @@ Every command supports `--help`. Run `vibe --help` for a full list.
 | **`vibe batch`** | `import`, `concat`, `apply-effect` | `vibe batch import project dir/` |
 | **`vibe detect`** | `scenes`, `silence`, `beats` | `vibe detect scenes video.mp4` |
 | **`vibe export`** | - | `vibe export project.vibe.json -o out.mp4` |
+| **`vibe demo`** | - | `vibe demo` (no API keys needed) |
 
 Every command supports `--help`, `--json`, `--dry-run`, and `--stdin`. Run `vibe schema --list` for a full machine-readable command index.
+
+See [Cookbook](docs/cookbook.md) for 10 practical recipes combining multiple commands.
 
 ---
 
