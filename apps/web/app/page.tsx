@@ -296,6 +296,57 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Video as Code */}
+      <section className="py-20 px-4 border-t border-border/50 relative">
+        <div className="mx-auto max-w-4xl">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 rounded-full border border-green-500/30 bg-green-500/5 px-4 py-1.5 text-sm text-green-400 mb-4">
+              <Layers className="w-4 h-4" />
+              <span>Video as Code</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+              Declarative YAML pipelines
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Define reproducible video workflows. Version control your production.
+              Resume from failures. Share pipeline templates.
+            </p>
+          </div>
+
+          <div className="bg-gradient-to-br from-secondary via-secondary to-secondary/50 rounded-2xl overflow-hidden shadow-2xl border border-border/50 max-w-3xl mx-auto">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border/50 bg-background/30">
+              <div className="w-3 h-3 rounded-full bg-red-500/80" />
+              <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+              <div className="w-3 h-3 rounded-full bg-green-500/80" />
+              <span className="ml-2 text-sm text-muted-foreground">promo.yaml</span>
+            </div>
+            <pre className="p-4 sm:p-6 text-xs sm:text-sm overflow-x-auto">
+              <code className="text-purple-400">{"name: "}</code><code className="text-foreground">{"promo-video\n"}</code>
+              <code className="text-purple-400">{"steps:\n"}</code>
+              <code className="text-purple-400">{"  - id: "}</code><code className="text-foreground">{"backdrop\n"}</code>
+              <code className="text-purple-400">{"    action: "}</code><code className="text-blue-400">{"generate-image\n"}</code>
+              <code className="text-purple-400">{"    prompt: "}</code><code className="text-green-400">{"\"modern tech studio\"\n"}</code>
+              <code className="text-purple-400">{"  - id: "}</code><code className="text-foreground">{"video\n"}</code>
+              <code className="text-purple-400">{"    action: "}</code><code className="text-blue-400">{"generate-video\n"}</code>
+              <code className="text-purple-400">{"    image: "}</code><code className="text-yellow-400">{"$backdrop.output"}</code><code className="text-muted-foreground">{"  # reference\n"}</code>
+              <code className="text-purple-400">{"  - id: "}</code><code className="text-foreground">{"final\n"}</code>
+              <code className="text-purple-400">{"    action: "}</code><code className="text-blue-400">{"edit-grade\n"}</code>
+              <code className="text-purple-400">{"    input: "}</code><code className="text-yellow-400">{"$video.output\n"}</code>
+              <code className="text-purple-400">{"    preset: "}</code><code className="text-green-400">{"cinematic-warm"}</code>
+            </pre>
+          </div>
+
+          <div className="flex justify-center gap-4 mt-8">
+            <code className="text-xs bg-secondary border border-border/50 px-4 py-2 rounded-lg font-mono">
+              vibe run promo.yaml --dry-run
+            </code>
+            <code className="text-xs bg-secondary border border-border/50 px-4 py-2 rounded-lg font-mono">
+              vibe run promo.yaml --resume
+            </code>
+          </div>
+        </div>
+      </section>
+
       {/* AI Pipelines */}
       <section className="py-20 px-4 border-t border-border/50 relative">
         <div className="mx-auto max-w-6xl">
@@ -309,6 +360,13 @@ export default function LandingPage() {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <PipelineCard
+              icon={<Layers className="w-6 h-6" />}
+              title="Video as Code"
+              command="vibe run pipeline.yaml"
+              description="Declarative YAML → reproducible video workflows"
+              gradient="from-green-500 to-teal-500"
+            />
             <PipelineCard
               icon={<Film className="w-6 h-6" />}
               title="Script to Video"
@@ -365,7 +423,7 @@ export default function LandingPage() {
             <FeatureCard
               icon={<Terminal className="w-6 h-6" />}
               title="CLI-First"
-              description="Full video editing from the command line. 50+ commands with short aliases. Zero GUI required."
+              description={`Full video editing from the command line. ${process.env.NEXT_PUBLIC_CLI_COMMANDS}+ commands with short aliases. Zero GUI required.`}
               gradient="from-blue-500 to-cyan-500"
             />
             <FeatureCard
