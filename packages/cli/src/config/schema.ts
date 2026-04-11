@@ -33,6 +33,14 @@ export interface VibeConfig {
   defaults: {
     aspectRatio: "16:9" | "9:16" | "1:1" | "4:5";
     exportQuality: "draft" | "standard" | "high" | "ultra";
+    /** Default provider for image generation */
+    imageProvider?: "gemini" | "openai" | "grok";
+    /** Default provider for video generation */
+    videoProvider?: "grok" | "kling" | "runway" | "veo";
+    /** Default provider for storyboard analysis */
+    storyboardProvider?: "claude" | "openai" | "gemini";
+    /** Default voice for TTS */
+    voice?: string;
   };
 
   /** REPL settings */

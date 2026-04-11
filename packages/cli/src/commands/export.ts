@@ -83,7 +83,7 @@ export type GapFillStrategy = "black" | "extend";
  */
 export interface ExportOptions {
   preset?: "draft" | "standard" | "high" | "ultra";
-  format?: "mp4" | "webm" | "mov";
+  format?: "mp4" | "webm" | "mov" | "gif";
   overwrite?: boolean;
   gapFill?: GapFillStrategy;
 }
@@ -183,7 +183,7 @@ export const exportCommand = new Command("export")
   .description("Export project to video file")
   .argument("<project>", "Project file path")
   .option("-o, --output <path>", "Output file path")
-  .option("-f, --format <format>", "Output format (mp4, webm, mov)", "mp4")
+  .option("-f, --format <format>", "Output format (mp4, webm, mov, gif)", "mp4")
   .option(
     "-p, --preset <preset>",
     "Quality preset (draft, standard, high, ultra)",
@@ -197,8 +197,10 @@ Examples:
   $ vibe export project.vibe.json -o output.mp4
   $ vibe export project.vibe.json -o output.mp4 -p high -y
   $ vibe export project.vibe.json -o output.webm -f webm
+  $ vibe export project.vibe.json -o output.gif -f gif
 
 Cost: Free (no API keys needed). Requires FFmpeg.
+GIF format: 15fps, no audio, looping. Good for previews and sharing.
 Run 'vibe schema export' for structured parameter info.`)
   .action(async (projectPath: string, options) => {
     const spinner = ora("Checking FFmpeg...").start();
@@ -852,7 +854,18 @@ function buildFFmpegArgs(
   }
 
   // Add encoding settings
-  args.push(...presetSettings.ffmpegArgs);
+  if (options.format === "gif") {
+    // GIF: drop audio track (GIF has no audio)
+    const audioIdx = args.indexOf("[outa]");
+    if (audioIdx !== -1) {
+      const mapIdx = args.lastIndexOf("-map", audioIdx);
+      if (mapIdx !== -1) args.splice(mapIdx, 2);
+    }
+    args.push("-r", "15"); // 15fps for reasonable file size
+    args.push("-loop", "0"); // loop forever
+  } else {
+    args.push(...presetSettings.ffmpegArgs);
+  }
 
   // Output file
   args.push(outputPath);

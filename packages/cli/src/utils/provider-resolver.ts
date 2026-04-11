@@ -1,6 +1,7 @@
 /**
  * Smart provider auto-resolution
- * Picks the best available provider based on configured API keys
+ * 1. Check ~/.vibeframe/config.yaml defaults (if set)
+ * 2. Fall back to first provider with a configured API key
  */
 
 import { hasApiKey } from "./api-key.js";
@@ -34,11 +35,30 @@ const PROVIDER_MAP: Record<string, ProviderCandidate[]> = {
   speech: SPEECH_PROVIDERS,
 };
 
+/** Cached config defaults (loaded once per process) */
+let configDefaults: Record<string, string> | null = null;
+
+/**
+ * Load provider defaults from config (async, cached).
+ * Call once at startup if you want config-aware resolution.
+ */
+export async function loadProviderDefaults(): Promise<void> {
+  try {
+    const { loadConfig } = await import("../config/index.js");
+    const config = await loadConfig();
+    if (config?.defaults) {
+      configDefaults = {};
+      if (config.defaults.imageProvider) configDefaults.image = config.defaults.imageProvider;
+      if (config.defaults.videoProvider) configDefaults.video = config.defaults.videoProvider;
+    }
+  } catch {
+    configDefaults = null;
+  }
+}
+
 /**
  * Resolve the best available provider for a given category.
- * Uses hasApiKey() for side-effect-free checking (no prompts).
- * Returns { name, label } of the first provider with a configured API key,
- * or null if none are available.
+ * Priority: 1) config defaults  2) first provider with API key
  */
 export function resolveProvider(
   category: "image" | "video" | "speech"
@@ -46,6 +66,15 @@ export function resolveProvider(
   const candidates = PROVIDER_MAP[category];
   if (!candidates) return null;
 
+  // Check config default first
+  if (configDefaults?.[category]) {
+    const preferred = candidates.find(c => c.name === configDefaults![category]);
+    if (preferred && hasApiKey(preferred.envVar)) {
+      return { name: preferred.name, label: preferred.label };
+    }
+  }
+
+  // Fall back to first available
   for (const candidate of candidates) {
     if (hasApiKey(candidate.envVar)) {
       return { name: candidate.name, label: candidate.label };

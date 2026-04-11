@@ -19,6 +19,7 @@
 import { readFile, writeFile, mkdir, unlink, rename } from "node:fs/promises";
 import { resolve, basename, extname } from "node:path";
 import { existsSync } from "node:fs";
+import { stringify as yamlStringify, parse as yamlParse } from "yaml";
 import chalk from "chalk";
 import {
   GeminiProvider,
@@ -655,9 +656,9 @@ export async function executeScriptToVideo(
       return { success: false, outputDir, scenes: 0, error: "Failed to generate storyboard" };
     }
 
-    // Save storyboard
-    const storyboardPath = resolve(absOutputDir, "storyboard.json");
-    await writeFile(storyboardPath, JSON.stringify(segments, null, 2), "utf-8");
+    // Save storyboard as YAML (human-readable, easier to edit)
+    const storyboardPath = resolve(absOutputDir, "storyboard.yaml");
+    await writeFile(storyboardPath, yamlStringify({ scenes: segments }, { indent: 2 }), "utf-8");
 
     const result: ScriptToVideoResult = {
       success: true,
@@ -733,7 +734,7 @@ export async function executeScriptToVideo(
       }
 
       // Re-save storyboard with updated durations
-      await writeFile(storyboardPath, JSON.stringify(segments, null, 2), "utf-8");
+      await writeFile(storyboardPath, yamlStringify({ scenes: segments }, { indent: 2 }), "utf-8");
     }
 
     // Step 3: Generate images
@@ -1202,13 +1203,16 @@ export async function executeScriptToVideo(
     // Step 6: AI Review & Auto-fix (optional, --review flag)
     if (options.review) {
       try {
-        const storyboardFile = resolve(absOutputDir, "storyboard.json");
+        // Look for storyboard file (YAML preferred, JSON fallback for backward compat)
+        const storyboardYaml = resolve(absOutputDir, "storyboard.yaml");
+        const storyboardJson = resolve(absOutputDir, "storyboard.json");
+        const storyboardFile = existsSync(storyboardYaml) ? storyboardYaml : existsSync(storyboardJson) ? storyboardJson : undefined;
         // Export project to temp MP4 for review (use first valid video as proxy)
         const reviewTarget = videoPaths.find((p) => p && p !== "") || imagePaths.find((p) => p && p !== "");
         if (reviewTarget) {
           const reviewResult = await executeReview({
             videoPath: reviewTarget,
-            storyboardPath: existsSync(storyboardFile) ? storyboardFile : undefined,
+            storyboardPath: storyboardFile,
             autoApply: options.reviewAutoApply,
             model: "flash",
           });
@@ -1294,18 +1298,24 @@ export async function executeRegenerateScene(
 
   try {
     const outputDir = resolve(process.cwd(), options.projectDir);
-    const storyboardPath = resolve(outputDir, "storyboard.json");
 
     if (!existsSync(outputDir)) {
       return { ...result, error: `Project directory not found: ${outputDir}` };
     }
 
-    if (!existsSync(storyboardPath)) {
-      return { ...result, error: `Storyboard not found: ${storyboardPath}` };
+    // Load storyboard (YAML preferred, JSON fallback for backward compat)
+    const yamlPath = resolve(outputDir, "storyboard.yaml");
+    const jsonPath = resolve(outputDir, "storyboard.json");
+    const storyboardPath = existsSync(yamlPath) ? yamlPath : existsSync(jsonPath) ? jsonPath : null;
+
+    if (!storyboardPath) {
+      return { ...result, error: `Storyboard not found in: ${outputDir} (expected storyboard.yaml or storyboard.json)` };
     }
 
     const storyboardContent = await readFile(storyboardPath, "utf-8");
-    const segments: StoryboardSegment[] = JSON.parse(storyboardContent);
+    const segments: StoryboardSegment[] = storyboardPath.endsWith(".yaml")
+      ? (yamlParse(storyboardContent) as { scenes: StoryboardSegment[] }).scenes
+      : JSON.parse(storyboardContent);
 
     // Validate scenes
     for (const sceneNum of options.scenes) {
