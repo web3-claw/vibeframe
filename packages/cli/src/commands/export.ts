@@ -191,6 +191,7 @@ export const exportCommand = new Command("export")
   )
   .option("-y, --overwrite", "Overwrite output file if exists", false)
   .option("-g, --gap-fill <strategy>", "Gap filling strategy (black, extend)", "extend")
+  .option("--backend <name>", "Render backend: ffmpeg (default) | hyperframes (experimental)", "ffmpeg")
   .option("--dry-run", "Preview parameters without executing")
   .addHelpText("after", `
 Examples:
@@ -221,8 +222,15 @@ Run 'vibe schema export' for structured parameter info.`)
             preset: options.preset,
             overwrite: options.overwrite,
             gapFill: options.gapFill,
+            backend: options.backend,
           },
         });
+        return;
+      }
+
+      // Hyperframes backend path
+      if (options.backend === "hyperframes") {
+        await runHyperframesExport(projectPath, options, spinner);
         return;
       }
 
@@ -1009,4 +1017,61 @@ function getPresetSettings(
   }
 
   return settings;
+}
+
+async function runHyperframesExport(
+  projectPath: string,
+  options: { output?: string; format?: string; preset?: string },
+  spinner: ReturnType<typeof ora>
+): Promise<void> {
+  spinner.text = "Loading project...";
+  const { readFile } = await import("node:fs/promises");
+  const { resolve, basename } = await import("node:path");
+  const { Project } = await import("../engine/index.js");
+  const { createHyperframesBackend } = await import("../pipeline/renderers/hyperframes.js");
+  const { exitWithError, generalError, outputResult } = await import("./output.js");
+  const chalk = (await import("chalk")).default;
+
+  const filePath = resolve(process.cwd(), projectPath);
+  const content = await readFile(filePath, "utf-8");
+  const project = Project.fromJSON(JSON.parse(content));
+  const state = project.getState();
+
+  const outputPath = options.output
+    ? resolve(process.cwd(), options.output)
+    : resolve(process.cwd(), `${basename(projectPath, ".vibe.json")}.${options.format ?? "mp4"}`);
+
+  const quality = (["draft", "standard", "high"].includes(options.preset ?? "")
+    ? options.preset
+    : "standard") as "draft" | "standard" | "high";
+
+  const backend = createHyperframesBackend();
+
+  spinner.text = "Rendering with Hyperframes...";
+  const result = await backend.render({
+    projectState: state,
+    outputPath,
+    fps: 30,
+    quality,
+    format: (options.format ?? "mp4") as "mp4" | "webm" | "mov",
+    onProgress: (pct, stage) => { spinner.text = `[hyperframes] ${stage} ${pct}%`; },
+  });
+
+  if (!result.success) {
+    spinner.fail("Hyperframes render failed");
+    exitWithError(generalError(`Hyperframes render failed: ${result.error}`));
+    return;
+  }
+
+  spinner.succeed(chalk.green(`Exported: ${result.outputPath}`));
+  outputResult({
+    success: true,
+    command: "export",
+    result: {
+      outputPath: result.outputPath,
+      backend: "hyperframes",
+      durationMs: result.durationMs,
+      framesRendered: result.framesRendered,
+    },
+  });
 }

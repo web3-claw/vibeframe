@@ -133,6 +133,10 @@ const OPTIONAL_TOOLS: Record<string, { commands: string[]; install: string }> = 
     commands: ["generate motion", "edit caption (fallback)"],
     install: "npm install -g @remotion/cli",
   },
+  chrome: {
+    commands: ["export --backend hyperframes", "run with render.backend=hyperframes"],
+    install: "macOS: brew install --cask google-chrome · Linux: apt install chromium",
+  },
 };
 
 interface FFmpegFilterStatus {
@@ -213,6 +217,21 @@ async function runDiagnostics(): Promise<DiagnosticResults> {
       } catch {
         installed = false;
       }
+    } else if (toolName === "chrome") {
+      const { existsSync } = await import("node:fs");
+      const { homedir } = await import("node:os");
+      const { join } = await import("node:path");
+      const chromePaths = [
+        process.env.HYPERFRAMES_CHROME_PATH,
+        process.env.CHROME_PATH,
+        join(homedir(), ".cache", "puppeteer", "chrome-headless-shell", "mac_arm-147.0.7727.56", "chrome-headless-shell-mac_arm", "chrome-headless-shell"),
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+        "/usr/bin/google-chrome",
+        "/usr/bin/chromium",
+        "/usr/bin/chromium-browser",
+      ];
+      installed = chromePaths.some((p) => p && existsSync(p));
     } else {
       installed = commandExists(toolName);
     }

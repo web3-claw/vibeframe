@@ -1,6 +1,6 @@
 {
   "name": "@vibeframe/cli",
-  "version": "0.46.2",
+  "version": "0.47.0",
   "description": "VibeFrame CLI - natural language video editing from the terminal",
   "private": false,
   "license": "MIT",
@@ -111,6 +111,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
     "@google/generative-ai": "^0.21.0",
+    "@hyperframes/producer": "^0.4.4",
     "@vibeframe/ai-providers": "workspace:*",
     "@vibeframe/core": "workspace:*",
     "chalk": "^5.3.0",

@@ -96,6 +96,30 @@ cd vibeframe
 pnpm install && pnpm build
 ```
 
+### Render backends
+
+By default, `vibe export` uses FFmpeg. In v0.47.0+, a **Hyperframes** backend is available (experimental) — renders VibeFrame timelines through a Chrome BeginFrame → FFmpeg pipeline, unlocking CSS animations and Lottie overlays (Phase 2).
+
+```bash
+# Default (FFmpeg)
+vibe export project.vibe.json -o output.mp4
+
+# Hyperframes backend (experimental — requires Chrome)
+vibe export project.vibe.json -o output.mp4 --backend hyperframes
+
+# Check Chrome detection
+vibe doctor
+```
+
+Or in a YAML pipeline:
+
+```yaml
+render:
+  backend: hyperframes
+  fps: 30
+  quality: standard
+```
+
 ---
 
 ## Use with Claude Code

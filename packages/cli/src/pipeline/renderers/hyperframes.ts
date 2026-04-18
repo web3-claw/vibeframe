@@ -1,64 +1,97 @@
-/**
- * Hyperframes render backend adapter (Phase 1 — scaffold).
- *
- * Maps VibeFrame `TimelineState` onto an HTML project that implements
- * `window.__hf` seek protocol, then hands off to `@hyperframes/producer`
- * for Chrome BeginFrame → FFmpeg rendering.
- *
- * Design: docs/design/hyperframes-adapter.md
- * Discovery: docs/discovery/lottie-hyperframes.md
- *
- * NOTE: This file is a scaffold. The heavy lifting (HTML generation,
- * effect mapping, media copy) is tracked by the TODO markers and will
- * land in subsequent PRs against #37.
- */
-
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import * as path from "node:path";
+import type { RenderConfig } from "@hyperframes/producer";
 import type { RenderBackend, RenderOptions, RenderResult } from "./types.js";
 
-/**
- * Build a Hyperframes adapter. The `@hyperframes/producer` dependency is
- * not yet in package.json — it's added in the first implementation PR so
- * this scaffold compiles clean against the current dep set.
- */
+function findChrome(): string | undefined {
+  const candidates = [
+    process.env.HYPERFRAMES_CHROME_PATH,
+    process.env.CHROME_PATH,
+    // puppeteer auto-downloaded headless shell
+    path.join(homedir(), ".cache", "puppeteer", "chrome-headless-shell", "mac_arm-147.0.7727.56",
+      "chrome-headless-shell-mac_arm", "chrome-headless-shell"),
+    // system Chrome / Chromium
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    "/usr/bin/google-chrome",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  ];
+  for (const c of candidates) {
+    if (c && existsSync(c)) return c;
+  }
+  return undefined;
+}
+
 export function createHyperframesBackend(): RenderBackend {
   return {
     name: "hyperframes",
 
     async preflight() {
-      // TODO(#37): check Chrome resolution
-      // - process.env.CHROME_PATH / HYPERFRAMES_CHROME_PATH
-      // - puppeteer.executablePath() if installed
-      // - platform-specific fallbacks (/Applications/Google Chrome.app/..., /usr/bin/google-chrome)
+      const chrome = findChrome();
+      if (chrome) return { ok: true };
       return {
         ok: false,
-        reason: "Hyperframes backend scaffold — implementation pending (see #37).",
+        reason:
+          "Chrome not found. Set HYPERFRAMES_CHROME_PATH, or install Chrome " +
+          "(macOS: brew install --cask google-chrome · Linux: apt install chromium). " +
+          "Run `vibe doctor` for details.",
       };
     },
 
-    async render(_options: RenderOptions): Promise<RenderResult> {
-      // TODO(#37): full pipeline
-      //   1. renderToHtmlProject(projectState) → temp dir
-      //       - generate index.html from template
-      //       - embed clips JSON (ids, startTime, duration, effects, track order)
-      //       - emit window.__hf with duration, width, height, media[], seek(t)
-      //       - copy video/audio/image assets into <tmp>/assets/
-      //   2. resolve Chrome path (preflight already ran)
-      //   3. dynamic import @hyperframes/producer
-      //   4. createRenderJob({ fps, quality, format, entryFile: "index.html", crf })
-      //   5. executeRenderJob(job, tmpDir, outputPath, onProgress)
-      //   6. return RenderResult (success, outputPath, durationMs, framesRendered)
-      return {
-        success: false,
-        error: "Hyperframes backend scaffold — not yet implemented (see #37).",
+    async render(options: RenderOptions): Promise<RenderResult> {
+      const pre = await this.preflight!();
+      if (!pre.ok) return { success: false, error: (pre as { ok: false; reason: string }).reason };
+
+      const { buildTempProject } = await import("./project-builder.js");
+      const { createRenderJob, executeRenderJob } = await import("@hyperframes/producer");
+
+      let project: Awaited<ReturnType<typeof buildTempProject>> | undefined;
+      const start = Date.now();
+
+      try {
+        project = await buildTempProject(options.projectState);
+      } catch (err) {
+        return {
+          success: false,
+          error: `Failed to build temp project: ${err instanceof Error ? err.message : String(err)}`,
+        };
+      }
+
+      const config: RenderConfig = {
+        fps: options.fps ?? 30,
+        quality: options.quality ?? "standard",
+        format: options.format ?? "mp4",
+        entryFile: "index.html",
+        crf: qualityToCrf(options.quality),
       };
+      const job = createRenderJob(config);
+
+      try {
+        await executeRenderJob(
+          job,
+          project.dir,
+          options.outputPath,
+          (j, msg) => { options.onProgress?.(j.progress, j.currentStage ?? msg); },
+          options.signal
+        );
+        await project.cleanup();
+        return {
+          success: true,
+          outputPath: options.outputPath,
+          durationMs: Date.now() - start,
+          framesRendered: job.framesRendered,
+        };
+      } catch (err) {
+        console.error(`[hyperframes] render failed. Temp dir preserved: ${project?.dir}`);
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
+      }
     },
   };
 }
 
-/**
- * Translate VibeFrame's `aspectRatio` string into Hyperframes pixel dims.
- * Kept here so the HTML template and the seek protocol agree on canvas size.
- */
 export function aspectToResolution(ratio: string): { width: number; height: number } {
   switch (ratio) {
     case "16:9": return { width: 1920, height: 1080 };
@@ -69,10 +102,6 @@ export function aspectToResolution(ratio: string): { width: number; height: numb
   }
 }
 
-/**
- * Map VibeFrame quality preset to H.264 CRF values suitable for Hyperframes.
- * `standard` matches the FFmpeg backend's default quality.
- */
 export function qualityToCrf(quality: "draft" | "standard" | "high" = "standard"): number {
   return quality === "draft" ? 28 : quality === "high" ? 18 : 23;
 }
