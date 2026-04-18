@@ -10,6 +10,7 @@ import { PROVIDER_ENV_VARS } from "../config/schema.js";
 import { commandExists } from "../utils/exec-safe.js";
 import { execSafe } from "../utils/exec-safe.js";
 import { loadEnv } from "../utils/api-key.js";
+import { outputResult } from "./output.js";
 
 /** Mapping of env vars to the commands they unlock */
 const COMMAND_KEY_MAP: Record<string, string[]> = {
@@ -85,11 +86,16 @@ Examples:
 `
   )
   .action(async (options) => {
-    const isJson = options.json || process.env.VIBE_JSON_OUTPUT === "1";
+    if (options.json) process.env.VIBE_JSON_OUTPUT = "1";
+    const isJson = process.env.VIBE_JSON_OUTPUT === "1";
     const results = await runDiagnostics();
 
     if (isJson) {
-      console.log(JSON.stringify(results, null, 2));
+      outputResult({
+        success: true,
+        command: "doctor",
+        result: results,
+      });
       return;
     }
 

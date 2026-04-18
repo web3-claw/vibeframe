@@ -46,15 +46,30 @@ export function authError(envVar: string, provider: string): StructuredError {
 
 /** Provider-specific error hints based on error message patterns */
 const PROVIDER_ERROR_HINTS: Array<{ pattern: RegExp; suggestion: string; retryable: boolean }> = [
+  // Rate limits / quota
   { pattern: /429|rate.?limit|too many requests/i, suggestion: "Rate limited. Wait 30-60 seconds and retry, or check your plan's rate limits.", retryable: true },
-  { pattern: /401|unauthorized|invalid.*key|authentication/i, suggestion: "API key is invalid or expired. Run 'vibe setup' to update, or check the key at the provider's dashboard.", retryable: false },
-  { pattern: /403|forbidden|permission/i, suggestion: "Access denied. Your API key may lack required permissions, or the feature requires a paid plan.", retryable: false },
-  { pattern: /402|payment|billing|quota|exceeded|insufficient/i, suggestion: "Account quota exceeded or billing issue. Check your provider dashboard for usage limits.", retryable: false },
+  { pattern: /RESOURCE_EXHAUSTED|quota.*exceeded|requests.*per.*(minute|day)/i, suggestion: "Quota exceeded. Wait for the quota window to reset, or upgrade your plan. Consider -p <other-provider> to use a different provider.", retryable: true },
+  // Auth
+  { pattern: /401|unauthorized|invalid.*api.?key|authentication.*(failed|error)|missing.*api.?key/i, suggestion: "API key is invalid or expired. Run 'vibe setup' to update, or check the key at the provider's dashboard.", retryable: false },
+  { pattern: /403|forbidden|permission.*denied/i, suggestion: "Access denied. Your API key may lack required permissions, or the feature requires a paid plan.", retryable: false },
+  // Billing
+  { pattern: /402|payment.*required|billing|INSUFFICIENT_BALANCE|insufficient.*(credit|funds|balance)|credits?.*exhausted/i, suggestion: "Account balance or credits exhausted. Top up at the provider dashboard, or try -p <other-provider>.", retryable: false },
+  // Server
   { pattern: /500|internal.*error|server.*error/i, suggestion: "Provider server error. Retry in a few minutes.", retryable: true },
-  { pattern: /503|service.*unavailable|overloaded/i, suggestion: "Provider is temporarily overloaded. Retry in 1-2 minutes.", retryable: true },
-  { pattern: /timeout|timed?\s*out|ETIMEDOUT/i, suggestion: "Request timed out. The provider may be slow. Retry, or try a different provider with -p flag.", retryable: true },
-  { pattern: /content.*policy|safety|moderation|blocked/i, suggestion: "Content was blocked by the provider's safety filter. Rephrase your prompt.", retryable: false },
-  { pattern: /model.*not.*found|invalid.*model/i, suggestion: "The specified model is unavailable. Check 'vibe schema <command>' for valid model options.", retryable: false },
+  { pattern: /503|service.*unavailable|overloaded|overloaded_error/i, suggestion: "Provider is temporarily overloaded. Retry in 1-2 minutes, or switch provider with -p.", retryable: true },
+  { pattern: /timeout|timed?\s*out|ETIMEDOUT|ECONNRESET|socket.*hang.?up/i, suggestion: "Request timed out. The provider may be slow. Retry, or try a different provider with -p flag.", retryable: true },
+  // Content policy
+  { pattern: /content.*(policy|filter)|safety|moderation|blocked.*(by|due)|content_policy_violation|restricted.*content/i, suggestion: "Content was blocked by the provider's safety filter. Rephrase your prompt to avoid sensitive terms.", retryable: false },
+  // Model / context
+  { pattern: /context_length_exceeded|maximum.*context.*length|token.*limit.*exceeded|prompt.*too.*long/i, suggestion: "Input exceeds the model's context window. Shorten the prompt, or use a model with larger context (run 'vibe schema <command>' for options).", retryable: false },
+  { pattern: /model.*not.*found|invalid.*model|unknown.*model|model_not_found/i, suggestion: "The specified model is unavailable. Check 'vibe schema <command>' for valid model options.", retryable: false },
+  // Provider-specific
+  { pattern: /voice.*not.*found|voice_not_found|invalid.*voice.?id/i, suggestion: "Voice ID not found. Run 'vibe audio voices' to list available voices, then pass --voice <id>.", retryable: false },
+  { pattern: /character.*(count|limit).*exceeded|invalid_character_count/i, suggestion: "Text exceeds the TTS provider's character limit. Shorten the text or split into chunks.", retryable: false },
+  { pattern: /invalid.*aspect.*ratio|unsupported.*aspect.*ratio|unsupported.*resolution/i, suggestion: "This aspect ratio or resolution isn't supported by the chosen model. Check 'vibe schema <command>' for supported values.", retryable: false },
+  { pattern: /invalid.*file.*format|unsupported.*(format|codec)|unsupported.*media.?type/i, suggestion: "Input file format not supported. Convert to MP4/MP3/PNG first with 'vibe export' or 'ffmpeg'.", retryable: false },
+  { pattern: /region.*(restriction|not.*supported|unavailable)|geo.?blocked/i, suggestion: "Provider unavailable in your region. Try -p <other-provider>, or use a supported region.", retryable: false },
+  { pattern: /task.*(not.*found|expired)|job.*(not.*found|expired)/i, suggestion: "The async task expired or was never created. Re-run the command to start a new task.", retryable: true },
 ];
 
 export function apiError(msg: string, retryable = false): StructuredError {

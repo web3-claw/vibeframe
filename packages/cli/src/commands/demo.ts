@@ -12,6 +12,7 @@ import ora from "ora";
 import { commandExists, execSafe } from "../utils/exec-safe.js";
 import { executeDetectScenes, executeDetectSilence } from "./detect.js";
 import { executeSilenceCut, executeFade, executeNoiseReduce } from "./ai-edit.js";
+import { outputResult, exitWithError, generalError, isJsonMode } from "./output.js";
 
 const DEMO_DIR = resolve(process.cwd(), ".vibeframe-demo");
 
@@ -65,15 +66,14 @@ export const demoCommand = new Command("demo")
   .option("--keep", "Keep demo output files after completion")
   .option("--json", "Output results as JSON")
   .action(async (options) => {
-    const isJson = options.json || !process.stdin.isTTY;
+    if (options.json) process.env.VIBE_JSON_OUTPUT = "1";
+    const isJson = isJsonMode() || !process.stdin.isTTY;
 
     if (!commandExists("ffmpeg")) {
-      if (isJson) {
-        process.stderr.write(JSON.stringify({ success: false, error: "FFmpeg not found. Install FFmpeg first." }) + "\n");
-      } else {
-        console.error(chalk.red("FFmpeg not found. Install FFmpeg first: https://ffmpeg.org/download.html"));
-      }
-      process.exit(1);
+      exitWithError(generalError(
+        "FFmpeg not found.",
+        "Install FFmpeg first: https://ffmpeg.org/download.html",
+      ));
     }
 
     const results: Array<{ step: string; success: boolean; detail?: string; duration?: number }> = [];
@@ -94,8 +94,7 @@ export const demoCommand = new Command("demo")
     const generated = await generateTestVideo(testVideo);
     if (!generated) {
       genSpinner?.fail("Failed to generate test video");
-      if (isJson) process.stderr.write(JSON.stringify({ success: false, error: "Failed to generate test video" }) + "\n");
-      process.exit(1);
+      exitWithError(generalError("Failed to generate test video"));
     }
     genSpinner?.succeed(chalk.green("Test video generated (12s, 720p, with silence gaps)"));
 
@@ -182,7 +181,12 @@ export const demoCommand = new Command("demo")
     const total = results.length;
 
     if (isJson) {
-      console.log(JSON.stringify({ success: passed === total, results, demoDir: DEMO_DIR }));
+      outputResult({
+        success: passed === total,
+        command: "demo",
+        result: { passed, total, steps: results },
+        demoDir: DEMO_DIR,
+      });
     } else {
       console.log();
       console.log(chalk.dim("  " + "─".repeat(50)));
