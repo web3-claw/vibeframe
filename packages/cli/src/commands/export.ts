@@ -86,6 +86,47 @@ export interface ExportOptions {
   format?: "mp4" | "webm" | "mov" | "gif";
   overwrite?: boolean;
   gapFill?: GapFillStrategy;
+  bitrate?: string;
+  fps?: number;
+  resolution?: string;
+  codec?: "h264" | "h265" | "vp9";
+}
+
+export type VideoCodec = "h264" | "h265" | "vp9";
+
+const CODEC_MAP: Record<VideoCodec, string> = {
+  h264: "libx264",
+  h265: "libx265",
+  vp9: "libvpx-vp9",
+};
+
+export const BITRATE_PATTERN = /^\d+(?:\.\d+)?[kKmMgG]?$/;
+export const RESOLUTION_PATTERN = /^\d+x\d+$/;
+export const VALID_CODECS: VideoCodec[] = ["h264", "h265", "vp9"];
+
+export interface CustomOverrides {
+  bitrate?: string;
+  fps?: number;
+  resolution?: string;
+  codec?: VideoCodec;
+}
+
+export function validateOverrides(overrides: CustomOverrides): string | null {
+  if (overrides.bitrate !== undefined && !BITRATE_PATTERN.test(overrides.bitrate)) {
+    return `Invalid --bitrate "${overrides.bitrate}". Use digits with optional k/M suffix (e.g. 5000k, 8M).`;
+  }
+  if (overrides.fps !== undefined) {
+    if (!Number.isFinite(overrides.fps) || overrides.fps <= 0 || overrides.fps > 240) {
+      return `Invalid --fps "${overrides.fps}". Use a positive number up to 240.`;
+    }
+  }
+  if (overrides.resolution !== undefined && !RESOLUTION_PATTERN.test(overrides.resolution)) {
+    return `Invalid --resolution "${overrides.resolution}". Use <width>x<height> (e.g. 1920x1080).`;
+  }
+  if (overrides.codec !== undefined && !VALID_CODECS.includes(overrides.codec)) {
+    return `Invalid --codec "${overrides.codec}". Supported: ${VALID_CODECS.join(", ")}.`;
+  }
+  return null;
 }
 
 /**
@@ -96,7 +137,12 @@ export async function runExport(
   outputPath: string,
   options: ExportOptions = {}
 ): Promise<ExportResult> {
-  const { preset = "standard", format = "mp4", overwrite = false, gapFill = "extend" } = options;
+  const { preset = "standard", format = "mp4", overwrite = false, gapFill = "extend", bitrate, fps, resolution, codec } = options;
+
+  const overrideError = validateOverrides({ bitrate, fps, resolution, codec });
+  if (overrideError) {
+    return { success: false, message: overrideError };
+  }
 
   try {
     // Check if FFmpeg is installed
@@ -127,7 +173,8 @@ export async function runExport(
     const finalOutputPath = resolve(process.cwd(), outputPath);
 
     // Get preset settings
-    const presetSettings = getPresetSettings(preset, summary.aspectRatio);
+    const basePresetSettings = getPresetSettings(preset, summary.aspectRatio);
+    const presetSettings = applyCustomOverrides(basePresetSettings, { bitrate, fps, resolution, codec });
 
     // Get clips sorted by start time
     const clips = project.getClips().sort((a, b) => a.startTime - b.startTime);
@@ -192,6 +239,10 @@ export const exportCommand = new Command("export")
   .option("-y, --overwrite", "Overwrite output file if exists", false)
   .option("-g, --gap-fill <strategy>", "Gap filling strategy (black, extend)", "extend")
   .option("--backend <name>", "Render backend: ffmpeg (default) | hyperframes (experimental)", "ffmpeg")
+  .option("--bitrate <value>", "Video bitrate (e.g. 5000k, 8M) — overrides preset")
+  .option("--fps <number>", "Frames per second (e.g. 24, 30, 60) — overrides preset")
+  .option("--resolution <WxH>", "Output resolution (e.g. 1920x1080) — overrides preset")
+  .option("--codec <codec>", "Video codec: h264 (default) | h265 | vp9 — overrides preset")
   .option("--dry-run", "Preview parameters without executing")
   .addHelpText("after", `
 Examples:
@@ -199,9 +250,12 @@ Examples:
   $ vibe export project.vibe.json -o output.mp4 -p high -y
   $ vibe export project.vibe.json -o output.webm -f webm
   $ vibe export project.vibe.json -o output.gif -f gif
+  $ vibe export project.vibe.json -o out.mp4 --bitrate 5000k --fps 24 --codec h265
+  $ vibe export project.vibe.json -o out.mp4 -p high --fps 60
 
 Cost: Free (no API keys needed). Requires FFmpeg.
 GIF format: 15fps, no audio, looping. Good for previews and sharing.
+Custom flags (--bitrate, --fps, --resolution, --codec) override preset values.
 Run 'vibe schema export' for structured parameter info.`)
   .action(async (projectPath: string, options) => {
     const spinner = ora("Checking FFmpeg...").start();
@@ -209,6 +263,18 @@ Run 'vibe schema export' for structured parameter info.`)
     try {
       if (options.output) {
         validateOutputPath(options.output);
+      }
+
+      const customOverrides: CustomOverrides = {
+        bitrate: options.bitrate,
+        fps: options.fps !== undefined ? Number(options.fps) : undefined,
+        resolution: options.resolution,
+        codec: options.codec as VideoCodec | undefined,
+      };
+      const overrideError = validateOverrides(customOverrides);
+      if (overrideError) {
+        spinner.stop();
+        exitWithError(usageError(overrideError));
       }
 
       if (options.dryRun) {
@@ -223,6 +289,10 @@ Run 'vibe schema export' for structured parameter info.`)
             overwrite: options.overwrite,
             gapFill: options.gapFill,
             backend: options.backend,
+            bitrate: options.bitrate ?? null,
+            fps: customOverrides.fps ?? null,
+            resolution: options.resolution ?? null,
+            codec: options.codec ?? null,
           },
         });
         return;
@@ -263,8 +333,9 @@ Run 'vibe schema export' for structured parameter info.`)
             `${basename(projectPath, ".vibe.json")}.${options.format}`
           );
 
-      // Get preset settings
-      const presetSettings = getPresetSettings(options.preset, summary.aspectRatio);
+      // Get preset settings + apply custom overrides
+      const basePresetSettings = getPresetSettings(options.preset, summary.aspectRatio);
+      const presetSettings = applyCustomOverrides(basePresetSettings, customOverrides);
 
       // Get clips sorted by start time
       const clips = project.getClips().sort((a, b) => a.startTime - b.startTime);
@@ -321,6 +392,9 @@ Run 'vibe schema export' for structured parameter info.`)
       console.log(chalk.dim("  Format:"), options.format);
       console.log(chalk.dim("  Preset:"), options.preset);
       console.log(chalk.dim("  Resolution:"), presetSettings.resolution);
+      if (options.bitrate) console.log(chalk.dim("  Bitrate:"), options.bitrate);
+      if (options.fps) console.log(chalk.dim("  FPS:"), options.fps);
+      if (options.codec) console.log(chalk.dim("  Codec:"), options.codec);
       console.log();
     } catch (error) {
       spinner.fail("Export failed");
@@ -941,11 +1015,61 @@ function runFFmpegProcess(
   });
 }
 
-interface PresetSettings {
+export interface PresetSettings {
   resolution: string;
   videoBitrate: string;
   audioBitrate: string;
   ffmpegArgs: string[];
+}
+
+export function applyCustomOverrides(
+  settings: PresetSettings,
+  overrides: CustomOverrides
+): PresetSettings {
+  const result: PresetSettings = {
+    ...settings,
+    ffmpegArgs: [...settings.ffmpegArgs],
+  };
+
+  if (overrides.resolution) {
+    result.resolution = overrides.resolution;
+  }
+
+  if (overrides.codec) {
+    const ffmpegCodec = CODEC_MAP[overrides.codec];
+    const cvIdx = result.ffmpegArgs.indexOf("-c:v");
+    if (cvIdx !== -1) {
+      result.ffmpegArgs[cvIdx + 1] = ffmpegCodec;
+    } else {
+      result.ffmpegArgs.unshift("-c:v", ffmpegCodec);
+    }
+  }
+
+  if (overrides.bitrate) {
+    const crfIdx = result.ffmpegArgs.indexOf("-crf");
+    if (crfIdx !== -1) {
+      result.ffmpegArgs.splice(crfIdx, 2);
+    }
+    const bvIdx = result.ffmpegArgs.indexOf("-b:v");
+    if (bvIdx !== -1) {
+      result.ffmpegArgs[bvIdx + 1] = overrides.bitrate;
+    } else {
+      result.ffmpegArgs.push("-b:v", overrides.bitrate);
+    }
+    result.videoBitrate = overrides.bitrate;
+  }
+
+  if (overrides.fps !== undefined) {
+    const rIdx = result.ffmpegArgs.indexOf("-r");
+    const fpsValue = String(overrides.fps);
+    if (rIdx !== -1) {
+      result.ffmpegArgs[rIdx + 1] = fpsValue;
+    } else {
+      result.ffmpegArgs.push("-r", fpsValue);
+    }
+  }
+
+  return result;
 }
 
 function getPresetSettings(
