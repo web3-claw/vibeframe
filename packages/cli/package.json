@@ -1,6 +1,6 @@
 {
   "name": "@vibeframe/cli",
-  "version": "0.47.1",
+  "version": "0.48.0",
   "description": "VibeFrame CLI - natural language video editing from the terminal",
   "private": false,
   "license": "MIT",
@@ -98,6 +98,10 @@
     "./commands/edit-cmd": {
       "import": "./src/commands/edit-cmd.ts",
       "types": "./src/commands/edit-cmd.ts"
+    },
+    "./pipeline": {
+      "import": "./src/pipeline/index.ts",
+      "types": "./src/pipeline/index.ts"
     }
   },
   "scripts": {

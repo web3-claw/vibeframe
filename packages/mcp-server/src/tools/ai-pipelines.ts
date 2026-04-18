@@ -1,5 +1,9 @@
+import { writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { executeScriptToVideo } from "@vibeframe/cli/commands/ai-script-pipeline";
 import { executeHighlights, executeAutoShorts } from "@vibeframe/cli/commands/ai-highlights";
+import { loadPipeline, executePipeline } from "@vibeframe/cli/pipeline";
 
 export const aiPipelineTools = [
   {
@@ -73,6 +77,35 @@ export const aiPipelineTools = [
         lowRes: { type: "boolean", description: "Use lower resolution for faster analysis" },
       },
       required: ["media"],
+    },
+  },
+  {
+    name: "pipeline_run",
+    description: "Execute a declarative YAML pipeline (Video as Code). Accepts either a file path or inline YAML. Supports dry-run, resume-from-checkpoint, and budget limits. Cost depends on the steps — use dryRun: true first to preview.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        pipelinePath: {
+          type: "string",
+          description: "Path to a pipeline YAML file. Mutually exclusive with pipelineYaml.",
+        },
+        pipelineYaml: {
+          type: "string",
+          description: "Inline YAML pipeline content. Mutually exclusive with pipelinePath.",
+        },
+        outputDir: { type: "string", description: "Directory for step outputs (default: pipeline's dir)" },
+        dryRun: { type: "boolean", description: "Validate and show execution plan without running (default: false)" },
+        resume: { type: "boolean", description: "Resume from last checkpoint, skipping completed steps" },
+        failFast: { type: "boolean", description: "Stop on first failed step (default: continue)" },
+        budgetUsd: { type: "number", description: "Abort if upper-bound cost estimate exceeds this USD amount" },
+        budgetTokens: { type: "number", description: "Abort if provider token usage exceeds this count" },
+        maxErrors: { type: "number", description: "Abort if failed step count exceeds this" },
+        effort: {
+          type: "string",
+          enum: ["low", "medium", "high", "xhigh"],
+          description: "LLM effort level (Opus 4.7 Task Budgets)",
+        },
+      },
     },
   },
   {
@@ -163,6 +196,73 @@ export async function handleAiPipelineToolCall(
         outputPath: result.outputPath,
         projectPath: result.projectPath,
       });
+    }
+
+    case "pipeline_run": {
+      const pipelinePath = args.pipelinePath as string | undefined;
+      const pipelineYaml = args.pipelineYaml as string | undefined;
+      if (!pipelinePath && !pipelineYaml) {
+        return "pipeline_run failed: must provide either pipelinePath or pipelineYaml";
+      }
+      if (pipelinePath && pipelineYaml) {
+        return "pipeline_run failed: pipelinePath and pipelineYaml are mutually exclusive";
+      }
+
+      let resolvedPath = pipelinePath;
+      let tempPath: string | undefined;
+      if (pipelineYaml) {
+        tempPath = join(tmpdir(), `vibe-mcp-pipeline-${Date.now()}.yaml`);
+        await writeFile(tempPath, pipelineYaml, "utf-8");
+        resolvedPath = tempPath;
+      }
+
+      try {
+        const manifest = await loadPipeline(resolvedPath!);
+        if (args.effort) {
+          manifest.effort = args.effort as "low" | "medium" | "high" | "xhigh";
+        }
+
+        const budget: Record<string, number> = {};
+        if (typeof args.budgetUsd === "number") budget.costUsd = args.budgetUsd;
+        if (typeof args.budgetTokens === "number") budget.tokens = args.budgetTokens;
+        if (typeof args.maxErrors === "number") budget.maxToolErrors = args.maxErrors;
+
+        const result = await executePipeline(manifest, {
+          outputDir: args.outputDir as string | undefined,
+          dryRun: args.dryRun as boolean | undefined,
+          resume: args.resume as boolean | undefined,
+          failFast: args.failFast as boolean | undefined,
+          budget: Object.keys(budget).length > 0 ? budget : undefined,
+        });
+
+        return JSON.stringify({
+          success: result.success,
+          name: result.name,
+          completedSteps: result.completedSteps,
+          totalSteps: result.totalSteps,
+          totalDuration: result.totalDuration,
+          outputDir: result.outputDir,
+          error: result.error,
+          budget: result.budget,
+          steps: result.steps.map((s) => ({
+            id: s.id,
+            action: s.action,
+            success: s.success,
+            output: s.output,
+            duration: s.duration,
+            error: s.error,
+          })),
+        });
+      } finally {
+        if (tempPath) {
+          try {
+            const { unlink } = await import("node:fs/promises");
+            await unlink(tempPath);
+          } catch {
+            // best-effort cleanup
+          }
+        }
+      }
     }
 
     case "pipeline_auto_shorts": {
