@@ -73,4 +73,97 @@ describe("apiError provider hints", () => {
       suggestion: expect.stringContaining("model is unavailable"),
     });
   });
+
+  it("matches rate-limit patterns", () => {
+    expect(apiError("HTTP 429 Too Many Requests")).toMatchObject({
+      retryable: true,
+      suggestion: expect.stringContaining("Rate limited"),
+    });
+
+    expect(apiError("rate-limit reached")).toMatchObject({
+      retryable: true,
+      suggestion: expect.stringContaining("Rate limited"),
+    });
+
+    expect(apiError("rate limit exceeded")).toMatchObject({
+      retryable: true,
+      suggestion: expect.stringContaining("Rate limited"),
+    });
+
+    expect(apiError("too many requests, slow down")).toMatchObject({
+      retryable: true,
+      suggestion: expect.stringContaining("Rate limited"),
+    });
+  });
+
+  it("matches forbidden / permission denied patterns", () => {
+    expect(apiError("HTTP 403 returned")).toMatchObject({
+      retryable: false,
+      suggestion: expect.stringContaining("Access denied"),
+    });
+
+    expect(apiError("forbidden for this resource")).toMatchObject({
+      retryable: false,
+      suggestion: expect.stringContaining("Access denied"),
+    });
+
+    expect(apiError("permission denied on endpoint")).toMatchObject({
+      retryable: false,
+      suggestion: expect.stringContaining("Access denied"),
+    });
+  });
+
+  it("matches 5xx server error patterns", () => {
+    expect(apiError("HTTP 500 error from upstream")).toMatchObject({
+      retryable: true,
+      suggestion: expect.stringContaining("Provider server error"),
+    });
+
+    expect(apiError("internal error occurred")).toMatchObject({
+      retryable: true,
+      suggestion: expect.stringContaining("Provider server error"),
+    });
+
+    expect(apiError("server error: try again")).toMatchObject({
+      retryable: true,
+      suggestion: expect.stringContaining("Provider server error"),
+    });
+
+    expect(apiError("HTTP 503 service unavailable")).toMatchObject({
+      retryable: true,
+      suggestion: expect.stringContaining("temporarily overloaded"),
+    });
+
+    expect(apiError("service unavailable, retry later")).toMatchObject({
+      retryable: true,
+      suggestion: expect.stringContaining("temporarily overloaded"),
+    });
+  });
+
+  it("matches timeout / connection-drop patterns", () => {
+    expect(apiError("request timeout after 60s")).toMatchObject({
+      retryable: true,
+      suggestion: expect.stringContaining("timed out"),
+    });
+
+    expect(apiError("operation timed out")).toMatchObject({
+      retryable: true,
+      suggestion: expect.stringContaining("timed out"),
+    });
+
+    expect(apiError("ETIMEDOUT connecting to host")).toMatchObject({
+      retryable: true,
+      suggestion: expect.stringContaining("timed out"),
+    });
+
+    expect(apiError("ECONNRESET by peer")).toMatchObject({
+      retryable: true,
+      suggestion: expect.stringContaining("timed out"),
+    });
+
+    expect(apiError("socket hang up")).toMatchObject({
+      retryable: true,
+      suggestion: expect.stringContaining("timed out"),
+    });
+  });
 });
