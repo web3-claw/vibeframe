@@ -12,8 +12,20 @@ await build({
   format: "esm",
   outfile: "dist/index.js",
   banner: {
-    js: "#!/usr/bin/env node",
+    // createRequire shim: bundled CJS packages (e.g. commander) call require() at
+    // module init; without this shim esbuild's __require throws
+    // "Dynamic require of X is not supported" on ESM.
+    js: [
+      "#!/usr/bin/env node",
+      "import { createRequire as __vfCreateRequire } from 'node:module';",
+      "const require = __vfCreateRequire(import.meta.url);",
+    ].join("\n"),
   },
+  // Externals are limited to:
+  // 1. MCP SDK + zod — host communicates through these; must match host version
+  // 2. Optional AI provider SDKs — declared as peerDependencies (user brings their own)
+  // Everything else (chalk, ora, commander, yaml, dotenv, etc.) is bundled
+  // to keep runtime deps minimal and avoid version-drift bugs like ERR_MODULE_NOT_FOUND
   external: [
     "@modelcontextprotocol/sdk",
     "@modelcontextprotocol/sdk/*",
@@ -21,12 +33,6 @@ await build({
     "@anthropic-ai/sdk",
     "@google/generative-ai",
     "openai",
-    "chalk",
-    "ora",
-    "commander",
-    "music-metadata",
-    "dotenv",
-    "yaml",
   ],
   sourcemap: false,
   minify: false,

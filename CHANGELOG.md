@@ -5,16 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.47.1] - 2026-04-18
+
+### Added
+
+- custom bitrate, fps, resolution, codec options *(export)*
+
+### Fixed
+
+- bundle runtime deps to prevent ERR_MODULE_NOT_FOUND *(mcp-server)*
+
+### Testing
+
+- cover HTTP/network/timeout provider error hints
+- cover provider error hints (#42)
+
 ## [0.47.0] - 2026-04-18
 
 ### Added
 
+- Hyperframes render backend v0.47.0 *(pipeline)*
 - Hyperframes render backend scaffold *(pipeline)*
 
 ### Documentation
 
 - Phase 1 Part B master plan for Hyperframes adapter
 - Phase 0 discovery — Lottie + Hyperframes probe results
+
+### Fixed
+
+- add DOM lib to tsconfig for transitive @hyperframes types *(mcp-server)*
+- add DOM lib to CLI tsconfig for @hyperframes/engine compatibility *(build)*
+- skip Hyperframes render test in CI environment *(test)*
 
 ## [0.46.2] - 2026-04-18
 
