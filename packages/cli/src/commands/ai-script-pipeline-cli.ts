@@ -170,6 +170,16 @@ aiCommand
         if (!genInfo) {
           exitWithError(usageError(`Invalid generator: ${generator}`, `Available: ${Object.keys(generatorKeyMap).join(", ")}`));
         }
+        // Fail fast: grok/veo are implemented in executeScriptToVideo() but
+        // not wired into this inline CLI path. Block before spending on
+        // storyboard/image/narration.
+        const SUPPORTED_HERE = new Set(["kling", "runway"]);
+        if (!SUPPORTED_HERE.has(generator)) {
+          exitWithError(usageError(
+            `Video generator "${generator}" is not yet wired into this CLI path.`,
+            `Supported here: kling, runway. For grok or veo, use "vibe run" with a YAML pipeline (see examples/promo-video.yaml).`,
+          ));
+        }
         const key = await getApiKey(genInfo.envVar, genInfo.name);
         if (!key) {
           exitWithError(authError(genInfo.envVar, genInfo.name));
@@ -528,7 +538,10 @@ aiCommand
       const maxRetries = parseInt(options.retries) || DEFAULT_VIDEO_RETRIES;
 
       if (!options.imagesOnly && videoApiKey) {
-        const videoSpinner = ora(`🎬 Generating videos with ${options.generator === "kling" ? "Kling" : "Runway"}...`).start();
+        // Guard already enforced above (before storyboard/image/narration);
+        // reaching here means generator ∈ {kling, runway}.
+        const providerLabel = options.generator === "kling" ? "Kling" : "Runway";
+        const videoSpinner = ora(`🎬 Generating videos with ${providerLabel}...`).start();
 
         if (options.generator === "kling") {
           const kling = new KlingProvider();
@@ -1300,6 +1313,16 @@ aiCommand
         const genInfo = generatorKeyMap[generator];
         if (!genInfo) {
           exitWithError(usageError(`Invalid generator: ${generator}`, `Available: ${Object.keys(generatorKeyMap).join(", ")}`));
+        }
+        // Fail fast: grok/veo are implemented in executeScriptToVideo() but
+        // not wired into this inline CLI path. Block before spending on
+        // storyboard/image/narration.
+        const SUPPORTED_HERE = new Set(["kling", "runway"]);
+        if (!SUPPORTED_HERE.has(generator)) {
+          exitWithError(usageError(
+            `Video generator "${generator}" is not yet wired into this CLI path.`,
+            `Supported here: kling, runway. For grok or veo, use "vibe run" with a YAML pipeline (see examples/promo-video.yaml).`,
+          ));
         }
         const key = await getApiKey(genInfo.envVar, genInfo.name);
         if (!key) {
