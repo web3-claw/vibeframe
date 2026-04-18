@@ -12,6 +12,7 @@ import {
   Music,
   Video,
 } from "lucide-react";
+import { ThemeToggle } from "../../components/theme-toggle";
 import { HeroVideo } from "../../components/demo/HeroVideo";
 import { SceneCard } from "../../components/demo/SceneCard";
 import { StepTimeline } from "../../components/demo/StepTimeline";
@@ -66,6 +67,7 @@ export default function DemoPage() {
             <Link href="/demo" className="text-foreground font-medium">
               Demo
             </Link>
+            <ThemeToggle />
             <Link
               href="https://github.com/vericontext/vibeframe"
               target="_blank"

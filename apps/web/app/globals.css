@@ -4,6 +4,27 @@
 
 @layer base {
   :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
+
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 0 0% 9%;
+
+    --muted: 240 5% 92%;
+    --muted-foreground: 240 5% 40%;
+
+    --accent: 262 83% 58%;
+    --accent-foreground: 0 0% 100%;
+
+    --border: 240 5% 87%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
     --background: 0 0% 7%;
     --foreground: 0 0% 95%;
 
@@ -20,8 +41,6 @@
     --accent-foreground: 0 0% 100%;
 
     --border: 240 5% 25%;
-
-    --radius: 0.5rem;
   }
 }
 
