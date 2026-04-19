@@ -483,6 +483,8 @@ export interface ScriptToVideoOptions {
   review?: boolean;
   /** Auto-apply fixable issues from review */
   reviewAutoApply?: boolean;
+  /** Called at major stage boundaries (storyboard, narration, images, videos, overlay, assembly, review). */
+  onProgress?: (message: string) => void;
 }
 
 /**
@@ -635,6 +637,7 @@ export async function executeScriptToVideo(
     }
 
     // Step 1: Generate storyboard
+    options.onProgress?.(`Analyzing script with ${storyboardProvider}...`);
     let segments: StoryboardSegment[];
     const creativityOpts = { creativity: options.creativity };
 
@@ -675,6 +678,7 @@ export async function executeScriptToVideo(
 
     // Step 2: Generate per-scene voiceovers with ElevenLabs
     if (!options.noVoiceover && elevenlabsApiKey) {
+      options.onProgress?.(`Generating ${segments.length} voiceover(s) with ElevenLabs...`);
       const elevenlabs = new ElevenLabsProvider();
       await elevenlabs.initialize({ apiKey: elevenlabsApiKey });
 
@@ -738,6 +742,7 @@ export async function executeScriptToVideo(
     }
 
     // Step 3: Generate images
+    options.onProgress?.(`Generating ${segments.length} scene image(s) with ${imageProvider}...`);
     const dalleImageSizes: Record<string, "1536x1024" | "1024x1536" | "1024x1024"> = {
       "16:9": "1536x1024",
       "9:16": "1024x1536",
@@ -837,6 +842,7 @@ export async function executeScriptToVideo(
     const maxRetries = options.retries ?? DEFAULT_VIDEO_RETRIES;
 
     if (!options.imagesOnly && videoApiKey) {
+      options.onProgress?.(`Generating ${segments.length} scene video(s) with ${options.generator || "grok"}...`);
       if (options.generator === "grok") {
         const grok = new GrokProvider();
         await grok.initialize({ apiKey: videoApiKey });
@@ -1078,6 +1084,8 @@ export async function executeScriptToVideo(
 
     // Step 4.5: Apply text overlays (if segments have textOverlays)
     if (!options.noTextOverlay) {
+      const overlayCount = segments.filter((s, i) => s.textOverlays?.length && videoPaths[i]).length;
+      if (overlayCount > 0) options.onProgress?.(`Applying text overlays to ${overlayCount} scene(s)...`);
       for (let i = 0; i < segments.length; i++) {
         const segment = segments[i];
         if (segment.textOverlays && segment.textOverlays.length > 0 && videoPaths[i] && videoPaths[i] !== "") {
@@ -1101,6 +1109,7 @@ export async function executeScriptToVideo(
     }
 
     // Step 5: Create project file
+    options.onProgress?.("Assembling project...");
     const project = new Project("Script-to-Video Output");
     project.setAspectRatio((options.aspectRatio || "16:9") as "16:9" | "9:16" | "1:1");
 
@@ -1202,6 +1211,7 @@ export async function executeScriptToVideo(
 
     // Step 6: AI Review & Auto-fix (optional, --review flag)
     if (options.review) {
+      options.onProgress?.("Reviewing video with Gemini AI...");
       try {
         // Look for storyboard file (YAML preferred, JSON fallback for backward compat)
         const storyboardYaml = resolve(absOutputDir, "storyboard.yaml");

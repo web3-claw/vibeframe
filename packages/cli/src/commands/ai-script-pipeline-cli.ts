@@ -36,6 +36,7 @@ import {
   extendVideoToTarget,
   generateVideoWithRetryKling,
   generateVideoWithRetryRunway,
+  executeScriptToVideo,
 } from "./ai-script-pipeline.js";
 import { downloadVideo } from "./ai-helpers.js";
 import { exitWithError, outputResult, authError, notFoundError, usageError, apiError, generalError } from "./output.js";
@@ -170,16 +171,6 @@ aiCommand
         if (!genInfo) {
           exitWithError(usageError(`Invalid generator: ${generator}`, `Available: ${Object.keys(generatorKeyMap).join(", ")}`));
         }
-        // Fail fast: grok/veo are implemented in executeScriptToVideo() but
-        // not wired into this inline CLI path. Block before spending on
-        // storyboard/image/narration.
-        const SUPPORTED_HERE = new Set(["kling", "runway"]);
-        if (!SUPPORTED_HERE.has(generator)) {
-          exitWithError(usageError(
-            `Video generator "${generator}" is not yet wired into this CLI path.`,
-            `Supported here: kling, runway. For grok or veo, use "vibe run" with a YAML pipeline (see examples/promo-video.yaml).`,
-          ));
-        }
         const key = await getApiKey(genInfo.envVar, genInfo.name);
         if (!key) {
           exitWithError(authError(genInfo.envVar, genInfo.name));
@@ -192,6 +183,51 @@ aiCommand
       if (options.file) {
         const filePath = resolve(process.cwd(), script);
         scriptContent = await readFile(filePath, "utf-8");
+      }
+
+      // Grok and Veo route through executeScriptToVideo (fully supports all 4 providers).
+      // Kling and Runway still use the inline path below pending full dedup (#38 follow-up).
+      const delegatedGenerators = new Set(["grok", "veo"]);
+      if (!options.imagesOnly && delegatedGenerators.has(options.generator)) {
+        const pipelineSpinner = ora(`🎬 Running script-to-video with ${options.generator}...`).start();
+        const result = await executeScriptToVideo({
+          script: scriptContent,
+          outputDir: options.outputDir,
+          duration: options.duration ? parseFloat(options.duration) : undefined,
+          voice: options.voice,
+          generator: options.generator as "grok" | "veo",
+          imageProvider: options.imageProvider as "openai" | "gemini" | "grok" | undefined,
+          aspectRatio: options.aspectRatio as "16:9" | "9:16" | "1:1" | undefined,
+          imagesOnly: options.imagesOnly,
+          noVoiceover: options.voiceover === false,
+          retries: parseInt(options.retries) || DEFAULT_VIDEO_RETRIES,
+          creativity: (options.creativity as "low" | "high" | undefined),
+          storyboardProvider: options.storyboardProvider as "claude" | "openai" | "gemini" | undefined,
+          noTextOverlay: options.textOverlay === false,
+          textStyle: options.textStyle as TextOverlayStyle | undefined,
+          review: options.review,
+          reviewAutoApply: options.reviewAutoApply,
+          onProgress: (msg: string) => { pipelineSpinner.text = msg; },
+        });
+        if (!result.success) {
+          pipelineSpinner.fail(chalk.red(result.error || "Script-to-Video failed"));
+          exitWithError(apiError(result.error || "Script-to-Video failed", true));
+        }
+        pipelineSpinner.succeed(chalk.green(`Generated ${result.scenes} scene(s) → ${result.projectPath}`));
+        outputResult({
+          success: true,
+          command: "pipeline script-to-video",
+          result: {
+            projectPath: result.projectPath,
+            outputDir: result.outputDir,
+            scenes: result.scenes,
+            totalDuration: result.totalDuration,
+            images: result.images?.length ?? 0,
+            videos: result.videos?.length ?? 0,
+            failedScenes: result.failedScenes ?? [],
+          },
+        });
+        return;
       }
 
       // Determine output directory for assets
@@ -1314,14 +1350,14 @@ aiCommand
         if (!genInfo) {
           exitWithError(usageError(`Invalid generator: ${generator}`, `Available: ${Object.keys(generatorKeyMap).join(", ")}`));
         }
-        // Fail fast: grok/veo are implemented in executeScriptToVideo() but
-        // not wired into this inline CLI path. Block before spending on
-        // storyboard/image/narration.
+        // executeRegenerateScene + this inline path only support kling/runway
+        // (grok/veo not yet wired into executeRegenerateScene). Fail fast before
+        // spending on image regeneration.
         const SUPPORTED_HERE = new Set(["kling", "runway"]);
         if (!SUPPORTED_HERE.has(generator)) {
           exitWithError(usageError(
-            `Video generator "${generator}" is not yet wired into this CLI path.`,
-            `Supported here: kling, runway. For grok or veo, use "vibe run" with a YAML pipeline (see examples/promo-video.yaml).`,
+            `regenerate-scene does not yet support "${generator}".`,
+            `Supported: kling, runway. For grok/veo, re-run the full pipeline with 'vibe pipeline script-to-video -g ${generator}'.`,
           ));
         }
         const key = await getApiKey(genInfo.envVar, genInfo.name);
