@@ -110,6 +110,39 @@ describe("GrokProvider", () => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
+    it("rounds float duration to integer (xAI rejects floats with 422)", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ request_id: "task-float", status: "pending" }),
+      });
+
+      await provider.generateVideo("test", {
+        prompt: "test",
+        duration: 3.44,
+        aspectRatio: "16:9",
+      });
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.duration).toBe(3);
+      expect(Number.isInteger(body.duration)).toBe(true);
+    });
+
+    it("clamps duration above 15 to 15 (with integer cast)", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ request_id: "task-clamp", status: "pending" }),
+      });
+
+      await provider.generateVideo("test", {
+        prompt: "test",
+        duration: 100.7,
+        aspectRatio: "16:9",
+      });
+
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+      expect(body.duration).toBe(15);
+    });
+
     it("should handle image-to-video with data URI", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,

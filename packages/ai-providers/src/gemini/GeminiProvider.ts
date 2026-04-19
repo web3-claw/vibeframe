@@ -231,9 +231,15 @@ export class GeminiProvider implements AIProvider {
         "1:1": "1:1",
       };
 
+      // Veo accepts discrete values {4, 6, 8}; snap to nearest to avoid float/out-of-range rejections.
+      const requestedDuration = typeof veoOpts.duration === "number" ? veoOpts.duration : 8;
+      const veoDuration = (
+        requestedDuration <= 5 ? 4 : requestedDuration <= 7 ? 6 : 8
+      ) as 4 | 6 | 8;
+
       const parameters: Record<string, unknown> = {
         aspectRatio: aspectRatioMap[veoOpts.aspectRatio || "16:9"] || "16:9",
-        durationSeconds: Math.max(4, Math.min(8, veoOpts.duration || 8)),
+        durationSeconds: veoDuration,
       };
 
       // Add Veo-specific parameters

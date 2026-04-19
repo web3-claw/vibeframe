@@ -288,7 +288,8 @@ export class GrokProvider implements AIProvider {
     }
 
     try {
-      const duration = Math.min(15, Math.max(1, options?.duration || 5));
+      // xAI API requires integer duration; floats fail with 422 deserialization error.
+      const duration = Math.round(Math.min(15, Math.max(1, options?.duration || 5)));
 
       const body: Record<string, unknown> = {
         model: DEFAULT_MODEL,
