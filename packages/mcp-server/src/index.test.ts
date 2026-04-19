@@ -207,4 +207,43 @@ describe("@vibeframe/mcp-server", () => {
       expect(result.content[0].text).toContain("Error");
     });
   });
+
+  describe("required args validation", () => {
+    // Regression for #44: project_create stringified undefined into "undefined.vibe.json".
+    it("rejects project_create with missing name (not 'undefined.vibe.json')", async () => {
+      const result = await handleToolCall("project_create", {});
+      const text = result.content[0].text;
+      expect(text).toContain("missing required");
+      expect(text).toContain("name");
+      expect(text).not.toContain("undefined.vibe.json");
+    });
+
+    it("reports all missing required args for multi-required tools", async () => {
+      const result = await handleToolCall("timeline_add_source", {});
+      const text = result.content[0].text;
+      expect(text).toContain("missing required");
+      expect(text).toContain("projectPath");
+      expect(text).toContain("mediaPath");
+    });
+
+    it("rejects null as a missing required arg (not empty string)", async () => {
+      const result = await handleToolCall("project_create", { name: null });
+      expect(result.content[0].text).toContain("missing required");
+    });
+
+    it("accepts a valid call with all required args present", async () => {
+      // Use a throwaway path that won't collide with anything
+      const tmpPath = `/tmp/vibeframe-validation-test-${Date.now()}.vibe.json`;
+      const result = await handleToolCall("project_create", {
+        name: "validation-test",
+        outputPath: tmpPath,
+      });
+      const text = result.content[0].text;
+      expect(text).not.toContain("missing required");
+      expect(text).toContain("validation-test");
+      // Cleanup
+      const { unlink } = await import("node:fs/promises");
+      try { await unlink(tmpPath); } catch { /* ignore */ }
+    });
+  });
 });

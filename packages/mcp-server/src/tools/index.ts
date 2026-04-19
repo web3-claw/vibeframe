@@ -39,6 +39,15 @@ for (const t of aiVideoTools) handlers[t.name] = handleAiVideoToolCall;
 for (const t of aiAudioTools) handlers[t.name] = handleAiAudioToolCall;
 for (const t of aiEditAdvancedTools) handlers[t.name] = handleAiEditAdvancedToolCall;
 
+// Pre-compute required args per tool from each inputSchema for O(1) dispatch-time validation.
+// Fixes the class of bugs where handlers stringify `undefined` into filenames / URLs / prompts
+// when a required arg is missing — neither MCP SDK nor our dispatcher was enforcing `required`.
+const requiredByTool: Record<string, string[]> = {};
+for (const t of tools) {
+  const req = (t.inputSchema as { required?: string[] }).required;
+  if (req && req.length > 0) requiredByTool[t.name] = req;
+}
+
 export async function handleToolCall(
   name: string,
   args: Record<string, unknown>
@@ -46,6 +55,22 @@ export async function handleToolCall(
   try {
     const handler = handlers[name];
     if (!handler) throw new Error(`Unknown tool: ${name}`);
+
+    const required = requiredByTool[name];
+    if (required) {
+      const missing = required.filter((k) => args[k] === undefined || args[k] === null);
+      if (missing.length > 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `${name} failed: missing required argument${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}`,
+            },
+          ],
+        };
+      }
+    }
+
     const result = await handler(name, args);
     return { content: [{ type: "text", text: result }] };
   } catch (error) {
