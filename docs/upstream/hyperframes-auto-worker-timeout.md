@@ -22,7 +22,7 @@ This suggests auto-worker detection is misconfiguring the capture pipeline for s
 |---|---|
 | `@hyperframes/producer` | `0.4.4` |
 | OS | macOS 26.3.1 (arm64) |
-| Node | v24.14.0 (also observed on v20) |
+| Node | v24.14.0 (reproduced locally); package `engines.node: ">=20"` |
 | Chrome | 147.0.7727.101 (system Chrome, not puppeteer headless shell) |
 
 ### Reproduction
