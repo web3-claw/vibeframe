@@ -34,6 +34,50 @@ describe("Hyperframes integration (skipped if Chrome missing)", () => {
     expect(typeof pre.ok).toBe("boolean");
   });
 
+  it("renders lottie-overlay fixture (image base + lottie overlay) to mp4 (requires Chrome)", async () => {
+    if (!chromeAvailable || process.env.CI) return;
+
+    const rawState = loadState("lottie-overlay.vibe.json");
+    const assetDir = resolve(FIXTURE_DIR, "assets");
+    if (!existsSync(assetDir)) mkdirSync(assetDir, { recursive: true });
+    const imgPath = resolve(assetDir, "frame-a.jpg");
+    const lottiePath = resolve(assetDir, "anim.lottie");
+
+    {
+      const { writeFileSync } = await import("node:fs");
+      const jpegBytes = Buffer.from(
+        "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAABgUE/8QAIBAAAgIBBAMAAAAAAAAAAAAAAQIDBAUREiExQf/EABQBAQAAAAAAAAAAAAAAAAAAAAD/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCyXSqvNxvuPwp0Kq3XFXLYX6lmNPJ1llqOxDjLEk5ORnk4z7AAAS//9k=",
+        "base64"
+      );
+      writeFileSync(imgPath, jpegBytes);
+    }
+
+    const state: typeof rawState = {
+      ...rawState,
+      sources: rawState.sources.map((s) =>
+        s.name === "frame-a.jpg" ? { ...s, url: imgPath } :
+        s.name === "anim.lottie" ? { ...s, url: lottiePath } :
+        s
+      ),
+    };
+
+    const outputPath = resolve(tmpdir(), `vibeframe-hf-lottie-${Date.now()}.mp4`);
+    const backend = createHyperframesBackend();
+
+    const result = await backend.render({
+      projectState: state,
+      outputPath,
+      fps: 30,
+      quality: "draft",
+      format: "mp4",
+    });
+
+    expect(result.success).toBe(true);
+    expect(existsSync(outputPath)).toBe(true);
+
+    try { rmSync(outputPath); } catch { /* ignore */ }
+  }, 90_000);
+
   it("renders simple-2clip fixture to a non-zero mp4 (requires Chrome)", async () => {
     if (!chromeAvailable || process.env.CI) return;
 
@@ -121,5 +165,35 @@ describe("buildTempProject", () => {
     expect(existsSync(resolve(proj.dir, "assets"))).toBe(true);
     await proj.cleanup();
     expect(existsSync(proj.dir)).toBe(false);
+  });
+
+  it("vendors dotlottie-wc runtime when state has a lottie source", async () => {
+    const assetDir = resolve(FIXTURE_DIR, "assets");
+    if (!existsSync(assetDir)) mkdirSync(assetDir, { recursive: true });
+    const lottiePath = resolve(assetDir, "anim.lottie");
+    if (!existsSync(lottiePath)) {
+      const { writeFileSync } = await import("node:fs");
+      writeFileSync(lottiePath, "dummy lottie bytes");
+    }
+
+    const state: TimelineState = {
+      ...loadState("simple-2clip.vibe.json"),
+      sources: [
+        {
+          id: "source-lottie",
+          name: "anim.lottie",
+          type: "lottie",
+          url: lottiePath,
+          duration: 3,
+        },
+      ],
+      clips: [],
+    };
+
+    const proj = await buildTempProject(state);
+    expect(existsSync(resolve(proj.dir, "vendor", "dotlottie-wc", "index.js"))).toBe(true);
+    expect(existsSync(resolve(proj.dir, "vendor", "dotlottie-player.wasm"))).toBe(true);
+    expect(existsSync(resolve(proj.dir, "assets", "anim.lottie"))).toBe(true);
+    await proj.cleanup();
   });
 });
