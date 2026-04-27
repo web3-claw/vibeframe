@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { ToolRegistry } from "./index.js";
 import { registerSceneTools, sceneToolDefinitions } from "./scene.js";
+import { manifest } from "../../tools/manifest/index.js";
+import { registerManifestIntoAgent } from "../../tools/adapters/agent.js";
 import type { AgentContext, ToolDefinition } from "../types.js";
 
 async function pathExists(p: string): Promise<boolean> {
@@ -21,6 +23,11 @@ function ctx(workingDirectory: string): AgentContext {
 let registry: ToolRegistry;
 beforeEach(() => {
   registry = new ToolRegistry();
+  // During the v0.65 migration, scene_styles is sourced from the manifest
+  // and the legacy `registerSceneTools` skips it (gated on MIGRATED).
+  // Registering both gives the same final set the production agent runtime
+  // sees in `registerAllTools`.
+  registerManifestIntoAgent(registry, manifest);
   registerSceneTools(registry);
 });
 
@@ -37,9 +44,13 @@ describe("scene agent tools — registration + schema", () => {
     ]);
   });
 
-  it("exports definitions matching the registered set (parity with sceneToolDefinitions)", () => {
+  it("exports definitions matching the registered scene set (parity with sceneToolDefinitions)", () => {
     const exported = sceneToolDefinitions.map((d) => d.name).sort();
-    const registered = registry.getDefinitions().map((t) => t.name).sort();
+    const registered = registry
+      .getDefinitions()
+      .map((t) => t.name)
+      .filter((n) => n.startsWith("scene_"))
+      .sort();
     expect(exported).toEqual(registered);
   });
 
