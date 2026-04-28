@@ -1,9 +1,0 @@
-name: scene-promo
-aspect: 16:9
-defaultSceneDuration: 5
-providers:
-  image: null
-  tts: null
-  transcribe: null
-budget:
-  maxUsd: 0
