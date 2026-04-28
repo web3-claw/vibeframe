@@ -1,249 +1,190 @@
 # VibeFrame
 
-**Ship videos, not clicks. The CLI is your agent's UI.**
+**A video CLI for agentic workflows.**
 
-A video CLI for the era when your AI coding agent ships the work. Works with **Claude Code**, **OpenAI Codex**, **Cursor**, **Aider**, **Gemini CLI**, **OpenCode** — any bash-capable AI agent. 100+ commands, 13 AI providers, 66 MCP tools, YAML pipelines.
+VibeFrame helps humans and AI coding agents create, edit, analyze, and render
+video from the terminal. It combines FFmpeg-style editing commands, AI media
+generation, storyboard-based scene composition, YAML pipelines, and an optional
+MCP server for hosts that prefer tool calls over shell commands.
 
-[![GitHub stars](https://img.shields.io/github/stars/vericontext/vibeframe)](https://github.com/vericontext/vibeframe/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/vericontext/vibeframe/actions/workflows/ci.yml/badge.svg)](https://github.com/vericontext/vibeframe/actions/workflows/ci.yml)
-[![Contributors](https://img.shields.io/github/contributors/vericontext/vibeframe)](https://github.com/vericontext/vibeframe/graphs/contributors)
+[![GitHub stars](https://img.shields.io/github/stars/vericontext/vibeframe)](https://github.com/vericontext/vibeframe/stargazers)
 
-> Every edit is a command. `vibe doctor` auto-detects your agent host; `vibe init` scaffolds the right project files. The CLI surface is identical across every host — your agent shells out, gets work done, ships the MP4.
-
----
-
-### Why a CLI?
-
-Because in 2026 your agent already lives in your terminal. Three signals that crystallized this year:
-
-- **10–32× cheaper than MCP per task** — 75-task study comparing CLI vs. MCP-tool-driven agents ([The New Stack](https://thenewstack.io/ai-coding-tools-in-2025-welcome-to-the-agentic-cli-era/))
-- **6 major repos launched Q1 2026** with the same premise — *"give existing software a structured CLI so AI agents can use it"* ([OSS Insight](https://ossinsight.io/blog/agent-native-cli-wave-2026))
-- **74% of developers** use AI coding tools today ([JetBrains AI Pulse, Jan 2026](https://blog.jetbrains.com/research/2026/04/which-ai-coding-tools-do-developers-actually-use-at-work/))
-
-Today's software was built for humans clicking buttons. VibeFrame is built for the era when your software's primary user is an AI agent.
-
----
+```bash
+vibe init my-video
+vibe build my-video
+vibe render my-video -o renders/final.mp4
+```
 
 ## Demo
 
-A cinematic 1920×1080 promo, end-to-end from a `STORYBOARD.md` + `DESIGN.md`
-through the v0.59 `compose-scenes-with-skills` pipeline. Three beats, GPT
-Image 2 backdrops, ElevenLabs narration + cinematic BGM, all rendered
-deterministically by Hyperframes' producer.
+This sample was rendered from a VibeFrame storyboard project. It uses local
+Kokoro narration, authored HTML scene composition, and a Seedance
+image-to-video clip mounted into the final timeline.
 
 <p align="center">
-  <video src="https://raw.githubusercontent.com/vericontext/vibeframe/main/assets/demos/cinematic-v060.mp4" controls width="800" muted></video>
+  <video src="https://raw.githubusercontent.com/vericontext/vibeframe/main/assets/demos/sample-demo-final.mp4" controls width="800" muted></video>
 </p>
 
-> Rendered from
-> [`examples/vibeframe-promo/`](examples/vibeframe-promo/) — the same project is
-> the smoke fixture for `compose-scenes-with-skills`. For a copy-pasteable
-> walkthrough you can follow live, see **[`DEMO.md`](DEMO.md)**.
+For the full copy-paste walkthrough, see [DEMO.md](DEMO.md).
 
-### Reproduce the surfaces locally
+## What It Does
 
-`assets/demos/` ships VHS tapes for every surface — run any with
-[`vhs`](https://github.com/charmbracelet/vhs):
+- **Edit existing video:** silence cut, captions, translation, fades, speed
+  ramps, reframing, noise reduction, upscaling, and more.
+- **Generate media:** images, videos, speech, music, sound effects, motion
+  graphics, storyboards, and thumbnails through pluggable AI providers.
+- **Build videos from storyboards:** author `STORYBOARD.md` and `DESIGN.md`,
+  then run `vibe build` and `vibe render`.
+- **Run YAML pipelines:** define reproducible multi-step workflows with
+  dry-runs, budgets, checkpoints, and step references.
+- **Work with AI agents:** every workflow is scriptable from shell, and an MCP
+  server is available for typed tool-call hosts.
 
-```bash
-brew install vhs
-vhs assets/demos/cli.tape              # Surface 1 — vibe CLI directly
-vhs assets/demos/agent.tape            # Surface 2 — vibe agent (built-in REPL, BYO LLM)
-vhs assets/demos/host-agent.tape       # Surface 3 — host agent driving vibe scene build
-vhs assets/demos/host-agent-i2v.tape   # Surface 4 — host agent t2i + i2v + narration
-```
+## Requirements
 
-> The Surface 3/4 tapes were recorded with Claude Code (it's the agent we use day-to-day), but the same `vibe` commands run identically when driven by Codex / Cursor / Aider / Gemini CLI / OpenCode — the host agent is just translating natural language into the same shell command. Re-record on your favourite host with `vhs <tape>` after exporting that host's API key.
+- Node.js 20+
+- FFmpeg
+- Chrome or Chromium for HTML scene rendering
+- API keys only for the providers you use
 
-> **New in v0.60:** `vibe scene build` is the one-shot driver — write a `STORYBOARD.md` with per-beat YAML cues (narration / backdrop / duration), and a single command dispatches TTS + GPT Image 2 + composes scene HTML via the `compose-scenes-with-skills` pipeline (v0.59) and renders to MP4. `vibe scene init --visual-style "Swiss Pulse"` (v0.58) still seeds the `DESIGN.md` hard-gate + 8 named visual identities. Hyperframes' `/hyperframes` skill (`npx skills add heygen-com/hyperframes`) is loaded as the LLM system prompt for composition craft.
+Local/free paths are available for many editing tasks and for Kokoro TTS. AI
+image/video generation requires provider keys such as `OPENAI_API_KEY`,
+`FAL_KEY`, `GOOGLE_API_KEY`, or others listed in [MODELS.md](MODELS.md).
 
-For the typed MCP route (Claude Desktop, Cursor, OpenCode, or Claude Code via `claude mcp add`), see [`packages/mcp-server/README.md`](packages/mcp-server/README.md).
-
-**Older long-form videos**: [CLI walkthrough](https://youtu.be/EJUUpPp2d_8) · [Host-agent walkthrough (recorded with Claude Code)](https://youtu.be/sdf930sZ7co)
-
----
-
-## Why VibeFrame?
-
-Traditional video editors are built for **clicking buttons**. VibeFrame is built for **AI-powered workflows** — a well-designed CLI that AI agents can compose, pipe, and script.
-
-| Traditional Editor | VibeFrame |
-|-------------------|----------|
-| Import → Drag → Trim → Export | `vibe edit silence-cut interview.mp4 -o clean.mp4` |
-| Manual scene detection | `vibe detect scenes video.mp4` |
-| Export for each platform | `vibe pipeline auto-shorts project.vibe.json` |
-| Click through menus | Natural language → CLI → done |
-
-### Built on Hyperframes
-
-VibeFrame is **not** a competitor to [Hyperframes](https://github.com/heygen-com/hyperframes) (Apache 2.0) — it builds on it. Hyperframes solves the hard rendering problem (Chrome BeginFrame deterministic capture, parity harness, native HDR pipeline, Studio editor) and VibeFrame uses it as a render backend (`vibe export --backend hyperframes` since v0.47, `vibe scene` produces Hyperframes-compatible HTML since v0.53). The two layers are complementary:
-
-- **Hyperframes** — HTML composition format · deterministic rendering · Studio editor · native HDR · local Kokoro TTS · local whisper-cpp transcribe · agent skill ecosystem (`hyperframes`, `gsap`, `hyperframes-cli`, `hyperframes-registry`, `website-to-hyperframes`)
-- **VibeFrame** — 13 AI generation providers (image/video/audio) · agent integrations (MCP, REPL) · traditional editing/analysis commands · multi-stage YAML pipelines
-
-VibeFrame's `compose-scenes-with-skills` action (v0.59+) loads Hyperframes' `hyperframes` skill content as the system prompt for Claude-driven scene HTML generation. We use the user's installed copy when present (`npx skills add heygen-com/hyperframes`); otherwise the bundle ships a vendored snapshot for offline / CI safety. Provenance and the full relationship are documented in [`CREDITS.md`](CREDITS.md). VibeFrame is not affiliated with HeyGen.
-
-See [`docs/comparison.md`](docs/comparison.md) for a measured side-by-side of `vibe scene render` vs `npx hyperframes render` on the same project — same h264 stream both directions, +33 KB for the AAC narration track. Reproducible with [`tests/comparison/render-bench.sh`](tests/comparison/render-bench.sh).
-
-### What VibeFrame adds on top
-
-| Layer | Hyperframes | VibeFrame |
-|---|---|---|
-| **AI generation** | — | OpenAI gpt-image-2 (image default since v0.56), fal.ai Seedance 2.0 (video default since v0.57), Veo, Kling, Runway, Grok, ElevenLabs, Replicate |
-| **Agent integrations** | — | MCP server (66 tools, `@vibeframe/mcp-server`) · `vibe agent` REPL (BYO LLM × 6) |
-| **Traditional editing** | — | `vibe edit` silence-cut · jump-cut · caption · grade · reframe · speed-ramp · fade · noise-reduce (100+ commands total) |
-| **AI analysis** | — | `vibe analyze` media/video/review/suggest (multimodal LLMs) |
-| **BUILD from text** | composition format only | `vibe scene build` (v0.60 one-shot driver) — STORYBOARD.md → MP4 |
-| **PROCESS existing video** | — | `vibe pipeline highlights` · `auto-shorts` · `animated-caption` |
-| **Video as Code** | composition is somewhat declarative | `vibe run pipeline.yaml` · `--dry-run` cost preview · `--resume` checkpoints · step references (`$step.output`) |
-| **Local Kokoro TTS** | ✅ Python `kokoro-onnx` | ✅ Node `kokoro-js` — same Kokoro-82M model, auto-fallback when no `ELEVENLABS_API_KEY` |
-| **Local Whisper transcribe** | ✅ whisper-cpp (offline) | OpenAI Whisper API (cloud, word-level) |
-| **Agent skills** | ✅ `npx skills add heygen-com/hyperframes` (5 skills via vercel-labs/skills) | ✅ universal `vibe walkthrough <topic>` (scene / pipeline) — same content as Claude Code's `/vibe-scene` and `/vibe-pipeline` slash commands, callable from any host. Project guidance in `AGENTS.md` (`vibe init`). |
-| **MCP server** | ❌ | ✅ 66 tools |
-| **Render** | ✅ native (BeginFrame, parity, HDR, Studio NLE) | uses Hyperframes backend or FFmpeg |
-| **License** | Apache 2.0 | MIT |
-| **OSS provider plugin** | — | `defineProvider({...})` registry — adding an AI provider is a single declaration; resolver / config / setup / doctor / `.env.example` all auto-derive (`pnpm scaffold:provider <name>` for the boilerplate) |
-
-The short version: **if you already write HTML compositions and want them rendered well, use Hyperframes directly. If you want AI to *write* those compositions for you, edit them traditionally, surface them to your AI coding agent via MCP or shell, or stitch a multi-stage AI pipeline — that's VibeFrame.**
-
-**Design Principles:** CLI-First — AI-Native — Provider Agnostic — MCP Compatible
-
----
-
-## Quick Start (CLI)
-
-**Prerequisites:** Node.js 20+, FFmpeg
-
-CLI-first. Every video edit is a command.
+## Install
 
 ```bash
-# Install
 curl -fsSL https://vibeframe.ai/install.sh | bash
-
-# Full install, including the web UI
-curl -fsSL https://vibeframe.ai/install.sh | bash -s -- --full
-
-# Remove silence from an interview
-vibe edit silence-cut interview.mp4 -o clean.mp4
-
-# Add captions with auto-transcription
-vibe edit caption video.mp4 -o captioned.mp4
-
-# Build a cinematic promo from a STORYBOARD (v0.60)
-vibe scene init my-promo --visual-style "Swiss Pulse" -d 12
-# (edit the generated STORYBOARD.md beats)
-vibe scene build my-promo
-
-# Export to MP4
-vibe export project.vibe.json -o output.mp4
+vibe doctor
 ```
 
-**Try without API keys** (FFmpeg only, free):
-
-```bash
-# Detect scene changes in a video
-vibe detect scenes video.mp4
-
-# Remove silence from an interview
-vibe edit silence-cut interview.mp4 -o clean.mp4
-
-# Add fade in/out effects
-vibe edit fade video.mp4 -o faded.mp4 --fade-in 1 --fade-out 1
-
-# Remove background noise
-vibe edit noise-reduce video.mp4 -o clean.mp4
-
-# Detect beats in audio
-vibe detect beats music.mp3
-```
-
-For development:
+For local development:
 
 ```bash
 git clone https://github.com/vericontext/vibeframe.git
 cd vibeframe
-pnpm install && pnpm build
-
-# Run only the web app
-pnpm -F @vibeframe/web dev
+pnpm install
+pnpm build
+pnpm vibe --help
 ```
 
-### Render backends
+## Quick Start
 
-By default, `vibe export` uses FFmpeg. Since v0.47.0, a **Hyperframes** backend is available (experimental) — renders VibeFrame timelines through a Chrome BeginFrame → FFmpeg pipeline, unlocking CSS animations. v0.50.0 adds **Lottie overlays**: add any `.lottie` source with `vibe timeline add-source project.vibe.json anim.lottie` (or `--type lottie` for `.json`) and render with `vibe export --backend hyperframes`.
+### Edit Existing Media
 
 ```bash
-# Default (FFmpeg)
-vibe export project.vibe.json -o output.mp4
+# Remove silence
+vibe edit silence-cut interview.mp4 -o clean.mp4
 
-# Hyperframes backend (experimental — requires Chrome)
-vibe export project.vibe.json -o output.mp4 --backend hyperframes
+# Add captions
+vibe edit caption video.mp4 -o captioned.mp4
 
-# Check Chrome detection
-vibe doctor
+# Detect scene changes
+vibe detect scenes video.mp4
+
+# Reduce background noise
+vibe edit noise-reduce noisy.mp4 -o clean.mp4
 ```
 
-Or in a YAML pipeline:
+### Generate Image And Video
+
+```bash
+vibe generate image \
+  "A cinematic product demo frame, clean terminal UI, blue highlights" \
+  -p openai \
+  -o frame.png
+
+vibe generate video \
+  "The interface animates into a polished product demo" \
+  -p seedance \
+  -i frame.png \
+  -d 5 \
+  -o motion.mp4
+```
+
+### Build A Storyboard Video
+
+```bash
+vibe init my-video --profile agent --visual-style "Swiss Pulse" -r 16:9 -d 18
+
+# Edit my-video/STORYBOARD.md and my-video/DESIGN.md
+vibe build my-video --dry-run
+vibe build my-video --tts kokoro
+vibe render my-video -o renders/final.mp4 --quality standard
+```
+
+Each storyboard beat can include YAML cues:
+
+````markdown
+## Beat hook — Open
 
 ```yaml
-render:
-  backend: hyperframes
-  fps: 30
-  quality: standard
+narration: "Start with a storyboard. VibeFrame turns each beat into a render plan."
+backdrop: "Clean developer terminal beside structured storyboard cues"
+duration: 5
 ```
+````
 
----
+## Video As YAML
 
-## Use with your AI agent
+Use `vibe run` when you want a reproducible multi-step workflow:
 
-VibeFrame is a bash CLI. Any AI coding agent that can shell out to a terminal can drive it — describe what you want in natural language, and the agent invokes the right `vibe` command.
+```yaml
+name: promo
+budget:
+  costUsd: 5
+steps:
+  - id: image
+    action: generate-image
+    prompt: "A cinematic developer-tool hero frame"
+    output: frame.png
 
-| You say | Agent runs |
-|---------|-----------|
-| "Remove silence from interview.mp4" | `vibe edit silence-cut interview.mp4 -o clean.mp4` |
-| "Extract 3 best moments from podcast.mp4" | `vibe pipeline highlights podcast.mp4 -c 3` |
-| "Add Korean subtitles to video.mp4" | `vibe edit caption video.mp4 -o captioned.mp4` |
-| "Build a 12-second cinematic promo" | `vibe scene init promo && $EDITOR promo/STORYBOARD.md && vibe scene build promo` |
-| "Remove background noise" | `vibe edit noise-reduce noisy.mp4 -o clean.mp4` |
-| "Make a 60-second highlight reel" | `vibe pipeline highlights long-video.mp4 -d 60` |
-
-The example above is host-agnostic — every command works identically across Claude Code, OpenAI Codex, Cursor, Aider, Gemini CLI, OpenCode, or any other agent that runs bash.
-
-### Agent host support
-
-`vibe doctor` auto-detects six host families today and `vibe init` scaffolds the right project guidance file for each. Anyone running another bash-capable agent still gets the universal `AGENTS.md` fallback.
-
-| Host | `vibe init` writes | Plan H skill layout (`vibe scene install-skill`) |
-|---|---|---|
-| **Claude Code** | `CLAUDE.md` (imports `@AGENTS.md`) + `AGENTS.md` | `.claude/skills/hyperframes/` (multi-file, Agent Skills standard) |
-| **OpenAI Codex** | `AGENTS.md` | universal `SKILL.md` (read via `AGENTS.md` ref) |
-| **Cursor** | `AGENTS.md` | `.cursor/rules/hyperframes.mdc` (auto-activates on `compositions/**/*.html`) |
-| **Aider** | `AGENTS.md` | universal `SKILL.md` |
-| **Gemini CLI** | `AGENTS.md` (its primary `GEMINI.md` is on the roadmap) | universal `SKILL.md` |
-| **OpenCode** | `AGENTS.md` | universal `SKILL.md` |
-| Any other bash agent | `AGENTS.md` (with `--agent all`) | universal `SKILL.md` |
-
-`vibe scene build --mode auto` auto-flips to the agentic compose path (no internal LLM call — host agent authors per-beat HTML directly) whenever any of the above hosts is present. Set `VIBE_BUILD_MODE=batch` to force the internal-LLM compose path instead.
-
-### Step-by-step authoring guides
-
-`vibe walkthrough` ships a built-in catalog of authoring guides — universal across every host, no slash menu required:
+  - id: video
+    action: generate-video
+    prompt: "Slow camera push-in, subtle interface motion"
+    image: $image.output
+    provider: seedance
+    duration: 5
+    output: motion.mp4
+```
 
 ```bash
-vibe walkthrough              # list available topics
-vibe walkthrough scene        # full scene-authoring guide (BUILD flow)
-vibe walkthrough pipeline     # full YAML-pipeline authoring guide (Video as Code)
-vibe walkthrough scene --json # structured shape for an agent host to consume
+vibe run promo.yaml --dry-run
+vibe run promo.yaml
+vibe run promo.yaml --resume
 ```
 
-Same content the `/vibe-scene` and `/vibe-pipeline` slash commands deliver in Claude Code — works identically when called from any other host. Claude Code users can keep the slash menu as a one-keystroke shortcut (install via `curl -fsSL https://raw.githubusercontent.com/vericontext/vibeframe/main/scripts/install-skills.sh | bash`); the underlying guide is the same.
+## Agent Workflows
 
----
+VibeFrame is designed to be easy for AI coding agents to drive because the CLI
+is the UI. Any agent that can run shell commands can use it:
 
-## MCP Integration (Claude Desktop / Cursor / OpenCode / Claude Code)
+```text
+"Remove silence from interview.mp4"
+-> vibe edit silence-cut interview.mp4 -o clean.mp4
 
-The CLI is the primary interface; MCP is the gateway for hosts that prefer typed JSON-RPC tool calls over shelling out. 66 MCP tools exposed via [`@vibeframe/mcp-server`](https://www.npmjs.com/package/@vibeframe/mcp-server). No clone needed — add to your config and restart:
+"Build a 20-second product video from this storyboard"
+-> vibe init, edit STORYBOARD.md, vibe build, vibe render
+```
+
+`vibe init` creates project guidance files for common hosts, including Claude
+Code, Codex, Cursor, Aider, Gemini CLI, OpenCode, and a universal `AGENTS.md`
+fallback.
+
+Built-in walkthroughs are available from the CLI:
+
+```bash
+vibe walkthrough
+vibe walkthrough scene
+vibe walkthrough pipeline
+```
+
+## MCP Server
+
+The CLI is the primary interface. For hosts that prefer MCP, VibeFrame also
+ships `@vibeframe/mcp-server`.
 
 ```json
 {
@@ -256,282 +197,99 @@ The CLI is the primary interface; MCP is the gateway for hosts that prefer typed
 }
 ```
 
-Config file locations:
-- **Claude Desktop (macOS):** `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Claude Desktop (Windows):** `%APPDATA%\Claude\claude_desktop_config.json`
-- **Cursor:** `.cursor/mcp.json` in your workspace
-- **OpenCode:** `.opencode/mcp.json` in your workspace
-- **Claude Code:** add via `claude mcp add @vibeframe/mcp-server -- npx -y @vibeframe/mcp-server` (Claude Code has both shell and MCP routes — pick whichever fits)
+See [packages/mcp-server/README.md](packages/mcp-server/README.md) for tool,
+resource, and prompt details.
 
-See [packages/mcp-server/README.md](packages/mcp-server/README.md) for full tool, resource, and prompt reference.
+## Providers
 
----
+VibeFrame routes to multiple providers for LLMs, image generation, video
+generation, TTS, transcription, and analysis. Common environment variables:
 
-## Video as Code
-
-Define reproducible video workflows in YAML. Each step maps to a CLI command.
-
-```yaml
-# promo.yaml
-name: promo-video
-steps:
-  - id: backdrop
-    action: generate-image
-    prompt: "modern tech studio"
-    output: backdrop.png
-  - id: narration
-    action: generate-tts
-    text: "Introducing the future of video editing."
-    output: voice.mp3
-  - id: video
-    action: generate-video
-    image: $backdrop.output     # reference previous step
-    prompt: "camera push in"
-    output: scene.mp4
+```text
+OPENAI_API_KEY
+ANTHROPIC_API_KEY
+GOOGLE_API_KEY
+FAL_KEY
+ELEVENLABS_API_KEY
+RUNWAY_API_SECRET
+KLING_API_KEY
+XAI_API_KEY
+REPLICATE_API_TOKEN
+IMGBB_API_KEY
 ```
+
+Use:
 
 ```bash
-vibe run promo.yaml --dry-run     # preview plan + cost estimate
-vibe run promo.yaml               # execute pipeline
-vibe run promo.yaml --resume      # retry from last checkpoint
+vibe setup --show
+vibe doctor
 ```
 
-See [`examples/README.md`](examples/README.md) for the catalog — three runnable YAML pipelines (offline / AI promo / budget-capped) plus a bilingual `scene-promo/` project.
+For model and provider details, see [MODELS.md](MODELS.md).
 
----
+## Relationship To Hyperframes
 
-## AI Pipelines (PROCESS existing video)
+VibeFrame uses [Hyperframes](https://github.com/heygen-com/hyperframes) as an
+HTML scene rendering backend. Hyperframes provides deterministic browser-based
+capture and composition primitives. VibeFrame adds CLI workflows, provider
+routing, YAML orchestration, agent guidance, media generation, and traditional
+editing commands around that rendering layer.
 
-`vibe pipeline` takes a finished video and transforms it. For BUILD-from-text
-flows, use `vibe scene build` (see Scene Authoring below).
+VibeFrame is not affiliated with HeyGen. See [CREDITS.md](CREDITS.md) for
+dependency and provenance notes.
+
+## Repository Layout
+
+```text
+packages/cli/            CLI and agent mode
+packages/core/           Timeline engine and shared core types
+packages/ai-providers/   Provider registry and implementations
+packages/mcp-server/     MCP server package
+packages/ui/             Shared React UI
+apps/web/                Next.js landing/demo app
+docs/                    Design notes, cookbook, comparisons
+```
+
+## Useful Docs
+
+- [DEMO.md](DEMO.md): copy-paste demo flow
+- [docs/cookbook.md](docs/cookbook.md): practical recipes
+- [docs/video-project-concepts.md](docs/video-project-concepts.md): project model
+- [MODELS.md](MODELS.md): provider/model reference
+- [ROADMAP.md](ROADMAP.md): roadmap
+
+## Development
 
 ```bash
-vibe pipeline highlights interview.mp4 -d 90 --criteria emotional
-vibe pipeline auto-shorts podcast.mp4
-vibe pipeline animated-caption video.mp4 -s bounce -o captioned.mp4
+pnpm install
+pnpm build
+pnpm test
+pnpm lint
 ```
 
-> [!NOTE]
-> **`pipeline script-to-video` was removed in v0.63** in favour of `vibe scene build` — the skill-driven flow is cheaper, idempotent, and per-beat editable. `pipeline regenerate-scene` is preserved for re-rendering individual scenes against an existing storyboard.{yaml,json}.
-
----
-
-## Scene Authoring (HTML, not MP4)
-
-Since v0.53.0, `vibe scene` produces **editable per-scene HTML** instead of
-opaque MP4s. Each scene is a self-contained HTML file with scoped CSS and a
-paused GSAP timeline — text tweaks don't require regenerating video.
+Useful local commands:
 
 ```bash
-vibe scene init my-promo -r 16:9 -d 30
-vibe scene add intro --style announcement --headline "Ship videos, not clicks"
-vibe scene add core  --style explainer --kicker "VIDEO AS CODE" \
-                     --headline "Author scenes, not timelines"
-vibe scene lint                        # in-process Hyperframes linter
-vibe scene render -o promo.mp4         # requires Chrome
+pnpm vibe --help
+pnpm -F @vibeframe/cli test
+pnpm -F @vibeframe/web dev
 ```
-
-Scene projects are bilingual — they work with both `vibe` and
-[`npx hyperframes`](https://github.com/heygen-com/hyperframes).
-
-### One-shot build (v0.60)
-
-When the project has a `STORYBOARD.md` with per-beat YAML cues, a single
-command dispatches all primitives + composes + renders:
-
-```bash
-vibe scene init my-promo --visual-style "Swiss Pulse" -d 12
-# edit the generated STORYBOARD.md beats
-vibe scene build my-promo                 # storyboard → narration + backdrops + MP4
-vibe scene build --skip-render            # compose only (review HTML before rendering)
-vibe scene build --tts kokoro --voice af_heart   # override frontmatter providers
-```
-
-Per-beat cues live as a fenced \`\`\`yaml block at the start of each beat body:
-
-```markdown
-## Beat hook — Hook
-
-\`\`\`yaml
-narration: "Type a YAML."
-backdrop: "Abstract minimalist tech aesthetic, electric blue glow"
-duration: 3
-\`\`\`
-```
-
-Idempotent: existing assets are reused, `--force` overrides. See
-[`examples/vibeframe-promo/`](examples/vibeframe-promo/) for the
-end-to-end fixture (the same project that produced the cinematic hero
-above).
-
-### Free local TTS + word-level caption sync (v0.54)
-
-`vibe scene add --narration "..."` now works with **no API key**. Without
-`ELEVENLABS_API_KEY`, VibeFrame falls back to **Kokoro-82M** (Apache 2.0)
-running locally — first call downloads ~330MB to
-`~/.cache/huggingface/hub`, then renders are free.
-
-```bash
-# Free local TTS (Kokoro)
-vibe scene add hook --narration "Ship videos, not clicks." --tts kokoro
-
-# Or use any external wav (npx hyperframes tts, macOS say, voice memo)
-vibe scene add hook --narration-file ./my-voice.wav
-```
-
-Whenever audio is present and `OPENAI_API_KEY` is set, narration is
-auto-transcribed (Whisper word-level) into `assets/transcript-<id>.json`
-and threaded into the scene HTML. Captions then **fade in word-by-word at
-the exact audio timestamp** — no more "scene says X but caption shows Y"
-drift. Supported on `simple`, `explainer`, and `kinetic-type` presets.
-
-In v0.55, `vibe scene render` adds a post-producer **ffmpeg audio mux
-pass** so the rendered MP4 actually carries the narration track instead
-of being silent. `-c:v copy` keeps it cheap (no video re-encode); the
-render JSON reports `audioCount` + `audioMuxApplied` for agent
-introspection.
-
-Run [`examples/scene-promo/`](examples/scene-promo/) for an end-to-end
-walkthrough. See `/vibe-scene` for the agent skill, including the lint
-feedback loop pattern (`--json --fix`, ≤3 retries, template fallback).
-
----
-
-## CLI Reference
-
-Every command supports `--help`, `--json`, `--stdin`, and `--describe`; most execution commands also support `--dry-run`. Run `vibe --help` for a full list, or `vibe schema --list` for the 81-command machine-readable index.
-
-| Group | Commands | Example |
-|-------|----------|---------|
-| **`vibe generate`** | `image`, `video`, `speech`, `sound-effect`, `music`, `motion`, `storyboard`, `thumbnail`, `background` | `vibe generate image "prompt" -o img.png` |
-| **`vibe edit`** | `silence-cut`, `jump-cut`, `caption`, `translate-srt`, `grade`, `reframe`, `speed-ramp`, `text-overlay`, `fade`, `noise-reduce`, `image`, `fill-gaps`, `interpolate`, `upscale-video` | `vibe edit caption video.mp4 -o out.mp4` |
-| **`vibe analyze`** | `media`, `video`, `review`, `suggest` | `vibe analyze media video.mp4 "summarize"` |
-| **`vibe audio`** | `transcribe` (Whisper), `voices`, `isolate`, `voice-clone`, `dub`, `duck` *(TTS lives at `vibe generate speech`)* | `vibe audio transcribe audio.mp3` |
-| **`vibe pipeline`** | `highlights`, `auto-shorts`, `animated-caption`, `regenerate-scene` | `vibe pipeline highlights long.mp4 -d 60` |
-| **`vibe scene`** | `init`, `add`, `lint`, `render`, `build`, `styles`, `install-skill`, `compose-prompts` | `vibe scene build my-promo` |
-| **`vibe project`** | `create`, `info`, `set` | `vibe project create "name"` |
-| **`vibe timeline`** | `add-source`, `add-clip`, `add-track`, `add-effect`, `split`, `trim`, `move`, `duplicate`, `delete`, `list` | `vibe timeline add-source project file` |
-| **`vibe batch`** | `import`, `concat`, `apply-effect`, `remove-clips`, `info` | `vibe batch import project dir/` |
-| **`vibe detect`** | `scenes`, `silence`, `beats` | `vibe detect scenes video.mp4` |
-| **`vibe export`** | _(top-level)_ | `vibe export project.vibe.json -o out.mp4` (supports mp4, webm, gif) |
-| **`vibe run`** | _(top-level — Video as Code)_ | `vibe run pipeline.yaml` |
-| **Setup & utility** | `setup`, `init`, `doctor`, `agent`, `walkthrough`, `demo`, `schema`, `context` | `vibe doctor` · `vibe init my-project` |
-
-> [!NOTE]
-> Removed in recent releases: `pipeline script-to-video` (v0.63 → use `vibe scene build`), `vibe ai *` orchestrator (v0.69), and the `dalle` alias (v0.69 — use `vibe generate image -p openai`).
-
-See [Cookbook](docs/cookbook.md) for 10 practical recipes combining multiple commands.
-
----
-
-## Agent Mode (Standalone)
-
-For environments with no AI coding agent set up — a built-in interactive session:
-
-```bash
-vibe agent                     # Start (default: OpenAI)
-vibe agent -p claude           # Use Claude
-vibe agent -p ollama           # Free, local, no API key
-```
-
-Best used for onboarding and quick experiments. For production workflows, use CLI commands directly or via your host agent / MCP.
-
----
-
-## AI Providers
-
-> See [MODELS.md](MODELS.md) for detailed model information (SSOT).
-
-| Category | Providers | Default |
-|----------|-----------|---------|
-| **Agent LLM** | OpenAI, Claude, Gemini, xAI, OpenRouter, Ollama | GPT-5-mini |
-| **Image** | OpenAI, Gemini, xAI Grok | OpenAI gpt-image-2 (since v0.56 — Artificial Analysis ELO #1) · Gemini fallback when no `OPENAI_API_KEY` |
-| **Video** | fal.ai (Seedance 2.0), xAI Grok, Veo, Kling, Runway | fal.ai Seedance 2.0 (since v0.57 — Artificial Analysis ELO #2 on both text-to-video and image-to-video) · Grok fallback when no `FAL_KEY` |
-| **TTS** | ElevenLabs, Kokoro (local) | ElevenLabs · Kokoro local fallback when no `ELEVENLABS_API_KEY` (since v0.54) |
-| **Transcription** | Whisper | OpenAI Whisper (`OPENAI_API_KEY`) |
-
-**Provider API Keys:** `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `ELEVENLABS_API_KEY`, `RUNWAY_API_SECRET`, `KLING_API_KEY`, `XAI_API_KEY`, `FAL_KEY`, `REPLICATE_API_TOKEN`, `IMGBB_API_KEY`
-
----
-
-## Project Structure
-
-```
-vibeframe/
-├── packages/
-│   ├── cli/               # CLI + Agent mode
-│   ├── core/              # Timeline engine (Zustand + Immer + FFmpeg)
-│   ├── ai-providers/      # Pluggable AI providers
-│   ├── mcp-server/        # MCP server (npm: @vibeframe/mcp-server)
-│   └── ui/                # Shared React components
-├── apps/web/              # Next.js landing & preview UI
-├── MODELS.md              # AI models reference (SSOT)
-└── ROADMAP.md             # Development roadmap
-```
-
----
-
-## What's coming
-
-### Now — v0.72.0 (April 2026)
-- 100+ CLI commands across `edit` / `generate` / `analyze` / `audio` / `scene` / `pipeline`
-- 13 AI providers · 66 MCP tools · 6 agent host scaffolds (Claude Code, Codex, Cursor, Aider, Gemini CLI, OpenCode)
-- Hyperframes-backed scene composition · Video as Code (YAML pipelines, `--resume`, budget gates)
-- `vibe scene build` one-shot STORYBOARD.md → MP4 · standardized `--json` envelope
-
-### Next (open issues, ordered roughly)
-- **[#202](https://github.com/vericontext/vibeframe/issues/202)** — Multi-provider T2I in `scene build` (Gemini + Grok routing)
-- **[#204](https://github.com/vericontext/vibeframe/issues/204)** — Word-sync animations: thread per-word transcript timings into the compose prompt
-- **[#203](https://github.com/vericontext/vibeframe/issues/203)** — Motion-video backdrops (Runway / Kling / Veo / fal.ai) replacing Ken-Burns
-- **[#206](https://github.com/vericontext/vibeframe/issues/206)** — Drop the Hyperframes `workers: 1` workaround once upstream ships
-
-### Later
-- **[#205](https://github.com/vericontext/vibeframe/issues/205)** — Local subject tracking (MediaPipe / YOLO / SAM-2) for `vibe edit reframe --track` *(`help wanted`)*
-- Server-side rendering — beyond browser memory limits, chunked AI-video upload/download
-- CRDT-based local-first collaboration
-
-[Full ROADMAP →](ROADMAP.md) · [All open issues →](https://github.com/vericontext/vibeframe/issues)
-
----
 
 ## Contributing
 
-```bash
-pnpm build     # Build all packages
-pnpm test      # Run all tests
-pnpm lint      # Lint code
-```
-
-Contributions welcome — AI provider integrations, CLI improvements, docs, bug fixes & tests. See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-**Quickest contribution path** (post-v0.69 scaffold tooling):
+Contributions are welcome: bug fixes, provider integrations, CLI UX
+improvements, docs, and tests.
 
 ```bash
-# Add a new AI provider — single declaration, 5 derived consumers auto-update
+# Scaffold a provider declaration
 pnpm scaffold:provider <name>
 
-# Add a new CLI subcommand under generate or edit
+# Scaffold a command under generate or edit
 pnpm scaffold:command <generate|edit> <name>
 ```
 
-Both scaffolds generate the file skeleton + wire the registration. Fill in the `defineProvider({...})` metadata or `executeXxx` body, run `pnpm -r exec tsc --noEmit && pnpm -F @vibeframe/cli test`, and submit.
-
-The walkthroughs in [CONTRIBUTING.md](CONTRIBUTING.md) cover both flows step by step (≤5 min each).
-
-### Contributors
-
-<a href="https://github.com/vericontext/vibeframe/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=vericontext/vibeframe" />
-</a>
-
----
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide.
 
 ## License
 
-MIT - see [LICENSE](LICENSE)
-
----
-
-<p align="center">
-  <b>Built for the AI age. Ship videos, not clicks.</b>
-</p>
+MIT. See [LICENSE](LICENSE).

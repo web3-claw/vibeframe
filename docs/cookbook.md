@@ -70,15 +70,15 @@ Create a complete video from a text script.
 
 ```bash
 # Step 1: Scaffold project + author STORYBOARD.md (per-beat YAML cues)
-vibe scene init startup-video --visual-style "Swiss Pulse" -d 60 -r 16:9
+vibe init startup-video --visual-style "Swiss Pulse" -d 60 -r 16:9
 # (edit STORYBOARD.md with beats describing the morning routine)
 
 # Step 2: Build end-to-end (TTS + backdrops + compose + render)
-vibe scene build startup-video
+vibe build startup-video
 
 # Step 3: To re-render a single scene, edit its composition HTML directly
-#         and re-run scene render — no need to regenerate the whole project.
-vibe scene render startup-video
+#         and re-run render — no need to regenerate the whole project.
+vibe render startup-video
 
 # Step 3: Add background music
 vibe generate music "upbeat lo-fi morning vibes" -d 60 -o bgm.mp3

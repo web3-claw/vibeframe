@@ -1,20 +1,18 @@
 # VibeFrame vs Hyperframes — what each ships
 
-A scene project authored once, rendered through both pipelines. Reproducible
-from `examples/scene-promo` plus one extra narrated scene. The point is *not*
-that one is better — VibeFrame uses the Hyperframes producer for the actual
-frame capture. The point is what each layer adds on top.
+A scene project authored once, rendered through both pipelines. The point is
+*not* that one is better — VibeFrame uses the Hyperframes producer for the
+actual frame capture. The point is what each layer adds on top.
 
 ## Setup
 
-Same project (3 template scenes from `examples/scene-promo` + one narrated
-scene authored via `vibe scene add … --tts kokoro`). Output directory is
-identical for both; we just point each renderer at it.
+Create one small scene project, duplicate it, then point each renderer at a
+copy.
 
 ```bash
 # Identical project, two renderers
-cp -r examples/scene-promo project-A
-cp -r examples/scene-promo project-B
+vibe init project-A --profile full --visual-style "Swiss Pulse" -r 16:9 -d 18
+cp -r project-A project-B
 for p in project-A project-B; do
   vibe scene add narrated --project "$p" --style explainer \
     --kicker "WHY VIBEFRAME" --headline "Edit text, not pixels." \
@@ -98,6 +96,6 @@ VibeFrame layers on top of that with the agent / MCP / pipeline surface.
 
 The script that produced these numbers lives in
 [`tests/comparison/render-bench.sh`](../tests/comparison/render-bench.sh)
-(self-contained — clones `examples/scene-promo`, runs both renderers,
-prints the table above). Numbers above were measured on macOS 14.x,
-Apple Silicon, Chrome 138, ffmpeg 8.1.
+(self-contained — creates a temporary scene project, runs both renderers, prints
+the table above). Numbers above were measured on macOS 14.x, Apple Silicon,
+Chrome 138, ffmpeg 8.1.
