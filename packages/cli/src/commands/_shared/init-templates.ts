@@ -67,9 +67,9 @@ VibeFrame splits cleanly into two flows. Routing the user's request
 correctly is the most important judgement call you'll make.
 
 **BUILD — create new video from text intent.**
-Use \`vibe scene build\` with a STORYBOARD.md + DESIGN.md. The
+Use \`vibe build\` with a STORYBOARD.md + DESIGN.md. The
 skills-driven pipeline (v0.60+) dispatches narration TTS + backdrop
-image-gen per beat, composes scene HTML via the Hyperframes skill
+image-gen per beat, composes scene HTML via the bundled composition rules
 bundle, then renders to MP4. Idempotent re-runs reuse cached assets.
 
 **PROCESS — transform existing video / audio.**
@@ -86,8 +86,8 @@ PROCESS.
 
 | Task | Command |
 |---|---|
-| One-shot storyboard → MP4 | \`vibe scene build [project-dir]\` |
-| Render an existing scene project | \`vibe scene render -o out.mp4\` |
+| One-shot storyboard → video | \`vibe build [project-dir]\` |
+| Render an existing scene project | \`vibe render [project-dir] -o out.mp4\` |
 | Lint scene HTML | \`vibe scene lint --json\` |
 | Generate a single image | \`vibe generate image "prompt" -o img.png --quality hd\` |
 | Generate a single video | \`vibe generate video "prompt" -i image.png -o clip.mp4\` |
@@ -120,7 +120,7 @@ PROCESS.
 | **Free** | \`detect *\`, \`edit silence-cut/fade/noise-reduce\`, \`schema\`, \`project\`, \`timeline\` | $0 |
 | **Low** | \`analyze *\`, \`audio transcribe\`, \`generate image\` | $0.01–$0.10 |
 | **High** | \`generate video\`, \`edit image\` | $1–$5 |
-| **Very High** | \`pipeline *\` (highlights, auto-shorts, regenerate-scene), \`scene build\` | $5–$50+ |
+| **Very High** | \`pipeline *\` (highlights, auto-shorts, regenerate-scene), \`build\` | $5–$50+ |
 
 ## Agent invariants
 
@@ -141,9 +141,9 @@ API keys live in \`.env\` (gitignored). Copy \`.env.example\` to start. Run
 \`vibe doctor\` to see which keys are currently detected and which providers
 they unlock.
 
-### Hyperframes skill (scene HTML rules)
+### Composition rules (scene HTML)
 
-\`vibe scene init\` installs the Hyperframes skill into your project. The
+\`vibe init\` installs local composition rules into your project. The
 universal copy lives at \`SKILL.md\` (with \`references/*.md\`), and
 host-specific copies are placed where each agent expects them
 (\`.claude/skills/hyperframes/\` for Claude Code, \`.cursor/rules/hyperframes.mdc\`
@@ -158,7 +158,7 @@ To retro-install on a project scaffolded before this command existed, run
 
 ### Scene composer (batch / non-agent fallback)
 
-When you don't want to author HTML yourself, \`vibe scene build\` runs an
+When you don't want to author HTML yourself, \`vibe build --mode batch\` runs an
 LLM internally with the same skill bundle. It auto-picks a provider based
 on available keys (\`claude > gemini > openai\`) — pass \`--composer <name>\`
 to force one:
@@ -203,7 +203,7 @@ pack is available as slash commands (consolidated to 2 in v0.62 — the
 overview content moved into AGENTS.md above):
 
 - \`/vibe-pipeline\` — YAML pipeline authoring helper (Video as Code)
-- \`/vibe-scene\` — per-scene HTML authoring + \`vibe scene build\`
+- \`/vibe-scene\` — per-scene HTML authoring + \`vibe build\`
 
 To install / update them later:
 
@@ -301,7 +301,7 @@ renders/
  */
 export function renderProjectYaml(opts: { name: string }): string {
   return `# VibeFrame project config. Used by \`vibe scene render\` to name
-# outputs and by \`vibe scene build\` for default providers / budget.
+# outputs and by \`vibe build\` for default providers / budget.
 name: ${opts.name}
 aspect: "16:9"
 defaults:

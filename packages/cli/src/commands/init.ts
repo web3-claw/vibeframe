@@ -29,6 +29,14 @@ import { basename, dirname, resolve } from "node:path";
 
 import { detectedAgentHosts, type AgentHostId } from "../utils/agent-host-detect.js";
 import {
+  describeSceneScaffold,
+  isSceneScaffoldProfile,
+  scaffoldSceneProject,
+  type SceneAspect,
+} from "./_shared/scene-project.js";
+import { getVisualStyle, visualStyleNames } from "./_shared/visual-styles.js";
+import { deriveInstallHosts, installHyperframesSkill } from "./_shared/install-skill.js";
+import {
   AGENTS_MD,
   CLAUDE_MD,
   GEMINI_MD,
@@ -39,6 +47,7 @@ import {
 import { exitWithError, isJsonMode, outputSuccess, usageError } from "./output.js";
 
 type AgentSelection = AgentHostId | "all" | "auto";
+type InitType = "agent" | "scene";
 
 const VALID_AGENTS: readonly AgentSelection[] = ["claude-code", "codex", "cursor", "aider", "gemini-cli", "opencode", "all", "auto"];
 
@@ -49,13 +58,28 @@ interface InitFileAction {
 }
 
 export const initCommand = new Command("init")
-  .description("Scaffold project-scope agent files (AGENTS.md / CLAUDE.md / .env.example / .gitignore)")
+  .description("Scaffold a VibeFrame project (video scene project or project-scope agent files)")
   .argument("[project-dir]", "Project directory (defaults to cwd)", ".")
+  .option("--type <type>", "Project type: scene (video project) | agent (agent files only)", "scene")
+  .option("--profile <profile>", "Scene profile: minimal (storyboard/design only), agent (recommended), full (render scaffold upfront)", "agent")
+  .option("-r, --ratio <ratio>", "Scene aspect ratio: 16:9, 9:16, 1:1, 4:5", "16:9")
+  .option("-d, --duration <sec>", "Default scene/root duration in seconds", "10")
+  .option("--visual-style <name>", "Seed scene DESIGN.md from a named style")
   .option("--agent <id>", `Agent target: ${VALID_AGENTS.join(" | ")}`, "auto")
   .option("--force", "Overwrite existing files instead of skipping")
   .option("--dry-run", "Print the file list without writing anything")
   .action(async (projectDirArg: string, options) => {
     const startedAt = Date.now();
+    const initType = String(options.type ?? "scene") as InitType;
+    if (initType !== "scene" && initType !== "agent") {
+      exitWithError(usageError(`Invalid --type: ${initType}`, "Must be one of: scene, agent"));
+    }
+
+    if (initType === "scene") {
+      await runSceneInit(projectDirArg, options, startedAt);
+      return;
+    }
+
     const agent = options.agent as AgentSelection;
     if (!VALID_AGENTS.includes(agent)) {
       exitWithError(usageError(`Invalid --agent: ${agent}`, `Must be one of: ${VALID_AGENTS.join(", ")}`));
@@ -190,6 +214,175 @@ export const initCommand = new Command("init")
   });
 
 // ── Helpers ──────────────────────────────────────────────────────────────
+
+const VALID_SCENE_ASPECTS: SceneAspect[] = ["16:9", "9:16", "1:1", "4:5"];
+
+async function runSceneInit(projectDirArg: string, options: Record<string, unknown>, startedAt: number): Promise<void> {
+  const profile = String(options.profile ?? "agent");
+  if (!isSceneScaffoldProfile(profile)) {
+    exitWithError(usageError(`Invalid --profile: ${profile}`, "Must be one of: minimal, agent, full"));
+  }
+
+  const aspect = String(options.ratio ?? "16:9") as SceneAspect;
+  if (!VALID_SCENE_ASPECTS.includes(aspect)) {
+    exitWithError(usageError(`Invalid --ratio: ${aspect}`, `Must be one of: ${VALID_SCENE_ASPECTS.join(", ")}`));
+  }
+
+  const duration = Number.parseFloat(String(options.duration ?? "10"));
+  if (!Number.isFinite(duration) || duration <= 0 || duration > 3600) {
+    exitWithError(usageError(`Invalid --duration: ${String(options.duration)}`, "Duration must be a positive number of seconds (≤3600)"));
+  }
+
+  const visualStyle = options.visualStyle
+    ? getVisualStyle(String(options.visualStyle))
+    : undefined;
+  if (options.visualStyle && !visualStyle) {
+    exitWithError(usageError(`Unknown visual style: ${String(options.visualStyle)}`, `Valid: ${visualStyleNames()}. Browse with \`vibe scene styles\`.`));
+  }
+
+  const projectDir = resolve(projectDirArg);
+  const projectName = basename(projectDir);
+  const groups = describeSceneScaffold({ dir: projectDir, profile });
+
+  if (options.dryRun) {
+    if (!isJsonMode()) {
+      printSceneInitPlan({
+        projectDir,
+        profile,
+        aspect,
+        duration,
+        visualStyleName: visualStyle?.name ?? null,
+        groups,
+        dryRun: true,
+      });
+      return;
+    }
+    outputSuccess({
+      command: "init",
+      startedAt,
+      dryRun: true,
+      data: {
+        type: "scene",
+        projectDir,
+        name: projectName,
+        profile,
+        aspect,
+        duration,
+        visualStyle: visualStyle?.name ?? null,
+        groups,
+      },
+    });
+    return;
+  }
+
+  const result = await scaffoldSceneProject({
+    dir: projectDir,
+    name: projectName,
+    aspect,
+    duration,
+    visualStyle,
+    profile,
+  });
+  const detectedIds = detectedAgentHosts().map((h) => h.id);
+  const skillResult = profile === "agent" || profile === "full"
+    ? await installHyperframesSkill({
+        projectDir,
+        hosts: deriveInstallHosts(detectedIds),
+      })
+    : { success: true, files: [], bundleVersion: "not-installed" };
+
+  if (isJsonMode()) {
+    outputSuccess({
+      command: "init",
+      startedAt,
+      data: {
+        type: "scene",
+        projectDir,
+        name: projectName,
+        profile,
+        aspect,
+        duration,
+        visualStyle: visualStyle?.name ?? null,
+        created: result.created,
+        merged: result.merged,
+        skipped: result.skipped,
+        groups: result.groups,
+        skillFiles: skillResult.files,
+        skillBundleVersion: skillResult.bundleVersion,
+      },
+    });
+    return;
+  }
+
+  console.log();
+  console.log(chalk.bold.magenta("VibeFrame Init") + chalk.dim(" — video project ready"));
+  console.log(chalk.dim("─".repeat(60)));
+  console.log(`${chalk.dim("Project")}  ${projectDir}`);
+  console.log(`${chalk.dim("Profile")}  ${profile} ${chalk.dim(sceneProfileSummary(profile))}`);
+  console.log();
+  console.log(chalk.bold("Edit first"));
+  console.log(`  ${chalk.cyan("STORYBOARD.md")}  ${chalk.dim("beats: narration, backdrop, minimum duration")}`);
+  console.log(`  ${chalk.cyan("DESIGN.md")}      ${chalk.dim("palette, typography, motion rules")}`);
+  console.log();
+  console.log(chalk.bold("Then run"));
+  console.log(`  ${chalk.cyan("vibe build")}   ${chalk.dim("build storyboard assets/compositions")}`);
+  console.log(`  ${chalk.cyan("vibe render")}  ${chalk.dim("render final MP4")}`);
+  console.log();
+  console.log(chalk.bold("Files"));
+  for (const p of result.created) console.log(chalk.green(`    + ${p.replace(projectDir + "/", "")}`));
+  for (const p of result.merged) console.log(chalk.yellow(`    ~ ${p.replace(projectDir + "/", "")} (merged)`));
+  for (const p of result.skipped) console.log(chalk.dim(`    · ${p.replace(projectDir + "/", "")} (kept existing)`));
+  for (const f of skillResult.files.filter((f) => f.status === "wrote")) {
+    console.log(chalk.green(`    + ${f.path.replace(projectDir + "/", "")}`));
+  }
+  console.log();
+  console.log(chalk.dim(`Tip: cd ${projectDirArg} before running the next commands.`));
+  console.log();
+}
+
+function sceneProfileSummary(profile: string): string {
+  if (profile === "minimal") return "(storyboard/design only)";
+  if (profile === "agent") return "(recommended: + local agent authoring rules)";
+  return "(+ render scaffold upfront)";
+}
+
+function printSceneInitPlan(opts: {
+  projectDir: string;
+  profile: string;
+  aspect: SceneAspect;
+  duration: number;
+  visualStyleName: string | null;
+  groups: ReturnType<typeof describeSceneScaffold>;
+  dryRun: boolean;
+}): void {
+  console.log();
+  console.log(chalk.bold.magenta("VibeFrame Init") + chalk.dim(opts.dryRun ? " — dry run" : ""));
+  console.log(chalk.dim("─".repeat(60)));
+  console.log(`${chalk.dim("Project")}  ${opts.projectDir}`);
+  console.log(`${chalk.dim("Profile")}  ${opts.profile} ${chalk.dim(sceneProfileSummary(opts.profile))}`);
+  console.log(`${chalk.dim("Canvas")}   ${opts.aspect} · ${opts.duration}s default`);
+  if (opts.visualStyleName) console.log(`${chalk.dim("Style")}    ${opts.visualStyleName}`);
+  console.log();
+  console.log(chalk.bold("Edit first"));
+  console.log(`  ${chalk.cyan("STORYBOARD.md")}  ${chalk.dim("beats: narration, backdrop, minimum duration")}`);
+  console.log(`  ${chalk.cyan("DESIGN.md")}      ${chalk.dim("palette, typography, motion rules")}`);
+  console.log();
+  console.log(chalk.bold("Project contents"));
+  printGroup("authoring", opts.groups.authoring, opts.projectDir);
+  printGroup("agent", opts.groups.agent, opts.projectDir);
+  printGroup("render", opts.groups.render, opts.projectDir);
+  console.log();
+  console.log(chalk.dim("Dry run — no files were written. Re-run without --dry-run to create the project."));
+  console.log();
+}
+
+function printGroup(label: string, files: string[], projectDir: string): void {
+  if (files.length === 0) return;
+  console.log(`  ${chalk.bold(label)}`);
+  for (const file of files) {
+    console.log(chalk.dim(`    ${file.replace(projectDir + "/", "")}`));
+  }
+}
 
 function resolveTargets(agent: AgentSelection): AgentHostId[] {
   if (agent === "all") {

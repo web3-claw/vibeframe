@@ -30,6 +30,8 @@ import { batchCommand } from "./commands/batch.js";
 import { detectCommand } from "./commands/detect.js";
 import { setupCommand } from "./commands/setup.js";
 import { initCommand } from "./commands/init.js";
+import { buildCommand } from "./commands/build.js";
+import { renderCommand } from "./commands/render.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { demoCommand } from "./commands/demo.js";
 import { contextCommand } from "./commands/context.js";
@@ -63,7 +65,7 @@ const program = new Command();
 program
   .name("vibe")
   .showSuggestionAfterError(true)
-  .description("VibeFrame CLI - AI-First Video Editor")
+  .description("VibeFrame CLI - video projects, AI media generation, and workflow automation")
   .version(pkg.version)
   .option("--json", "Output in JSON format")
   .option("-q, --quiet", "Output only the primary result value (path, URL, or ID)")
@@ -98,13 +100,25 @@ Cost tiers:
   Low      analyze, audio transcribe, generate image               ~$0.01-$0.10
   High     generate video, edit image                              ~$1-$5
   V.High   pipeline (regenerate-scene, highlights, auto-shorts)   ~$5-$50+
+  Tip      Add --dry-run before paid generation to preview the work.
 
-Quick start:
+Project flow:
   vibe doctor                  Check system health and API keys
   vibe setup                   Configure API keys interactively
-  vibe schema --list           Discover all commands (81 commands)
+  vibe init my-video           Scaffold a video project
+  vibe build my-video          Build STORYBOARD.md into scene compositions/assets
+  vibe render my-video         Render the project to MP4
+
+Asset tools:
+  vibe generate image "..."    Generate a still image
+  vibe generate video "..."    Generate a standalone AI video
+
+Workflow automation:
+  vibe run workflow.yaml       Run a Video-as-YAML pipeline
+  vibe schema --list           Discover all commands
 
 Agent integration:
+  vibe walkthrough scene       Load the scene authoring guide
   echo '{"provider":"kling"}' | vibe generate video "prompt" --stdin --json
   vibe schema generate.video   Get parameter schema for any command
 `
@@ -195,6 +209,8 @@ program.addCommand(audioCommand);
 program.addCommand(pipelineCommand);
 program.addCommand(setupCommand);
 program.addCommand(initCommand);
+program.addCommand(buildCommand);
+program.addCommand(renderCommand);
 program.addCommand(doctorCommand);
 program.addCommand(demoCommand);
 program.addCommand(runCommand);

@@ -351,4 +351,31 @@ describe("scaffoldSceneProject", () => {
     expect(html).toContain("height: 1080px");
     expect(html).toContain('data-duration="6"');
   });
+
+  it("supports a minimal authoring-only profile", async () => {
+    const dir = await makeTmp();
+    const result = await scaffoldSceneProject({ dir, name: "fixture", profile: "minimal" });
+
+    expect(await pathExists(resolve(dir, "STORYBOARD.md"))).toBe(true);
+    expect(await pathExists(resolve(dir, "DESIGN.md"))).toBe(true);
+    expect(await pathExists(resolve(dir, "vibe.project.yaml"))).toBe(true);
+    expect(await pathExists(resolve(dir, "index.html"))).toBe(false);
+    expect(await pathExists(resolve(dir, "hyperframes.json"))).toBe(false);
+    expect(await pathExists(resolve(dir, "CLAUDE.md"))).toBe(false);
+    expect(result.groups.authoring.map((p) => p.split("/").pop())).toContain("STORYBOARD.md");
+    expect(result.groups.render).toEqual([]);
+    expect(result.groups.agent).toEqual([]);
+  });
+
+  it("supports an agent profile without render scaffold", async () => {
+    const dir = await makeTmp();
+    const result = await scaffoldSceneProject({ dir, name: "fixture", profile: "agent" });
+
+    expect(await pathExists(resolve(dir, "STORYBOARD.md"))).toBe(true);
+    expect(await pathExists(resolve(dir, "CLAUDE.md"))).toBe(true);
+    expect(await pathExists(resolve(dir, "index.html"))).toBe(false);
+    expect(await pathExists(resolve(dir, "hyperframes.json"))).toBe(false);
+    expect(result.groups.agent.map((p) => p.split("/").pop())).toContain("SKILL.md");
+    expect(result.groups.render).toEqual([]);
+  });
 });

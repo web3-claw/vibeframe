@@ -43,7 +43,7 @@ A scene project is a directory that is **bilingual**: it works with both
 and a paused GSAP timeline. Cheap to edit, cheap to lint, expensive only
 at render.
 
-\`vibe scene build\` (v0.60+) is the supported one-shot driver from a
+\`vibe build\` (v0.60+) is the supported one-shot driver from a
 written storyboard to an MP4. Plan H (v0.70) added \`--mode agent\` so the
 host agent itself authors the per-beat HTML — no internal LLM call.
 
@@ -51,19 +51,19 @@ host agent itself authors the per-beat HTML — no internal LLM call.
 
 | Path | Command | When to use |
 |---|---|---|
-| **One-shot (default, v0.60+)** | \`vibe scene build [project-dir]\` | STORYBOARD.md has YAML frontmatter + per-beat cues |
-| **High-craft (manual)** | \`DESIGN.md\` + Hyperframes skill in your agent | Maximum control: hand-author each scene |
+| **One-shot (default, v0.60+)** | \`vibe build [project-dir]\` | STORYBOARD.md has YAML frontmatter + per-beat cues |
+| **High-craft (manual)** | \`DESIGN.md\` + local composition rules in your agent | Maximum control: hand-author each scene |
 | **Quick draft** | \`vibe scene add --style <preset>\` | No agent or no API keys; fast iteration |
 
-Recommend \`vibe scene build\` whenever the user has a STORYBOARD with
+Recommend \`vibe build\` whenever the user has a STORYBOARD with
 narration / backdrop intent.
 
 ## High-craft path
 
-1. \`vibe scene init my-promo --visual-style "Swiss Pulse"\` — seeds
+1. \`vibe init my-promo --visual-style "Swiss Pulse"\` — seeds
    \`DESIGN.md\` (palette, typography, motion, transitions) plus the
    \`vibe.project.yaml\` / \`hyperframes.json\` / \`index.html\` scaffold.
-   In Plan H this **also installs the Hyperframes skill** at the
+   In Plan H this **also installs local composition rules** at the
    right place for your host (\`.claude/skills/hyperframes/\` for Claude
    Code, \`.cursor/rules/hyperframes.mdc\` for Cursor, universal
    \`SKILL.md\` for everyone else).
@@ -74,7 +74,7 @@ narration / backdrop intent.
 4. Author each scene HTML directly under \`compositions/scene-<id>.html\`
    using the rules from steps 2 and 3. The skill enforces the visual
    identity contract — scenes that contradict DESIGN.md fail lint.
-5. \`vibe scene lint --fix\` for mechanical issues, \`vibe scene render\`
+5. \`vibe scene lint --fix\` for mechanical issues, \`vibe render my-promo\`
    to MP4.
 
 ## Quick-draft path
@@ -84,7 +84,7 @@ vibe scene init my-promo -r 16:9 -d 30
 vibe scene add intro --style announcement \\
     --headline "Ship videos, not clicks"
 vibe scene lint
-vibe scene render
+vibe render my-promo
 \`\`\`
 
 \`vibe scene init\` is **idempotent** — running it on an existing
@@ -96,12 +96,12 @@ Safe to invoke on user-provided projects.
 \`\`\`bash
 vibe scene init <dir> [-r 16:9|9:16|1:1|4:5] [-d <sec>] [--visual-style "<name>"]
 vibe scene styles [<name>]                   # list / show vendored visual identities
-vibe scene install-skill [<dir>] [--host all]  # retroactive Hyperframes-skill install
+vibe scene install-skill [<dir>] [--host all]  # retroactive composition-rules install
 vibe scene add <name> --style <preset> [...]
 vibe scene compose-prompts [<dir>] [--beat <id>]   # H2: emit plan, no LLM call
 vibe scene lint [<root>] [--json] [--fix]
 vibe scene render [<root>] [--fps 30] [--quality standard] [--format mp4]
-vibe scene build [<dir>] [--mode agent|batch|auto]   # H3 dispatch
+vibe build [<dir>] [--mode agent|batch|auto]         # H3 dispatch
 \`\`\`
 
 ## Style presets (for \`vibe scene add --style\`)
@@ -119,18 +119,18 @@ from the generated TTS audio.
 ## STORYBOARD-to-MP4 (one command, v0.60+)
 
 \`\`\`bash
-vibe scene init my-promo --visual-style "Swiss Pulse" -d 12
+vibe init my-promo --visual-style "Swiss Pulse" -d 12
 # (edit STORYBOARD.md with per-beat YAML cues — narration, backdrop, duration)
-vibe scene build my-promo
+vibe build my-promo
 \`\`\`
 
-\`vibe scene build\` reads the STORYBOARD frontmatter + per-beat cues,
+\`vibe build\` reads the STORYBOARD frontmatter + per-beat cues,
 dispatches TTS + image-gen per beat, then either:
 
 - **\`--mode agent\`** (default when an agent host is detected) — emits a
   \`needs-author\` plan via \`vibe scene compose-prompts\`. The host agent
   authors each \`compositions/scene-<id>.html\` itself, then re-invoking
-  \`vibe scene build\` proceeds to lint + render.
+  \`vibe build\` proceeds to lint + render.
 - **\`--mode batch\`** — VibeFrame runs an internal LLM (Claude / OpenAI /
   Gemini) to compose the HTML, then renders.
 
@@ -153,9 +153,9 @@ and surface the error to the user.
 | Task | Tool |
 |------|------|
 | Generate narration + image, then author scene | \`vibe scene add\` |
-| Generate a full scenes project from a STORYBOARD | \`vibe scene build\` |
+| Generate a full scenes project from a STORYBOARD | \`vibe build\` |
 | Hand-tweak a single scene's animation | edit \`compositions/<file>.html\` directly |
-| Render the project | \`vibe scene render\` *or* \`npx hyperframes render\` (equivalent) |
+| Render the project | \`vibe render\` *or* \`vibe scene render\` for lower-level control |
 | Lint | \`vibe scene lint\` *or* \`npx hyperframes lint\` (equivalent) |
 
 The \`vibe\` CLI adds asset generation, AI orchestration, and pipeline
@@ -240,8 +240,8 @@ Checkpoints land next to the YAML: \`pipeline.yaml.checkpoint.json\`.
 
 ## Authoring tips
 
-1. **Start from examples** — \`examples/demo-pipeline.yaml\` (FFmpeg-only,
-   no keys), \`examples/promo-video.yaml\` (AI providers).
+1. **Start from a tiny YAML** — keep it in your project directory and run
+   \`vibe run pipeline.yaml --dry-run\` before spending provider budget.
 2. **Dry-run first** — you see estimated cost and resolved variable
    graph before spending API credits.
 3. **Keep step ids short and descriptive** (\`intro\`, \`scene1\`, \`voice\`,
@@ -277,18 +277,18 @@ const META: Record<WalkthroughTopic, Pick<WalkthroughResult, "title" | "summary"
     title: "Scene authoring with vibe",
     summary: "Author per-scene HTML compositions and render to MP4 (BUILD flow)",
     steps: [
-      'Run `vibe scene init <dir> --visual-style "<style name>"` to scaffold the project + install the Hyperframes skill (Plan H).',
+      'Run `vibe init <dir> --visual-style "<style name>"` to scaffold the project + install local composition rules.',
       "Edit `STORYBOARD.md` with per-beat YAML cues (narration / backdrop / duration).",
       "Read `SKILL.md` for the framework rules and `DESIGN.md` for the visual-identity hard-gate.",
-      "Run `vibe scene build <dir>`. With an agent host detected, the CLI emits a `needs-author` plan; the host agent authors each `compositions/scene-<id>.html` and re-invokes to render.",
-      "Run `vibe scene lint --fix` to validate, then `vibe scene render` to produce the MP4.",
+      "Run `vibe build <dir>`. With an agent host detected, the CLI emits a `needs-author` plan; the host agent authors each `compositions/scene-<id>.html` and re-invokes to render.",
+      "Run `vibe scene lint --fix` to validate, then `vibe render <dir>` to produce the MP4.",
     ],
     relatedCommands: [
-      "vibe scene init",
+      "vibe init",
       "vibe scene styles",
       "vibe scene install-skill",
       "vibe scene compose-prompts",
-      "vibe scene build",
+      "vibe build",
       "vibe scene lint",
       "vibe scene render",
       "vibe scene add",

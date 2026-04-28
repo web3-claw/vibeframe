@@ -4,8 +4,8 @@
  * Top-level `vibe pipeline` command group for AI media transformations
  * on existing video / audio files.
  *
- * For BUILDING new video from text intent (storyboard → MP4), see
- * `vibe scene build` (v0.60+) — that's the skills-driven path. Pipelines
+ * For BUILDING new video from text intent (storyboard -> MP4), see
+ * `vibe build` (v0.60+) - that's the skills-driven path. Pipelines
  * here process media you already have.
  *
  * Commands:
@@ -33,14 +33,14 @@ import { isJsonMode, outputSuccess, exitWithError, notFoundError, usageError, ap
 export const pipelineCommand = new Command("pipeline")
   .alias("pipe")
   .description(
-    "AI media transformations on existing video / audio (highlights, auto-shorts, animated captions). For BUILD-from-text flows see `vibe scene build`."
+    "AI media transformations on existing video / audio (highlights, auto-shorts, animated captions). For BUILD-from-text flows see `vibe build`."
   )
   .addHelpText(
     "after",
     `
 Two flows — pick by intent:
   BUILD     — text → MP4 (intent → AI generation → new video)
-              Use \`vibe scene build\` with a STORYBOARD.md + DESIGN.md.
+              Use \`vibe build\` with a STORYBOARD.md + DESIGN.md.
               Idempotent, agent-editable, skills-driven (v0.60+).
   PROCESS   — existing video/audio → transformed media
               Use \`vibe pipeline\` (this group) or \`vibe edit\` / \`vibe audio\`.
@@ -63,7 +63,7 @@ Cost tiers:
   animated-caption:    $   Low (~$0.01)
   regenerate-scene:    $$$ High (per-scene re-run; depends on provider)
 
-Note: \`pipeline script-to-video\` was removed — use \`vibe scene build\` for
+Note: \`pipeline script-to-video\` was removed — use \`vibe build\` for
 text → MP4. \`pipeline regenerate-scene\` still operates on the
 storyboard.{yaml,json} layout produced by older runs.
 

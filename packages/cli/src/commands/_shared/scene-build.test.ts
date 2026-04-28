@@ -145,6 +145,21 @@ describe("executeSceneBuild", () => {
     expect(r.outputPath).toBeDefined();
     expect(executeComposeScenesWithSkills).toHaveBeenCalledOnce();
     expect(executeSceneRender).toHaveBeenCalledOnce();
+
+    const rootHtml = readFileSync(join(projectDir, "index.html"), "utf-8");
+    expect(rootHtml).toContain('id="narration-hook"');
+    expect(rootHtml).toContain('data-duration="3"');
+  });
+
+  it("loads OPENAI_API_KEY from the current project's .env for backdrop dispatch", async () => {
+    delete process.env.OPENAI_API_KEY;
+    writeFileSync(join(projectDir, ".env"), "OPENAI_API_KEY=test-key-from-dotenv\n");
+
+    const r = await executeSceneBuild({ projectDir });
+
+    expect(r.success).toBe(true);
+    expect(r.beats[0].backdropStatus).toBe("generated");
+    expect(OpenAIImageProvider).toHaveBeenCalled();
   });
 
   it("is idempotent: skips dispatch when asset already exists", async () => {

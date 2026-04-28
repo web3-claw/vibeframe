@@ -85,6 +85,20 @@ describe("buildAudioMuxFilter", () => {
     expect(filter!.filterComplex).toContain("atrim=duration=0.000");
   });
 
+  it("honors numeric audio data-duration before parent clip cap", () => {
+    const filter = buildAudioMuxFilter([
+      makeAudio({ durationHint: 2.5, clipDurationCap: 8 }),
+    ]);
+    expect(filter!.filterComplex).toContain("atrim=duration=2.500");
+  });
+
+  it("still caps numeric audio duration at the parent clip boundary", () => {
+    const filter = buildAudioMuxFilter([
+      makeAudio({ durationHint: 9, clipDurationCap: 4 }),
+    ]);
+    expect(filter!.filterComplex).toContain("atrim=duration=4.000");
+  });
+
   it("clamps negative absoluteStart to 0 in adelay", () => {
     const filter = buildAudioMuxFilter([
       makeAudio({ absoluteStart: -0.05 }),

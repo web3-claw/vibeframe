@@ -30,7 +30,7 @@ describe("AGENTS_MD template", () => {
     expect(AGENTS_MD).toContain("BUILD");
     expect(AGENTS_MD).toContain("PROCESS");
     // BUILD path canonical command
-    expect(AGENTS_MD).toContain("vibe scene build");
+    expect(AGENTS_MD).toContain("vibe build");
     // PROCESS path canonical commands
     expect(AGENTS_MD).toContain("vibe pipeline highlights");
     expect(AGENTS_MD).toContain("vibe edit silence-cut");

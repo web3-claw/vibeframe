@@ -128,7 +128,7 @@ export const sceneInitTool = defineTool({
   category: "scene",
   cost: "free",
   description:
-    "Scaffold a new bilingual VibeFrame + Hyperframes scene project. Creates index.html, hyperframes.json, vibe.project.yaml, compositions/, assets/, .gitignore, and a project-local CLAUDE.md. Idempotent: re-running on an existing Hyperframes project merges hyperframes.json instead of overwriting. No API keys required.",
+    "Scaffold a new VibeFrame video scene project. Supports minimal, agent, and full profiles; full includes the current HTML render backend metadata. Idempotent: re-running keeps user-authored files and merges backend config instead of overwriting. No API keys required.",
   schema: sceneInitSchema,
   async execute(args, ctx) {
     const dir = resolve(ctx.workingDirectory, args.dir);

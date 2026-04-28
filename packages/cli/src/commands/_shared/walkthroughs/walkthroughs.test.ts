@@ -36,8 +36,8 @@ describe("walkthroughs", () => {
       expect(r.title).toContain("Scene");
       expect(r.summary.length).toBeGreaterThan(10);
       expect(r.steps.length).toBeGreaterThanOrEqual(3);
-      expect(r.relatedCommands).toContain("vibe scene init");
-      expect(r.relatedCommands).toContain("vibe scene build");
+      expect(r.relatedCommands).toContain("vibe init");
+      expect(r.relatedCommands).toContain("vibe build");
       expect(r.relatedCommands).toContain("vibe scene compose-prompts");
       expect(r.content.length).toBeGreaterThan(500);
       expect(r.content).toContain("STORYBOARD.md");

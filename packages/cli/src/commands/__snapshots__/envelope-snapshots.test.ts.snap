@@ -673,6 +673,78 @@ exports[`CLI --describe schemas (drift detection) > vibe batch remove-clips --de
 }
 `;
 
+exports[`CLI --describe schemas (drift detection) > vibe build --describe 1`] = `
+{
+  "description": "Build a VibeFrame video project from STORYBOARD.md",
+  "name": "build",
+  "parameters": {
+    "properties": {
+      "composer": {
+        "description": "Batch composer: claude|openai|gemini",
+        "type": "string",
+      },
+      "dryRun": {
+        "description": "Preview parameters without dispatching",
+        "type": "boolean",
+      },
+      "effort": {
+        "default": "medium",
+        "description": "Compose effort tier (batch mode only): low|medium|high",
+        "type": "string",
+      },
+      "force": {
+        "description": "Re-dispatch primitives even when assets already exist",
+        "type": "boolean",
+      },
+      "imageProvider": {
+        "description": "Image provider: openai",
+        "type": "string",
+      },
+      "imageSize": {
+        "default": "1536x1024",
+        "description": "Image size: 1024x1024|1536x1024|1024x1536",
+        "type": "string",
+      },
+      "mode": {
+        "default": "auto",
+        "description": "Build mode: agent|batch|auto",
+        "type": "string",
+      },
+      "project-dir": {
+        "description": "Video project directory",
+        "type": "string",
+      },
+      "quality": {
+        "default": "hd",
+        "description": "Image quality: standard|hd",
+        "type": "string",
+      },
+      "skipBackdrop": {
+        "description": "Don't dispatch image-gen even when beats declare backdrop cues",
+        "type": "boolean",
+      },
+      "skipNarration": {
+        "description": "Don't dispatch TTS even when beats declare narration cues",
+        "type": "boolean",
+      },
+      "skipRender": {
+        "description": "Compose only — don't render to MP4",
+        "type": "boolean",
+      },
+      "tts": {
+        "description": "TTS provider: auto|elevenlabs|kokoro",
+        "type": "string",
+      },
+      "voice": {
+        "description": "Voice id",
+        "type": "string",
+      },
+    },
+    "type": "object",
+  },
+}
+`;
+
 exports[`CLI --describe schemas (drift detection) > vibe context --describe 1`] = `
 {
   "description": "Print CLI context/guidelines for AI agent integration",
@@ -2123,12 +2195,12 @@ exports[`CLI --describe schemas (drift detection) > vibe generate thumbnail --de
 
 exports[`CLI --describe schemas (drift detection) > vibe generate video --describe 1`] = `
 {
-  "description": "Generate video using AI (Kling, Runway, Veo, or Grok)",
+  "description": "Generate video using AI (Seedance, Grok, Kling, Runway, or Veo)",
   "name": "generate.video",
   "parameters": {
     "properties": {
       "apiKey": {
-        "description": "API key (or set XAI_API_KEY / RUNWAY_API_SECRET / KLING_API_KEY / GOOGLE_API_KEY env)",
+        "description": "API key (or set FAL_KEY / XAI_API_KEY / RUNWAY_API_SECRET / KLING_API_KEY / GOOGLE_API_KEY env)",
         "type": "string",
       },
       "dryRun": {
@@ -2137,7 +2209,7 @@ exports[`CLI --describe schemas (drift detection) > vibe generate video --descri
       },
       "duration": {
         "default": 5,
-        "description": "Duration: 5 or 10 seconds",
+        "description": "Duration in seconds. Seedance accepts 4-15 (\`fal\` alias supported); Kling accepts 5 or 10; Veo maps to 6 or 8.",
         "type": "number",
       },
       "image": {
@@ -2174,14 +2246,7 @@ exports[`CLI --describe schemas (drift detection) > vibe generate video --descri
         "type": "string",
       },
       "provider": {
-        "description": "Provider: fal (Seedance 2.0, default when FAL_KEY set), grok, kling, runway, veo",
-        "enum": [
-          "fal",
-          "grok",
-          "kling",
-          "runway",
-          "veo",
-        ],
+        "description": "Provider: seedance (ByteDance Seedance 2.0 via fal.ai), grok, kling, runway, veo. \`fal\` is a backwards-compatible alias for seedance.",
         "type": "string",
       },
       "ratio": {
@@ -2214,6 +2279,11 @@ exports[`CLI --describe schemas (drift detection) > vibe generate video --descri
       "seed": {
         "description": "Random seed for reproducibility (Runway only)",
         "type": "number",
+      },
+      "seedanceModel": {
+        "default": "quality",
+        "description": "Seedance variant: quality or fast (fal.ai only)",
+        "type": "string",
       },
       "veoModel": {
         "default": "3.1-fast",
@@ -2368,7 +2438,7 @@ exports[`CLI --describe schemas (drift detection) > vibe generate video-status -
 
 exports[`CLI --describe schemas (drift detection) > vibe init --describe 1`] = `
 {
-  "description": "Scaffold project-scope agent files (AGENTS.md / CLAUDE.md / .env.example / .gitignore)",
+  "description": "Scaffold a VibeFrame project (video scene project or project-scope agent files)",
   "name": "init",
   "parameters": {
     "properties": {
@@ -2381,12 +2451,47 @@ exports[`CLI --describe schemas (drift detection) > vibe init --describe 1`] = `
         "description": "Print the file list without writing anything",
         "type": "boolean",
       },
+      "duration": {
+        "default": 10,
+        "description": "Default scene/root duration in seconds",
+        "type": "number",
+      },
       "force": {
         "description": "Overwrite existing files instead of skipping",
         "type": "boolean",
       },
+      "profile": {
+        "default": "agent",
+        "description": "Scene profile: minimal (storyboard/design only), agent (recommended), full (render scaffold upfront)",
+        "enum": [
+          "minimal",
+          "agent",
+          "full",
+        ],
+        "type": "string",
+      },
       "project-dir": {
         "description": "Project directory (defaults to cwd)",
+        "type": "string",
+      },
+      "ratio": {
+        "default": "16:9",
+        "description": "Scene aspect ratio: 16:9, 9:16, 1:1, 4:5",
+        "enum": [
+          "16:9",
+          "9:16",
+          "1:1",
+          "4:5",
+        ],
+        "type": "string",
+      },
+      "type": {
+        "default": "scene",
+        "description": "Project type: scene (video project) | agent (agent files only)",
+        "type": "string",
+      },
+      "visualStyle": {
+        "description": "Seed scene DESIGN.md from a named style",
         "type": "string",
       },
     },
@@ -2812,6 +2917,55 @@ exports[`CLI --describe schemas (drift detection) > vibe project set --describe 
 }
 `;
 
+exports[`CLI --describe schemas (drift detection) > vibe render --describe 1`] = `
+{
+  "description": "Render a VibeFrame video project to MP4/WebM/MOV",
+  "name": "render",
+  "parameters": {
+    "properties": {
+      "dryRun": {
+        "description": "Preview parameters without rendering",
+        "type": "boolean",
+      },
+      "format": {
+        "default": "mp4",
+        "description": "Output container: mp4|webm|mov",
+        "type": "string",
+      },
+      "fps": {
+        "default": 30,
+        "description": "Frames per second: 24|30|60",
+        "type": "number",
+      },
+      "out": {
+        "description": "Output file (default: renders/<name>-<timestamp>.<format>)",
+        "type": "string",
+      },
+      "project-dir": {
+        "description": "Video project directory",
+        "type": "string",
+      },
+      "quality": {
+        "default": "standard",
+        "description": "Quality preset: draft|standard|high",
+        "type": "string",
+      },
+      "root": {
+        "default": "index.html",
+        "description": "Root composition file",
+        "type": "string",
+      },
+      "workers": {
+        "default": 1,
+        "description": "Capture workers (1-16, default 1)",
+        "type": "number",
+      },
+    },
+    "type": "object",
+  },
+}
+`;
+
 exports[`CLI --describe schemas (drift detection) > vibe run --describe 1`] = `
 {
   "description": "Execute a YAML video pipeline (Video as Code)",
@@ -3073,7 +3227,7 @@ exports[`CLI --describe schemas (drift detection) > vibe scene compose-prompts -
 
 exports[`CLI --describe schemas (drift detection) > vibe scene init --describe 1`] = `
 {
-  "description": "Scaffold a new scene project (or safely augment an existing Hyperframes project)",
+  "description": "Scaffold a new scene project (or safely augment an existing project)",
   "name": "scene.init",
   "parameters": {
     "properties": {
@@ -3092,6 +3246,16 @@ exports[`CLI --describe schemas (drift detection) > vibe scene init --describe 1
       },
       "name": {
         "description": "Project name (defaults to directory basename)",
+        "type": "string",
+      },
+      "profile": {
+        "default": "agent",
+        "description": "Scene profile: minimal (storyboard/design only), agent (recommended), full (render scaffold upfront)",
+        "enum": [
+          "minimal",
+          "agent",
+          "full",
+        ],
         "type": "string",
       },
       "ratio": {
@@ -3149,7 +3313,7 @@ exports[`CLI --describe schemas (drift detection) > vibe scene install-skill --d
 
 exports[`CLI --describe schemas (drift detection) > vibe scene lint --describe 1`] = `
 {
-  "description": "Validate scene HTML against Hyperframes rules (in-process, no Chrome required)",
+  "description": "Validate scene HTML against composition rules (in-process, no Chrome required)",
   "name": "scene.lint",
   "parameters": {
     "properties": {
@@ -3734,6 +3898,7 @@ exports[`envelope shape (--dry-run --json) > generate video (high cost, async) 1
       "prompt": "test",
       "provider": "grok",
       "ratio": "16:9",
+      "seedanceModel": "quality",
       "veoModel": "3.1-fast",
     },
   },

@@ -10,41 +10,61 @@ import type { PipelineManifest, PipelineAction, PipelineBudget, StepResult, Pipe
 import { resolveStepParams, findUnresolvedRefs } from "./resolver.js";
 import { COST_ESTIMATES } from "../commands/output.js";
 
-// ── Action → CLI command mapping (for cost lookup) ──────────────────────
+// ── Action metadata registry (for cost/help/schema growth) ──────────────
 
-const ACTION_TO_COMMAND: Partial<Record<PipelineAction, string>> = {
-  "generate-image": "generate image",
-  "generate-video": "generate video",
-  "generate-tts": "generate speech",
-  "generate-sfx": "generate sound-effect",
-  "generate-music": "generate music",
-  "generate-storyboard": "generate storyboard",
-  "generate-motion": "generate motion",
-  "edit-silence-cut": "edit silence-cut",
-  "edit-jump-cut": "edit jump-cut",
-  "edit-caption": "edit caption",
-  "edit-noise-reduce": "edit noise-reduce",
-  "edit-fade": "edit fade",
-  "edit-translate-srt": "edit translate-srt",
-  "edit-text-overlay": "edit text-overlay",
-  "edit-grade": "edit grade",
-  "edit-speed-ramp": "edit speed-ramp",
-  "edit-reframe": "edit reframe",
-  "edit-interpolate": "edit interpolate",
-  "edit-upscale": "edit upscale-video",
-  "edit-image": "edit image",
-  "audio-transcribe": "audio transcribe",
-  "detect-scenes": "detect scenes",
-  "detect-silence": "detect silence",
-  "detect-beats": "detect beats",
-  "analyze-media": "analyze media",
-  "analyze-video": "analyze video",
-  "review-video": "analyze review",
-  "compose-scenes-with-skills": "compose scenes with skills",
+export interface PipelineActionMetadata {
+  id: PipelineAction;
+  title: string;
+  category: "generate" | "edit" | "audio" | "detect" | "analyze" | "scene" | "export";
+  command?: string;
+  outputs: readonly string[];
+  requiredKeys?: readonly string[];
+}
+
+const ACTION_METADATA: Partial<Record<PipelineAction, PipelineActionMetadata>> = {
+  "generate-image": { id: "generate-image", title: "Generate image", category: "generate", command: "generate image", outputs: ["image"] },
+  "generate-video": { id: "generate-video", title: "Generate video", category: "generate", command: "generate video", outputs: ["video"], requiredKeys: ["provider-dependent"] },
+  "generate-tts": { id: "generate-tts", title: "Generate speech", category: "generate", command: "generate speech", outputs: ["audio"] },
+  "generate-sfx": { id: "generate-sfx", title: "Generate sound effect", category: "generate", command: "generate sound-effect", outputs: ["audio"] },
+  "generate-music": { id: "generate-music", title: "Generate music", category: "generate", command: "generate music", outputs: ["audio"] },
+  "generate-storyboard": { id: "generate-storyboard", title: "Generate storyboard", category: "generate", command: "generate storyboard", outputs: ["storyboard"] },
+  "generate-motion": { id: "generate-motion", title: "Generate motion", category: "generate", command: "generate motion", outputs: ["code", "video"] },
+  "edit-silence-cut": { id: "edit-silence-cut", title: "Cut silence", category: "edit", command: "edit silence-cut", outputs: ["video"] },
+  "edit-jump-cut": { id: "edit-jump-cut", title: "Jump cut", category: "edit", command: "edit jump-cut", outputs: ["video"] },
+  "edit-caption": { id: "edit-caption", title: "Caption video", category: "edit", command: "edit caption", outputs: ["video", "srt"] },
+  "edit-noise-reduce": { id: "edit-noise-reduce", title: "Reduce noise", category: "edit", command: "edit noise-reduce", outputs: ["video"] },
+  "edit-fade": { id: "edit-fade", title: "Add fade", category: "edit", command: "edit fade", outputs: ["video"] },
+  "edit-translate-srt": { id: "edit-translate-srt", title: "Translate subtitles", category: "edit", command: "edit translate-srt", outputs: ["srt"] },
+  "edit-text-overlay": { id: "edit-text-overlay", title: "Add text overlay", category: "edit", command: "edit text-overlay", outputs: ["video"] },
+  "edit-grade": { id: "edit-grade", title: "Color grade", category: "edit", command: "edit grade", outputs: ["video"] },
+  "edit-speed-ramp": { id: "edit-speed-ramp", title: "Speed ramp", category: "edit", command: "edit speed-ramp", outputs: ["video"] },
+  "edit-reframe": { id: "edit-reframe", title: "Reframe video", category: "edit", command: "edit reframe", outputs: ["video"] },
+  "edit-interpolate": { id: "edit-interpolate", title: "Interpolate frames", category: "edit", command: "edit interpolate", outputs: ["video"] },
+  "edit-upscale": { id: "edit-upscale", title: "Upscale video", category: "edit", command: "edit upscale-video", outputs: ["video"] },
+  "edit-image": { id: "edit-image", title: "Edit image", category: "edit", command: "edit image", outputs: ["image"] },
+  "audio-transcribe": { id: "audio-transcribe", title: "Transcribe audio", category: "audio", command: "audio transcribe", outputs: ["transcript", "srt"] },
+  "audio-isolate": { id: "audio-isolate", title: "Isolate audio", category: "audio", outputs: ["audio"] },
+  "audio-dub": { id: "audio-dub", title: "Dub audio", category: "audio", outputs: ["audio", "video"] },
+  "audio-duck": { id: "audio-duck", title: "Duck audio", category: "audio", outputs: ["video"] },
+  "detect-scenes": { id: "detect-scenes", title: "Detect scenes", category: "detect", command: "detect scenes", outputs: ["json"] },
+  "detect-silence": { id: "detect-silence", title: "Detect silence", category: "detect", command: "detect silence", outputs: ["json"] },
+  "detect-beats": { id: "detect-beats", title: "Detect beats", category: "detect", command: "detect beats", outputs: ["json"] },
+  "analyze-media": { id: "analyze-media", title: "Analyze media", category: "analyze", command: "analyze media", outputs: ["json"] },
+  "analyze-video": { id: "analyze-video", title: "Analyze video", category: "analyze", command: "analyze video", outputs: ["json"] },
+  "review-video": { id: "review-video", title: "Review video", category: "analyze", command: "analyze review", outputs: ["json"] },
+  "compose-scenes-with-skills": { id: "compose-scenes-with-skills", title: "Compose scenes with skills", category: "scene", command: "compose scenes with skills", outputs: ["html"] },
+  "scene-build": { id: "scene-build", title: "Build scene project", category: "scene", outputs: ["video", "html", "assets"] },
+  "scene-render": { id: "scene-render", title: "Render scene project", category: "scene", outputs: ["video"] },
+  export: { id: "export", title: "Export project", category: "export", outputs: ["video"] },
 };
 
+export function getPipelineActionMetadata(action?: PipelineAction): PipelineActionMetadata[] | PipelineActionMetadata | undefined {
+  if (action) return ACTION_METADATA[action];
+  return Object.values(ACTION_METADATA).filter((m): m is PipelineActionMetadata => Boolean(m));
+}
+
 function maxCostFor(action: PipelineAction): number {
-  const cmd = ACTION_TO_COMMAND[action];
+  const cmd = ACTION_METADATA[action]?.command;
   if (!cmd) return 0;
   return COST_ESTIMATES[cmd]?.max ?? 0;
 }
@@ -83,7 +103,15 @@ async function ensureActionsRegistered(): Promise<void> {
   registerAction("generate-video", async (params, outputDir) => {
     const { executeVideoGenerate } = await import("../commands/ai-video.js");
     const output = getOutput(params, outputDir, "video.mp4");
-    const r = await executeVideoGenerate({ prompt: params.prompt as string, provider: params.provider as "grok" | "kling" | "runway" | "veo" | undefined, image: params.image as string | undefined, duration: params.duration as number | undefined, ratio: params.ratio as string | undefined, output, wait: true });
+    const r = await executeVideoGenerate({
+      prompt: params.prompt as string,
+      provider: params.provider as "grok" | "kling" | "runway" | "veo" | "seedance" | "fal" | undefined,
+      image: params.image as string | undefined,
+      duration: params.duration as number | undefined,
+      ratio: params.ratio as string | undefined,
+      output,
+      wait: true,
+    });
     return { id: "", action: "generate-video", success: r.success, output: r.outputPath || r.videoUrl, data: { taskId: r.taskId, provider: r.provider, videoUrl: r.videoUrl }, error: r.error };
   });
 

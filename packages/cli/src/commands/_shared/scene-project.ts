@@ -19,6 +19,7 @@ import type { VisualStyle } from "./visual-styles.js";
 
 /** Supported aspect ratios for scene projects (maps to CSS canvas dims). */
 export type SceneAspect = "16:9" | "9:16" | "1:1" | "4:5";
+export type SceneScaffoldProfile = "minimal" | "agent" | "full";
 
 const ASPECT_DIMS: Record<SceneAspect, { width: number; height: number }> = {
   "16:9": { width: 1920, height: 1080 },
@@ -257,7 +258,7 @@ ${style ? `_This file was seeded by \`vibe scene init --visual-style "${style.na
 `;
 }
 
-/** Starter `STORYBOARD.md` for the one-shot `vibe scene build` flow. */
+/** Starter `STORYBOARD.md` for the one-shot `vibe build` flow. */
 export function buildStoryboardMd(name: string, duration = 12): string {
   return `---
 title: ${name}
@@ -269,7 +270,7 @@ imageProvider: openai
 
 # ${name} — Storyboard
 
-Edit these beats before running \`vibe scene build\`. Each beat starts with
+Edit these beats before running \`vibe build\`. Each beat starts with
 YAML cues that drive narration, backdrop generation, and timing.
 
 ## Beat hook — Hook
@@ -337,7 +338,7 @@ semantics, VibeFrame pipeline conventions) that are NOT in generic web docs.
 | **vibe-scene**    | \`/vibe-scene\`    | VibeFrame's authoring loop, AI assets, lint feedback, pipeline integration            |
 | **gsap**          | \`/gsap\`          | GSAP tweens, timelines, easing                                                        |
 
-Install the Hyperframes skills once per machine:
+Optional: install the upstream Hyperframes skills once per machine when your agent supports skill commands:
 
 \`\`\`bash
 npx skills add heygen-com/hyperframes
@@ -350,7 +351,7 @@ the framework-level minimum, not the cinematic craft layer.
 ## Project structure
 
 - \`DESIGN.md\` — visual identity contract (palette, type, motion, transitions)
-- \`STORYBOARD.md\` — per-beat narration/backdrop/duration cues for \`vibe scene build\`
+- \`STORYBOARD.md\` — per-beat narration/backdrop/duration cues for \`vibe build\`
 - \`index.html\` — root composition (timeline)
 - \`compositions/scene-*.html\` — per-scene HTML authored by you or the agent
 - \`assets/\` — shared media (narration audio, images, video)
@@ -363,7 +364,7 @@ the framework-level minimum, not the cinematic craft layer.
 
 \`\`\`bash
 vibe scene add <name> --narration "..." --visuals "..."   # Author a new scene via AI
-vibe scene build                                           # STORYBOARD.md → narrated MP4
+vibe build                                                 # STORYBOARD.md → narrated MP4
 vibe scene lint                                             # Validate scenes (in-process HF linter)
 vibe scene render                                           # Render to MP4
 
@@ -427,6 +428,8 @@ export interface ScaffoldOptions {
    * rules instead of placeholders. Resolved via `getVisualStyle()`.
    */
   visualStyle?: VisualStyle;
+  /** Scaffold shape. Defaults to "full" for backward-compatible programmatic use. */
+  profile?: SceneScaffoldProfile;
 }
 
 export interface ScaffoldResult {
@@ -436,6 +439,57 @@ export interface ScaffoldResult {
   skipped: string[];
   /** Files that were merge-updated (currently only hyperframes.json). */
   merged: string[];
+  /** Files grouped by product purpose for human and JSON output. */
+  groups: SceneScaffoldGroups;
+}
+
+export interface SceneScaffoldGroups {
+  authoring: string[];
+  render: string[];
+  agent: string[];
+}
+
+export function isSceneScaffoldProfile(value: string): value is SceneScaffoldProfile {
+  return value === "minimal" || value === "agent" || value === "full";
+}
+
+export function describeSceneScaffold(opts: {
+  dir: string;
+  profile?: SceneScaffoldProfile;
+}): SceneScaffoldGroups {
+  const dir = resolve(opts.dir);
+  const profile = opts.profile ?? "full";
+  const groups: SceneScaffoldGroups = {
+    authoring: [
+      resolve(dir, "STORYBOARD.md"),
+      resolve(dir, "DESIGN.md"),
+      resolve(dir, "vibe.project.yaml"),
+      resolve(dir, ".gitignore"),
+    ],
+    render: [],
+    agent: [],
+  };
+
+  if (profile === "full") {
+    groups.render = [
+      resolve(dir, "index.html"),
+      resolve(dir, "compositions"),
+      resolve(dir, "assets"),
+      resolve(dir, "renders"),
+      resolve(dir, "hyperframes.json"),
+      resolve(dir, "meta.json"),
+    ];
+  }
+
+  if (profile === "agent" || profile === "full") {
+    groups.agent = [
+      resolve(dir, "SKILL.md"),
+      resolve(dir, "references"),
+      resolve(dir, "CLAUDE.md"),
+    ];
+  }
+
+  return groups;
 }
 
 async function pathExists(p: string): Promise<boolean> {
@@ -458,45 +512,51 @@ export async function scaffoldSceneProject(opts: ScaffoldOptions): Promise<Scaff
   const aspect: SceneAspect = opts.aspect ?? "16:9";
   const duration = opts.duration ?? 10;
   const now = opts.now ?? new Date();
+  const profile = opts.profile ?? "full";
 
   await mkdir(dir, { recursive: true });
-  await mkdir(resolve(dir, "compositions"), { recursive: true });
-  await mkdir(resolve(dir, "assets"), { recursive: true });
+  if (profile === "full") {
+    await mkdir(resolve(dir, "compositions"), { recursive: true });
+    await mkdir(resolve(dir, "assets"), { recursive: true });
+    await mkdir(resolve(dir, "renders"), { recursive: true });
+  }
 
   const created: string[] = [];
   const skipped: string[] = [];
   const merged: string[] = [];
 
-  // hyperframes.json — merge if exists, else create.
-  const hfPath = resolve(dir, "hyperframes.json");
-  const hfDefaults = buildHyperframesConfig();
-  if (await pathExists(hfPath)) {
-    const existingRaw = await readFile(hfPath, "utf-8");
-    const existing = JSON.parse(existingRaw) as HyperframesConfig;
-    const mergedConfig = mergeHyperframesConfig(existing, hfDefaults);
-    await writeFile(hfPath, JSON.stringify(mergedConfig, null, 2) + "\n", "utf-8");
-    merged.push(hfPath);
-  } else {
-    await writeFile(hfPath, JSON.stringify(hfDefaults, null, 2) + "\n", "utf-8");
-    created.push(hfPath);
-  }
+  if (profile === "full") {
+    // hyperframes.json — merge if exists, else create.
+    const hfPath = resolve(dir, "hyperframes.json");
+    const hfDefaults = buildHyperframesConfig();
+    if (await pathExists(hfPath)) {
+      const existingRaw = await readFile(hfPath, "utf-8");
+      const existing = JSON.parse(existingRaw) as HyperframesConfig;
+      const mergedConfig = mergeHyperframesConfig(existing, hfDefaults);
+      await writeFile(hfPath, JSON.stringify(mergedConfig, null, 2) + "\n", "utf-8");
+      merged.push(hfPath);
+    } else {
+      await writeFile(hfPath, JSON.stringify(hfDefaults, null, 2) + "\n", "utf-8");
+      created.push(hfPath);
+    }
 
-  // meta.json — preserve existing (id shouldn't change).
-  const metaPath = resolve(dir, "meta.json");
-  if (await pathExists(metaPath)) {
-    skipped.push(metaPath);
-  } else {
-    await writeFile(metaPath, JSON.stringify(buildHyperframesMeta(name, now), null, 2) + "\n", "utf-8");
-    created.push(metaPath);
-  }
+    // meta.json — preserve existing (id shouldn't change).
+    const metaPath = resolve(dir, "meta.json");
+    if (await pathExists(metaPath)) {
+      skipped.push(metaPath);
+    } else {
+      await writeFile(metaPath, JSON.stringify(buildHyperframesMeta(name, now), null, 2) + "\n", "utf-8");
+      created.push(metaPath);
+    }
 
-  // index.html — preserve existing (user may have edited root).
-  const rootPath = resolve(dir, "index.html");
-  if (await pathExists(rootPath)) {
-    skipped.push(rootPath);
-  } else {
-    await writeFile(rootPath, buildEmptyRootHtml({ aspect, duration }), "utf-8");
-    created.push(rootPath);
+    // index.html — preserve existing (user may have edited root).
+    const rootPath = resolve(dir, "index.html");
+    if (await pathExists(rootPath)) {
+      skipped.push(rootPath);
+    } else {
+      await writeFile(rootPath, buildEmptyRootHtml({ aspect, duration }), "utf-8");
+      created.push(rootPath);
+    }
   }
 
   // vibe.project.yaml — preserve existing; this is VibeFrame's own config.
@@ -509,13 +569,15 @@ export async function scaffoldSceneProject(opts: ScaffoldOptions): Promise<Scaff
     created.push(vibePath);
   }
 
-  // CLAUDE.md — preserve existing.
-  const claudePath = resolve(dir, "CLAUDE.md");
-  if (await pathExists(claudePath)) {
-    skipped.push(claudePath);
-  } else {
-    await writeFile(claudePath, buildProjectClaudeMd(name), "utf-8");
-    created.push(claudePath);
+  if (profile === "agent" || profile === "full") {
+    // CLAUDE.md — preserve existing.
+    const claudePath = resolve(dir, "CLAUDE.md");
+    if (await pathExists(claudePath)) {
+      skipped.push(claudePath);
+    } else {
+      await writeFile(claudePath, buildProjectClaudeMd(name), "utf-8");
+      created.push(claudePath);
+    }
   }
 
   // DESIGN.md — visual-identity hard-gate (Hyperframes skill convention).
@@ -551,5 +613,5 @@ export async function scaffoldSceneProject(opts: ScaffoldOptions): Promise<Scaff
     created.push(gitignorePath);
   }
 
-  return { created, skipped, merged };
+  return { created, skipped, merged, groups: describeSceneScaffold({ dir, profile }) };
 }

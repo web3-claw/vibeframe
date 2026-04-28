@@ -55,9 +55,15 @@ export function buildAudioMuxFilter(audios: SceneAudioElement[]): AudioMuxFilter
     const inputIdx = i + 1; // input 0 is the video
     const delayMs = Math.max(0, Math.round(a.absoluteStart * 1000));
     const volume = Number.isFinite(a.volume) ? a.volume : 1;
-    // Hard-cap audio length at the parent clip's duration so a long wav
-    // doesn't bleed past its scene. Use atrim+asetpts for a clean cut.
-    const trimSec = Math.max(0, a.clipDurationCap);
+    // Hard-cap audio length so a long wav doesn't bleed past its scene.
+    // Numeric data-duration on the <audio> tag is the first cap; the parent
+    // clip duration is the second cap. Use atrim+asetpts for a clean cut.
+    const durationHint =
+      typeof a.durationHint === "number" && Number.isFinite(a.durationHint)
+        ? Math.max(0, a.durationHint)
+        : null;
+    const clipCap = Math.max(0, a.clipDurationCap);
+    const trimSec = durationHint === null ? clipCap : Math.min(durationHint, clipCap);
     const label = `a${i}`;
     const stage = [
       `[${inputIdx}:a]`,

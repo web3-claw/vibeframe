@@ -23,8 +23,10 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
+import { config as loadDotenv } from "dotenv";
 import { OpenAIImageProvider, type ImageOptions } from "@vibeframe/ai-providers";
 
+import { getAudioDuration } from "../../utils/audio.js";
 import {
   executeComposeScenesWithSkills,
   type ComposeEffort,
@@ -36,6 +38,7 @@ import { getComposePrompts, type ComposePromptsBeat } from "./compose-prompts.js
 import { detectedAgentHosts } from "../../utils/agent-host-detect.js";
 import { executeSceneRender, type SceneRenderResult } from "./scene-render.js";
 import { parseStoryboard, type Beat } from "./storyboard-parse.js";
+import { scaffoldSceneProject } from "./scene-project.js";
 import {
   resolveTtsProvider,
   TtsKeyMissingError,
@@ -288,10 +291,17 @@ export async function executeSceneBuild(opts: SceneBuildOptions): Promise<SceneB
     composeData = composeResult.data;
   }
 
-  // ── Phase 2.5: wire scene compositions into root index.html ───────────
+  // ── Phase 2.5: ensure render scaffold + wire scene compositions ──────
   // Both batch and agent modes need this — agents that just authored
   // composition HTML still need them referenced from the root index for
   // the producer to find them.
+  if (!existsSync(join(projectDir, "index.html"))) {
+    await scaffoldSceneProject({
+      dir: projectDir,
+      name: projectDir.split(/[\\/]/).filter(Boolean).pop(),
+      profile: "full",
+    });
+  }
   await syncRootClipReferences(parsed.beats, projectDir, beatOutcomes);
 
   // ── Phase 3: render (optional) ────────────────────────────────────────
@@ -429,6 +439,7 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
     return { status: "cached", path: rel };
   }
 
+  loadSceneBuildEnv(ctx.projectDir);
   const apiKey = process.env.OPENAI_API_KEY ?? "";
   if (!apiKey) {
     const error = "OPENAI_API_KEY not set — cannot dispatch backdrop";
@@ -458,6 +469,20 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
     provider: "openai",
   });
   return { status: "generated", path: rel };
+}
+
+function loadSceneBuildEnv(projectDir: string): void {
+  loadDotenv({ path: join(projectDir, ".env"), quiet: true });
+  loadDotenv({ path: resolve(process.cwd(), ".env"), quiet: true });
+
+  let dir = process.cwd();
+  while (dir !== dirname(dir)) {
+    if (existsSync(join(dir, "pnpm-workspace.yaml"))) {
+      loadDotenv({ path: join(dir, ".env"), quiet: true });
+      return;
+    }
+    dir = dirname(dir);
+  }
 }
 
 async function skipped(
@@ -534,13 +559,19 @@ async function syncRootClipReferences(
 
   const html = await readFile(rootPath, "utf-8");
 
-  // Compute beat start times sequentially. cues.duration / `### Beat duration`
-  // both feed Beat.duration; default to 3s when neither is present.
+  // Compute beat start times sequentially. Storyboard durations are minimums:
+  // generated narration that runs longer extends the beat so speech does not
+  // feel abruptly cut off at scene boundaries.
   let cursor = 0;
   const clipLines: string[] = [];
   const audioLines: string[] = [];
   for (const beat of beats) {
-    const duration = beat.duration ?? 3;
+    const outcome = outcomes.find((o) => o.beatId === beat.id);
+    const duration = await resolveBeatDuration({
+      beatDuration: beat.duration,
+      narrationPath: outcome?.narrationPath,
+      projectDir,
+    });
     const compositionId = `scene-${beat.id}`;
     clipLines.push(
       `      <div class="clip" data-composition-id="${compositionId}" data-composition-src="compositions/${compositionId}.html" data-start="${cursor}" data-duration="${duration}" data-track-index="0"></div>`,
@@ -548,16 +579,15 @@ async function syncRootClipReferences(
     // If the dispatcher produced a narration audio file, wire it into the
     // root with absolute timing. Sub-composition `<audio>` elements aren't
     // muxed by the producer; root-level ones are.
-    const outcome = outcomes.find((o) => o.beatId === beat.id);
     if (outcome?.narrationPath) {
       audioLines.push(
-        `      <audio src="${outcome.narrationPath}" data-start="${cursor}" data-duration="${duration}" data-track-index="2"></audio>`,
+        `      <audio id="narration-${beat.id}" src="${outcome.narrationPath}" data-start="${cursor}" data-duration="${duration}" data-track-index="2"></audio>`,
       );
     }
     cursor += duration;
   }
 
-  const totalDuration = cursor;
+  const totalDuration = Number(cursor.toFixed(2));
   const block =
     "      <!-- vibe-scene-build: clip refs (auto-generated; safe to re-run) -->\n" +
     clipLines.join("\n") +
@@ -584,11 +614,27 @@ async function syncRootClipReferences(
   // Update the root data-duration to match the new total. Pure regex —
   // we don't pull in a full HTML parser for one attribute.
   next = next.replace(
-    /(id="root"[\s\S]*?data-duration=")(\d+(?:\.\d+)?)(")/,
+    /(id="root"[\s\S]*?data-duration=")([^"]*)(")/,
     `$1${totalDuration}$3`,
   );
 
   if (next !== html) {
     await writeFile(rootPath, next, "utf-8");
+  }
+}
+
+async function resolveBeatDuration(opts: {
+  beatDuration?: number;
+  narrationPath?: string;
+  projectDir: string;
+}): Promise<number> {
+  const storyboardMin = opts.beatDuration ?? 3;
+  if (!opts.narrationPath) return Number(storyboardMin.toFixed(2));
+
+  try {
+    const audioDuration = await getAudioDuration(join(opts.projectDir, opts.narrationPath));
+    return Number(Math.max(storyboardMin, audioDuration + 0.5).toFixed(2));
+  } catch {
+    return Number(storyboardMin.toFixed(2));
   }
 }

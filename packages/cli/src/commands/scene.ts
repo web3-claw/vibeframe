@@ -1,11 +1,9 @@
 /**
  * @module scene
  *
- * `vibe scene <sub>` — author, lint, and render per-scene HTML projects that
- * target the Hyperframes render backend. A scene project is bilingual: it's
- * also a valid Hyperframes project (hyperframes.json + meta.json +
- * index.html + compositions/). Users and AI agents can hand-author rich per-
- * scene animation instead of relying on flat YAML steps or opaque MP4s.
+ * `vibe scene <sub>` — advanced namespace for authoring, linting, and
+ * rendering per-scene HTML projects. Users and AI agents can hand-author rich
+ * per-scene animation instead of relying on flat YAML steps or opaque MP4s.
  *
  * Subcommands land incrementally across MVP 1:
  *   - init      [C1] — scaffold project directory
@@ -34,8 +32,11 @@ import {
 } from "./_shared/tts-resolve.js";
 import {
   scaffoldSceneProject,
+  describeSceneScaffold,
+  isSceneScaffoldProfile,
   aspectToDims,
   type SceneAspect,
+  type SceneScaffoldProfile,
   type VibeProjectConfig,
 } from "./_shared/scene-project.js";
 import {
@@ -75,6 +76,7 @@ import {
   usageError,
   outputSuccess,
   isJsonMode,
+  isQuietMode,
 } from "./output.js";
 import { getApiKey } from "../utils/api-key.js";
 import { getAudioDuration } from "../utils/audio.js";
@@ -87,6 +89,7 @@ import {
 import { getComposePrompts } from "./_shared/compose-prompts.js";
 
 const VALID_ASPECTS: SceneAspect[] = ["16:9", "9:16", "1:1", "4:5"];
+const VALID_SCENE_INIT_PROFILES: SceneScaffoldProfile[] = ["minimal", "agent", "full"];
 
 function validateAspect(value: string): SceneAspect {
   if (!VALID_ASPECTS.includes(value as SceneAspect)) {
@@ -124,8 +127,14 @@ function validateVisualStyle(value: string): VisualStyle {
   return found as VisualStyle;
 }
 
+function formatSceneInitProfile(profile: SceneScaffoldProfile): string {
+  if (profile === "minimal") return "authoring files only; build will add render scaffold when needed";
+  if (profile === "agent") return "authoring files plus local composition rules for host agents";
+  return "complete authoring, agent, and render scaffold";
+}
+
 export const sceneCommand = new Command("scene")
-  .description("Author and render per-scene HTML compositions (Hyperframes backend)")
+  .description("Advanced scene commands for VibeFrame video projects")
   .addHelpText("after", `
 Examples:
   $ vibe scene init my-video                              # Scaffold a new project
@@ -134,24 +143,26 @@ Examples:
       --headline "Welcome to VibeFrame"                   # Headline-only scene
   $ vibe scene add overview --narration "VibeFrame turns scripts into video." \\
       --visuals "studio desk, soft lighting"              # AI narration + image
-  $ vibe scene lint                                       # Validate every scene against Hyperframes rules
+  $ vibe scene lint                                       # Validate every scene against composition rules
   $ vibe scene lint --fix                                 # Auto-fix mechanical issues (e.g. missing class="clip")
   $ vibe scene lint --json                                # Structured output for agent loops
   $ vibe scene render                                     # Render to renders/<name>-<timestamp>.mp4
   $ vibe scene render -o demo.mp4 --quality high          # Custom output path + quality
   $ vibe scene render --fps 60 --format webm              # 60fps WebM render
 
-A scene project is bilingual: it works with both \`vibe\` and \`npx hyperframes\`.
+Most users can start with \`vibe init\`, \`vibe build\`, and \`vibe render\`.
+This namespace exposes lower-level scene authoring and rendering controls.
 Run 'vibe schema scene.<command>' for structured parameter info.`);
 
 sceneCommand
   .command("init")
-  .description("Scaffold a new scene project (or safely augment an existing Hyperframes project)")
+  .description("Scaffold a new scene project (or safely augment an existing project)")
   .argument("<dir>", "Project directory (created if it doesn't exist)")
   .option("-n, --name <name>", "Project name (defaults to directory basename)")
   .option("-r, --ratio <ratio>", "Aspect ratio: 16:9, 9:16, 1:1, 4:5", "16:9")
   .option("-d, --duration <sec>", "Default root composition duration (seconds)", "10")
   .option("--visual-style <name>", `Seed DESIGN.md from a named style (browse via \`vibe scene styles\`). E.g. "Swiss Pulse"`)
+  .option("--profile <profile>", "Scene profile: minimal (storyboard/design only), agent (recommended), full (render scaffold upfront)", "agent")
   .option("--dry-run", "Preview parameters without writing files")
   .action(async (dir: string, options) => {
     const startedAt = Date.now();
@@ -161,8 +172,17 @@ sceneCommand
     const visualStyle = options.visualStyle
       ? validateVisualStyle(options.visualStyle as string)
       : undefined;
+    const profile = String(options.profile ?? "agent");
+    if (!isSceneScaffoldProfile(profile)) {
+      exitWithError(usageError(`Invalid --profile: ${profile}`, `Must be one of: ${VALID_SCENE_INIT_PROFILES.join(", ")}`));
+    }
+    const groups = describeSceneScaffold({ dir, profile });
 
     if (options.dryRun) {
+      if (!isJsonMode() && !isQuietMode()) {
+        printSceneInitDryRun({ dir, name, aspect, duration, visualStyleName: visualStyle?.name ?? null, profile, groups });
+        return;
+      }
       outputSuccess({
         command: "scene init",
         startedAt,
@@ -174,15 +194,17 @@ sceneCommand
             aspect,
             duration,
             visualStyle: visualStyle?.name ?? null,
+            profile,
           },
+          groups,
         },
       });
       return;
     }
 
-    const spinner = isJsonMode() ? null : ora(`Scaffolding scene project at ${dir}...`).start();
+    const spinner = isJsonMode() || isQuietMode() ? null : ora(`Scaffolding scene project at ${dir}...`).start();
     try {
-      const result = await scaffoldSceneProject({ dir, name, aspect, duration, visualStyle });
+      const result = await scaffoldSceneProject({ dir, name, aspect, duration, visualStyle, profile });
 
       // Phase H1: drop the Hyperframes skill into the project so the host
       // agent (Claude Code, Cursor, Codex, Aider, …) can read it directly.
@@ -194,12 +216,14 @@ sceneCommand
       const detectedIds = detectedAgentHosts().map((h) => h.id);
       const skillHosts = deriveInstallHosts(detectedIds);
       const projectAbs = resolve(dir);
-      const skillResult = await installHyperframesSkill({
-        projectDir: projectAbs,
-        hosts: skillHosts,
-      });
+      const skillResult = profile === "agent" || profile === "full"
+        ? await installHyperframesSkill({
+            projectDir: projectAbs,
+            hosts: skillHosts,
+          })
+        : { success: true, files: [], bundleVersion: "not-installed" };
 
-      if (isJsonMode()) {
+      if (isJsonMode() || isQuietMode()) {
         outputSuccess({
           command: "scene init",
           startedAt,
@@ -209,9 +233,11 @@ sceneCommand
             aspect,
             duration,
             visualStyle: visualStyle?.name ?? null,
+            profile,
             created: result.created,
             merged: result.merged,
             skipped: result.skipped,
+            groups: result.groups,
             skillFiles: skillResult.files,
             skillBundleVersion: skillResult.bundleVersion,
           },
@@ -219,7 +245,16 @@ sceneCommand
         return;
       }
 
-      spinner?.succeed(chalk.green(`Scene project ready: ${dir}`));
+      spinner?.succeed(chalk.green(`Video project ready: ${dir}`));
+      console.log();
+      console.log(chalk.bold.cyan("Edit first"));
+      console.log(chalk.dim("─".repeat(60)));
+      console.log(`  ${chalk.bold("STORYBOARD.md")} ${chalk.dim("# beats: narration, backdrop, minimum duration")}`);
+      console.log(`  ${chalk.bold("DESIGN.md")}     ${chalk.dim("# palette, typography, motion rules")}`);
+      console.log();
+      console.log(chalk.bold.cyan("Profile"));
+      console.log(chalk.dim("─".repeat(60)));
+      console.log(`  ${chalk.bold(profile)} ${chalk.dim(formatSceneInitProfile(profile))}`);
       console.log();
       console.log(chalk.bold.cyan("Files"));
       console.log(chalk.dim("─".repeat(60)));
@@ -231,7 +266,7 @@ sceneCommand
       const skillSkipped = skillResult.files.filter((f) => f.status === "skipped-exists");
       if (skillWritten.length + skillSkipped.length > 0) {
         console.log();
-        console.log(chalk.bold.cyan("Hyperframes skill"));
+        console.log(chalk.bold.cyan("Composition rules"));
         console.log(chalk.dim("─".repeat(60)));
         for (const f of skillWritten) console.log(chalk.green("  +"), f.path);
         for (const f of skillSkipped) console.log(chalk.dim("  ·"), f.path, chalk.dim("(kept existing)"));
@@ -246,16 +281,48 @@ sceneCommand
       } else {
         console.log(`  ${chalk.cyan("vibe scene styles")}        ${chalk.dim("# pick a named style for DESIGN.md")}`);
       }
-      console.log(`  ${chalk.dim("Your agent now has Hyperframes rules in")} ${chalk.cyan("SKILL.md")} ${chalk.dim("— ask it to author scene HTML directly.")}`);
+      if (profile === "agent" || profile === "full") {
+        console.log(`  ${chalk.dim("Your agent now has composition rules in")} ${chalk.cyan("SKILL.md")} ${chalk.dim("— ask it to author scene HTML directly.")}`);
+      } else {
+        console.log(`  ${chalk.cyan("vibe scene install-skill")} ${chalk.dim("# add agent authoring rules later")}`);
+      }
       console.log(`  ${chalk.cyan("vibe scene add")} <name>    ${chalk.dim("# fallback: 5-preset emit (no agent)")}`);
-      console.log(`  ${chalk.cyan("vibe scene lint")}          ${chalk.dim("# validate HTML")}`);
-      console.log(`  ${chalk.cyan("vibe scene render")}        ${chalk.dim("# render to MP4")}`);
+      console.log(`  ${chalk.cyan("vibe build")}               ${chalk.dim("# build STORYBOARD.md into scenes/assets")}`);
+      console.log(`  ${chalk.cyan("vibe render")}              ${chalk.dim("# render to video")}`);
     } catch (error) {
       spinner?.fail("Failed to scaffold scene project");
       const msg = error instanceof Error ? error.message : String(error);
       exitWithError(generalError(`Failed to scaffold: ${msg}`));
     }
   });
+
+function printSceneInitDryRun(opts: {
+  dir: string;
+  name: string;
+  aspect: SceneAspect;
+  duration: number;
+  visualStyleName: string | null;
+  profile: SceneScaffoldProfile;
+  groups: ReturnType<typeof describeSceneScaffold>;
+}): void {
+  console.log();
+  console.log(chalk.bold.cyan("VibeFrame Scene Init - dry run"));
+  console.log(chalk.dim("-".repeat(60)));
+  console.log(`  Project:      ${chalk.bold(opts.dir)}`);
+  console.log(`  Name:         ${chalk.bold(opts.name)}`);
+  console.log(`  Profile:      ${chalk.bold(opts.profile)} ${chalk.dim(formatSceneInitProfile(opts.profile))}`);
+  console.log(`  Aspect:       ${opts.aspect}`);
+  console.log(`  Duration:     ${opts.duration}s`);
+  console.log(`  Visual style: ${opts.visualStyleName ?? "none"}`);
+  console.log();
+  console.log(chalk.bold.cyan("Files that would be prepared"));
+  console.log(chalk.dim("-".repeat(60)));
+  for (const file of opts.groups.authoring) console.log(`  authoring  ${file}`);
+  for (const file of opts.groups.agent) console.log(`  agent      ${file}`);
+  for (const file of opts.groups.render) console.log(`  render     ${file}`);
+  console.log();
+  console.log(chalk.dim("No files were written."));
+}
 
 // ---------------------------------------------------------------------------
 // `vibe scene install-skill` — drop the Hyperframes skill into a project
@@ -1028,7 +1095,7 @@ export async function executeSceneAdd(opts: SceneAddOptions): Promise<SceneAddRe
 
 sceneCommand
   .command("lint")
-  .description("Validate scene HTML against Hyperframes rules (in-process, no Chrome required)")
+  .description("Validate scene HTML against composition rules (in-process, no Chrome required)")
   .argument("[root]", "Root composition file relative to --project", "index.html")
   .option("--project <dir>", "Project directory", ".")
   .option("--fix", "Apply mechanical auto-fixes (currently: missing class=\"clip\")")
@@ -1387,7 +1454,7 @@ sceneCommand
         }
       }
       console.log();
-      console.log(chalk.dim("Once you've authored each beat's HTML, re-run `vibe scene build` to lint + render."));
+      console.log(chalk.dim("Once you've authored each beat's HTML, re-run `vibe build` to lint + render."));
       console.log(chalk.dim("Or pass `--mode batch` to use the internal LLM compose path instead."));
       return;
     }
