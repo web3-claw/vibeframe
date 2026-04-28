@@ -15,7 +15,7 @@
 
 - **Phase 1 — Foundation:** Turborepo monorepo, Zustand+Immer timeline, FFmpeg.wasm export, CLI package.
 - **Phase 2 — AI Providers:** 13 providers across text/audio/image/video (OpenAI, Claude, Gemini, Grok, OpenRouter, Ollama, Whisper, ElevenLabs, Kokoro, Runway, Kling, Veo, Replicate, fal.ai). See [`MODELS.md`](MODELS.md) for the canonical list.
-- **Phase 3 — MCP Integration:** `@vibeframe/mcp-server` exposes 58 tools + project state resources for Claude Desktop / Cursor / any MCP host.
+- **Phase 3 — MCP Integration:** `@vibeframe/mcp-server` exposes 66 tools + project state resources for Claude Desktop / Cursor / any MCP host.
 
 ---
 
@@ -33,7 +33,7 @@ This is where day-to-day work happens. Major capabilities all delivered through 
 - (`vibe pipeline script-to-video` deprecated v0.63 — superseded by `vibe scene build`)
 
 ### Smart editing & analysis (`vibe edit` / `vibe analyze`)
-silence-cut, jump-cut, caption, grade, reframe, speed-ramp, fade, noise-reduce, text-overlay, upscale, interpolate, fill-gaps, translate-srt, image edit, video review (84+ commands total).
+silence-cut, jump-cut, caption, grade, reframe, speed-ramp, fade, noise-reduce, text-overlay, upscale-video, interpolate, fill-gaps, translate-srt, image edit, video review (100+ commands total).
 
 ### Voice & audio
 TTS (ElevenLabs + Kokoro local fallback), voice-clone, dub, duck, music generation, sound effects, isolation.
@@ -48,20 +48,24 @@ Aliases (`gen`, `ed`, `az`, `pipe`, …), `--describe`, `--dry-run` cost preview
 `vibe run pipeline.yaml` — 20+ actions, `$step.output` references, `.pipeline-state.yaml` checkpointing, `--dry-run`/`--resume`, budget ceilings. See [`examples/README.md`](examples/README.md).
 
 ### Agent surface
-`vibe agent` REPL (BYO LLM × 6 — Claude / OpenAI / Gemini / Grok / OpenRouter / Ollama). MCP server bundled (61 tools). Claude Code skill pack (`/vibe-pipeline`, `/vibe-scene`) — consolidated 4 → 2 in v0.62.
+`vibe agent` REPL (BYO LLM × 6 — Claude / OpenAI / Gemini / Grok / OpenRouter / Ollama). MCP server bundled (66 tools). Claude Code skill pack (`/vibe-pipeline`, `/vibe-scene`) — consolidated 4 → 2 in v0.62.
 
 ### Demo & showcase
 - [x] Asciinema recordings (CLI / agent / Claude Code) — README hero
 - [x] [`DEMO.md`](DEMO.md) three-surface follow-along
 - [x] Cinematic-finish demo MP4 (v0.60.0) — [`assets/demos/cinematic-v060.mp4`](assets/demos/cinematic-v060.mp4), produced by `vibe scene build` end-to-end
-- [ ] Output gallery / interactive web demo
+- [x] VHS tape recordings (`assets/demos/{cli,agent,host-agent,host-agent-i2v}.tape`) — reproducible per-surface demos (v0.61+)
+- [x] `vibe init` setup wizard (v0.61) — post-install scaffold of `CLAUDE.md` / `AGENTS.md` / `.env.example` based on detected agent host
 
-### Open items in Phase 4 (v0.61+ candidates)
-- **I2V backdrop integration** — replace still + Ken-Burns backdrops in `vibe scene build` with motion video from Runway / Kling / Veo / fal.ai
-- **Multi-provider T2I in `scene build`** — currently OpenAI gpt-image-2 only; add Gemini / Grok routing
-- **`compose-scenes-with-skills` narration awareness** — pass word-level transcript so Claude can word-sync animations to audio
-- **Real-Time Subject Tracking** — local MediaPipe / YOLO / SAM-2 for fast-moving subject reframing, replacing today's Claude Vision keyframe approach (`vibe edit reframe --track`).
-- **`vibe init` setup wizard** — post-install one-shot that scaffolds `CLAUDE.md` / `AGENTS.md` / `.claude/skills/` / `.env.example` based on detected agent host (Claude Code, Cursor, plain shell).
+### Open items in Phase 4 (tracked as GitHub issues)
+
+These were the v0.61+ candidates from earlier ROADMAP drafts. Each now has a tracking issue with current code references and acceptance criteria:
+
+- **[#202](https://github.com/vericontext/vibeframe/issues/202)** — Multi-provider T2I in `scene build` (Gemini + Grok routing; help text fix)
+- **[#203](https://github.com/vericontext/vibeframe/issues/203)** — I2V backdrop integration (motion video from Runway / Kling / Veo / fal.ai instead of still + Ken-Burns)
+- **[#204](https://github.com/vericontext/vibeframe/issues/204)** — `compose-scenes-with-skills` narration awareness (word-level transcript timings into compose prompt)
+- **[#205](https://github.com/vericontext/vibeframe/issues/205)** — Local subject tracking (MediaPipe / YOLO / SAM-2) for `vibe edit reframe --track` — `help wanted`
+- **[#206](https://github.com/vericontext/vibeframe/issues/206)** — Tracking: drop Hyperframes `workers: 1` workaround once heygen-com/hyperframes#334 ships
 
 ---
 

@@ -76,10 +76,14 @@ export default function LandingPage() {
             <span className="bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">not clicks.</span>
           </h1>
 
+          <p className="text-2xl sm:text-3xl font-semibold text-foreground/90 mb-6 animate-fade-in-up delay-75">
+            The CLI is your agent's UI.
+          </p>
+
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-12 animate-fade-in-up delay-100">
-            A CLI agents can compose, pipe, and script.
-            YAML pipelines, {process.env.NEXT_PUBLIC_AI_PROVIDERS} AI providers, {process.env.NEXT_PUBLIC_MCP_TOOLS} MCP tools bundled.
-            Works with Claude Code, OpenAI Codex, Cursor, Aider, Gemini CLI, OpenCode — any bash-capable AI coding agent. No GUI required.
+            A video CLI for the era when your AI coding agent ships the work.
+            {" "}{process.env.NEXT_PUBLIC_CLI_COMMANDS}+ commands, {process.env.NEXT_PUBLIC_AI_PROVIDERS} AI providers, {process.env.NEXT_PUBLIC_MCP_TOOLS} MCP tools.
+            Works with Claude Code, OpenAI Codex, Cursor, Aider, Gemini CLI, OpenCode — any bash-capable AI agent.
           </p>
 
           {/* Install Command */}
@@ -109,6 +113,46 @@ export default function LandingPage() {
               See it in action
             </Link>
           </div>
+        </div>
+      </section>
+
+      {/* Why CLI? — Three-stat evidence strip grounding the agent-era thesis.
+          Tight by design — three numbers + sources, no preamble. Positioned
+          here so visitors see "why care" before the demo. */}
+      <section className="py-12 px-4 border-t border-border/50 relative">
+        <div className="mx-auto max-w-5xl">
+          <div className="grid sm:grid-cols-3 gap-6 text-center">
+            <a
+              href="https://thenewstack.io/ai-coding-tools-in-2025-welcome-to-the-agentic-cli-era/"
+              target="_blank"
+              rel="noreferrer"
+              className="group block"
+            >
+              <div className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent mb-1">10–32×</div>
+              <div className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">cheaper than MCP per task<br /><span className="text-xs opacity-70">75-task CLI vs MCP study</span></div>
+            </a>
+            <a
+              href="https://ossinsight.io/blog/agent-native-cli-wave-2026"
+              target="_blank"
+              rel="noreferrer"
+              className="group block"
+            >
+              <div className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent mb-1">6 repos</div>
+              <div className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">launched Q1 2026, same premise<br /><span className="text-xs opacity-70">"agent-native CLI wave" — OSS Insight</span></div>
+            </a>
+            <a
+              href="https://blog.jetbrains.com/research/2026/04/which-ai-coding-tools-do-developers-actually-use-at-work/"
+              target="_blank"
+              rel="noreferrer"
+              className="group block"
+            >
+              <div className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-pink-500 to-orange-500 bg-clip-text text-transparent mb-1">74%</div>
+              <div className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">of devs use AI coding tools today<br /><span className="text-xs opacity-70">JetBrains AI Pulse, Jan 2026</span></div>
+            </a>
+          </div>
+          <p className="text-center text-sm text-muted-foreground mt-8 max-w-2xl mx-auto">
+            Today's software was built for humans clicking buttons. VibeFrame is built for the era when your software's primary user is an AI agent.
+          </p>
         </div>
       </section>
 
@@ -390,7 +434,7 @@ export default function LandingPage() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {["project_create", "timeline_add_source", "export_video", "edit_silence_cut", "ai_analyze", "ai_script_to_video"].map((tool) => (
+                {["scene_build", "project_create", "timeline_add_source", "export_video", "edit_silence_cut", "walkthrough"].map((tool) => (
                   <span key={tool} className="text-xs bg-background/50 backdrop-blur-sm border border-border/50 px-3 py-1.5 rounded-full font-mono">
                     {tool}
                   </span>
@@ -585,10 +629,10 @@ export default function LandingPage() {
       <section className="py-20 px-4">
         <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-            Ready to ship?
+            Hand it to your agent.
           </h2>
           <p className="text-muted-foreground text-lg mb-8">
-            Open source. MIT licensed. Built for builders.
+            Open source · MIT · v{process.env.NEXT_PUBLIC_VERSION} · {process.env.NEXT_PUBLIC_CLI_COMMANDS}+ commands ready for your terminal.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -602,11 +646,11 @@ export default function LandingPage() {
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
             <Link
-              href="https://www.npmjs.com/package/@vibeframe/mcp-server"
+              href="https://github.com/vericontext/vibeframe#cli-reference"
               target="_blank"
               className="flex items-center gap-2 rounded-lg border border-border px-6 py-3 font-medium hover:bg-secondary hover:border-primary/30 transition-all"
             >
-              MCP Setup Guide
+              CLI Reference
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -620,12 +664,18 @@ export default function LandingPage() {
             <img src="/logo.svg" alt="VibeFrame" className="w-6 h-6" />
             <span>VibeFrame</span>
           </div>
-          <div className="flex items-center gap-6 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground">
             <Link href="https://github.com/vericontext/vibeframe" target="_blank" className="hover:text-foreground transition-colors">
               GitHub
             </Link>
+            <Link href="https://github.com/vericontext/vibeframe/blob/main/CHANGELOG.md" target="_blank" className="hover:text-foreground transition-colors">
+              Changelog
+            </Link>
             <Link href="https://github.com/vericontext/vibeframe/blob/main/ROADMAP.md" target="_blank" className="hover:text-foreground transition-colors">
               Roadmap
+            </Link>
+            <Link href="https://www.npmjs.com/package/@vibeframe/mcp-server" target="_blank" className="hover:text-foreground transition-colors">
+              MCP server (npm)
             </Link>
             <Link href="https://github.com/vericontext/vibeframe/blob/main/LICENSE" target="_blank" className="hover:text-foreground transition-colors">
               MIT License

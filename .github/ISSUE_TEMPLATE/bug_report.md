@@ -24,7 +24,7 @@ What actually happened. Include any error messages or stack traces.
 - Node.js version: [e.g., 22.x — run `node -v`]
 - pnpm version: [e.g., 9.x — run `pnpm -v`]
 - FFmpeg version: [e.g., 7.x — run `ffmpeg -version`]
-- VibeFrame version: [e.g., 0.27.0 — run `vibe --version`]
+- VibeFrame version: [e.g., 0.72.0 — run `vibe --version`]
 
 ## CLI Output
 ```

@@ -1,15 +1,27 @@
 # VibeFrame
 
-**The video CLI for AI agents.** YAML pipelines. 13 AI providers. 66 MCP tools bundled.
+**Ship videos, not clicks. The CLI is your agent's UI.**
 
-> Works with **Claude Code**, **OpenAI Codex**, **Cursor**, **Aider**, **Gemini CLI**, **OpenCode** — any bash-capable AI coding agent. `vibe doctor` auto-detects all six and `vibe init` scaffolds the right project files.
+A video CLI for the era when your AI coding agent ships the work. Works with **Claude Code**, **OpenAI Codex**, **Cursor**, **Aider**, **Gemini CLI**, **OpenCode** — any bash-capable AI agent. 100+ commands, 13 AI providers, 66 MCP tools, YAML pipelines.
 
 [![GitHub stars](https://img.shields.io/github/stars/vericontext/vibeframe)](https://github.com/vericontext/vibeframe/stargazers)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/vericontext/vibeframe/actions/workflows/ci.yml/badge.svg)](https://github.com/vericontext/vibeframe/actions/workflows/ci.yml)
 [![Contributors](https://img.shields.io/github/contributors/vericontext/vibeframe)](https://github.com/vericontext/vibeframe/graphs/contributors)
 
-> Edit videos with natural language. Every edit is a command. Every workflow is scriptable.
+> Every edit is a command. `vibe doctor` auto-detects your agent host; `vibe init` scaffolds the right project files. The CLI surface is identical across every host — your agent shells out, gets work done, ships the MP4.
+
+---
+
+### Why a CLI?
+
+Because in 2026 your agent already lives in your terminal. Three signals that crystallized this year:
+
+- **10–32× cheaper than MCP per task** — 75-task study comparing CLI vs. MCP-tool-driven agents ([The New Stack](https://thenewstack.io/ai-coding-tools-in-2025-welcome-to-the-agentic-cli-era/))
+- **6 major repos launched Q1 2026** with the same premise — *"give existing software a structured CLI so AI agents can use it"* ([OSS Insight](https://ossinsight.io/blog/agent-native-cli-wave-2026))
+- **74% of developers** use AI coding tools today ([JetBrains AI Pulse, Jan 2026](https://blog.jetbrains.com/research/2026/04/which-ai-coding-tools-do-developers-actually-use-at-work/))
+
+Today's software was built for humans clicking buttons. VibeFrame is built for the era when your software's primary user is an AI agent.
 
 ---
 
@@ -80,7 +92,7 @@ See [`docs/comparison.md`](docs/comparison.md) for a measured side-by-side of `v
 |---|---|---|
 | **AI generation** | — | OpenAI gpt-image-2 (image default since v0.56), fal.ai Seedance 2.0 (video default since v0.57), Veo, Kling, Runway, Grok, ElevenLabs, Replicate |
 | **Agent integrations** | — | MCP server (66 tools, `@vibeframe/mcp-server`) · `vibe agent` REPL (BYO LLM × 6) |
-| **Traditional editing** | — | `vibe edit` silence-cut · jump-cut · caption · grade · reframe · speed-ramp · fade · noise-reduce (84+ commands total) |
+| **Traditional editing** | — | `vibe edit` silence-cut · jump-cut · caption · grade · reframe · speed-ramp · fade · noise-reduce (100+ commands total) |
 | **AI analysis** | — | `vibe analyze` media/video/review/suggest (multimodal LLMs) |
 | **BUILD from text** | composition format only | `vibe scene build` (v0.60 one-shot driver) — STORYBOARD.md → MP4 |
 | **PROCESS existing video** | — | `vibe pipeline highlights` · `auto-shorts` · `animated-caption` |
@@ -293,10 +305,8 @@ vibe pipeline auto-shorts podcast.mp4
 vibe pipeline animated-caption video.mp4 -s bounce -o captioned.mp4
 ```
 
-> `pipeline script-to-video` was **removed** in favour of `vibe scene build` —
-> the skill-driven flow is cheaper, idempotent, and per-beat editable.
-> `pipeline regenerate-scene` is preserved for re-rendering individual scenes
-> against an existing storyboard.{yaml,json}.
+> [!NOTE]
+> **`pipeline script-to-video` was removed in v0.63** in favour of `vibe scene build` — the skill-driven flow is cheaper, idempotent, and per-beat editable. `pipeline regenerate-scene` is preserved for re-rendering individual scenes against an existing storyboard.{yaml,json}.
 
 ---
 
@@ -381,25 +391,26 @@ feedback loop pattern (`--json --fix`, ≤3 retries, template fallback).
 
 ## CLI Reference
 
-Every command supports `--help`. Run `vibe --help` for a full list.
+Every command supports `--help`, `--json`, `--dry-run`, `--stdin`, and `--describe`. Run `vibe --help` for a full list, or `vibe schema --list` for a machine-readable index.
 
 | Group | Commands | Example |
 |-------|----------|---------|
 | **`vibe generate`** | `image`, `video`, `speech`, `sound-effect`, `music`, `motion`, `storyboard`, `thumbnail`, `background` | `vibe generate image "prompt" -o img.png` |
-| **`vibe edit`** | `silence-cut`, `jump-cut`, `caption`, `grade`, `reframe`, `speed-ramp`, `text-overlay`, `fade`, `noise-reduce`, `image`, `fill-gaps` | `vibe edit caption video.mp4 -o out.mp4` |
+| **`vibe edit`** | `silence-cut`, `jump-cut`, `caption`, `translate-srt`, `grade`, `reframe`, `speed-ramp`, `text-overlay`, `fade`, `noise-reduce`, `image`, `fill-gaps`, `interpolate`, `upscale-video` | `vibe edit caption video.mp4 -o out.mp4` |
 | **`vibe analyze`** | `media`, `video`, `review`, `suggest` | `vibe analyze media video.mp4 "summarize"` |
-| **`vibe audio`** | `transcribe` (Whisper), `tts` (ElevenLabs · Kokoro local fallback), `voices`, `isolate`, `voice-clone`, `dub`, `duck` | `vibe audio transcribe audio.mp3` |
-| **`vibe pipeline`** | `highlights`, `auto-shorts`, `animated-caption`, `regenerate-scene` (text → MP4 lives in `vibe scene build` since v0.63) | `vibe pipeline highlights long.mp4 -d 60` |
-| **`vibe scene`** | `init`, `add`, `lint`, `render`, `build` (v0.60) | `vibe scene build my-promo` |
+| **`vibe audio`** | `transcribe` (Whisper), `voices`, `isolate`, `voice-clone`, `dub`, `duck` *(TTS lives at `vibe generate speech`)* | `vibe audio transcribe audio.mp3` |
+| **`vibe pipeline`** | `highlights`, `auto-shorts`, `animated-caption`, `regenerate-scene` | `vibe pipeline highlights long.mp4 -d 60` |
+| **`vibe scene`** | `init`, `add`, `lint`, `render`, `build`, `styles`, `install-skill`, `compose-prompts` | `vibe scene build my-promo` |
 | **`vibe project`** | `create`, `info`, `set` | `vibe project create "name"` |
-| **`vibe timeline`** | `add-source`, `add-clip`, `split`, `trim`, `move`, `delete`, `list` | `vibe timeline add-source project file` |
-| **`vibe batch`** | `import`, `concat`, `apply-effect` | `vibe batch import project dir/` |
+| **`vibe timeline`** | `add-source`, `add-clip`, `add-track`, `add-effect`, `split`, `trim`, `move`, `duplicate`, `delete`, `list` | `vibe timeline add-source project file` |
+| **`vibe batch`** | `import`, `concat`, `apply-effect`, `remove-clips`, `info` | `vibe batch import project dir/` |
 | **`vibe detect`** | `scenes`, `silence`, `beats` | `vibe detect scenes video.mp4` |
-| **`vibe export`** | - | `vibe export project.vibe.json -o out.mp4` (supports mp4, webm, gif) |
-| **`vibe run`** | - | `vibe run pipeline.yaml` (Video as Code) |
-| **`vibe demo`** | - | `vibe demo` (no API keys needed) |
+| **`vibe export`** | _(top-level)_ | `vibe export project.vibe.json -o out.mp4` (supports mp4, webm, gif) |
+| **`vibe run`** | _(top-level — Video as Code)_ | `vibe run pipeline.yaml` |
+| **Setup & utility** | `setup`, `init`, `doctor`, `agent`, `walkthrough`, `demo`, `schema`, `context` | `vibe doctor` · `vibe init my-project` |
 
-Every command supports `--help`, `--json`, `--dry-run`, `--stdin`, and `--describe`. Run `vibe schema --list` for a full machine-readable command index.
+> [!NOTE]
+> Removed in recent releases: `pipeline script-to-video` (v0.63 → use `vibe scene build`), `vibe ai *` orchestrator (v0.69), and the `dalle` alias (v0.69 — use `vibe generate image -p openai`).
 
 See [Cookbook](docs/cookbook.md) for 10 practical recipes combining multiple commands.
 
@@ -452,24 +463,26 @@ vibeframe/
 
 ---
 
-## Roadmap
+## What's coming
 
-| Phase | Status | Description |
-|-------|--------|-------------|
-| 1. Foundation | Done | Core CLI, FFmpeg.wasm export |
-| 2. AI Providers | Done | Multi-provider integrated |
-| 3. MCP Integration | Done | Claude Desktop & Cursor support |
-| 4. AI Pipelines | Done | Script-to-Video, Highlights, B-Roll, Viral |
-| 5. Server Infrastructure | Planned | Hybrid rendering, chunked uploads |
-| 6. Collaboration | Planned | CRDT-based local-first sync |
+### Now — v0.72.0 (April 2026)
+- 100+ CLI commands across `edit` / `generate` / `analyze` / `audio` / `scene` / `pipeline`
+- 11 AI providers · 66 MCP tools · 6 agent host scaffolds (Claude Code, Codex, Cursor, Aider, Gemini CLI, OpenCode)
+- Hyperframes-backed scene composition · Video as Code (YAML pipelines, `--resume`, budget gates)
+- `vibe scene build` one-shot STORYBOARD.md → MP4 · standardized `--json` envelope
 
-See [ROADMAP.md](ROADMAP.md) for details.
+### Next (open issues, ordered roughly)
+- **[#202](https://github.com/vericontext/vibeframe/issues/202)** — Multi-provider T2I in `scene build` (Gemini + Grok routing)
+- **[#204](https://github.com/vericontext/vibeframe/issues/204)** — Word-sync animations: thread per-word transcript timings into the compose prompt
+- **[#203](https://github.com/vericontext/vibeframe/issues/203)** — Motion-video backdrops (Runway / Kling / Veo / fal.ai) replacing Ken-Burns
+- **[#206](https://github.com/vericontext/vibeframe/issues/206)** — Drop the Hyperframes `workers: 1` workaround once upstream ships
 
----
+### Later
+- **[#205](https://github.com/vericontext/vibeframe/issues/205)** — Local subject tracking (MediaPipe / YOLO / SAM-2) for `vibe edit reframe --track` *(`help wanted`)*
+- Server-side rendering — beyond browser memory limits, chunked AI-video upload/download
+- CRDT-based local-first collaboration
 
-## Open Core Model
-
-**VibeFrame Core is 100% open source** (MIT License). Core features will always remain free and open source.
+[Full ROADMAP →](ROADMAP.md) · [All open issues →](https://github.com/vericontext/vibeframe/issues)
 
 ---
 

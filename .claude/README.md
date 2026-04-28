@@ -21,12 +21,13 @@ This directory configures Claude Code for the VibeFrame project.
 │   ├── version-checker.md     # SSOT sync validation (haiku)
 │   ├── lint-fixer.md          # Fix ESLint errors (haiku)
 │   ├── e2e-tester.md          # Full E2E testing (sonnet, 60 turns)
-│   ├── feature-tester.md      # Single-feature testing (haiku)
-│   └── pipeline-tester.md     # AI pipeline testing (sonnet, 40 turns)
+│   └── feature-tester.md      # Single-feature testing (haiku)
 └── skills/                    # Workflow skills (user-invocable)
     ├── test/SKILL.md          # /test — run tests
     ├── release/SKILL.md       # /release — version bump workflow
-    └── sync-check/SKILL.md    # /sync-check — SSOT consistency
+    ├── sync-check/SKILL.md    # /sync-check — SSOT consistency
+    ├── vibe-pipeline/SKILL.md # /vibe-pipeline — Video as Code authoring guide
+    └── vibe-scene/SKILL.md    # /vibe-scene — scene composition authoring guide
 ```
 
 ## Rules vs Skills — When to Use Which
@@ -50,8 +51,9 @@ This directory configures Claude Code for the VibeFrame project.
 - This keeps initial context lean (~50 lines from CLAUDE.md only)
 
 ### Skills
-- 3 workflow skills: `/test`, `/release`, `/sync-check`
+- 5 workflow skills: `/test`, `/release`, `/sync-check`, `/vibe-pipeline`, `/vibe-scene`
 - Skill descriptions are always visible; full content loads on invocation
+- `/vibe-pipeline` and `/vibe-scene` mirror the universal `vibe walkthrough` content — Claude Code users get the slash-menu shortcut, every other host calls `vibe walkthrough <topic>`
 - Provider API references were removed (CLI source code is the SSOT)
 
 ### Agents
