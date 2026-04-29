@@ -18,7 +18,7 @@ import chalk from 'chalk';
 import ora from 'ora';
 import { ClaudeProvider, GeminiProvider } from '@vibeframe/ai-providers';
 import { getApiKey } from '../utils/api-key.js';
-import { exitWithError, outputSuccess, apiError, generalError } from './output.js';
+import { exitWithError, outputSuccess, apiError, generalError, usageError } from './output.js';
 import { validateOutputPath } from "./validate.js";
 
 // ── Motion: exported function for Agent tool ────────────────────────────────
@@ -291,6 +291,36 @@ export function registerMotionCommand(aiCommand: Command): void {
       try {
         if (options.output) {
           validateOutputPath(options.output);
+        }
+
+        // Validate numeric inputs up-front so dry-run rejects nonsense
+        // before echoing a plan a user might copy and run.
+        if (options.duration !== undefined) {
+          const d = parseFloat(options.duration);
+          if (!Number.isFinite(d) || d <= 0 || d > 60) {
+            exitWithError(usageError(
+              `Invalid --duration: ${options.duration}`,
+              "Must be a positive number ≤ 60 seconds.",
+            ));
+          }
+        }
+        if (options.width !== undefined) {
+          const w = parseInt(options.width, 10);
+          if (!Number.isFinite(w) || w < 16 || w > 7680) {
+            exitWithError(usageError(
+              `Invalid --width: ${options.width}`,
+              "Must be an integer between 16 and 7680.",
+            ));
+          }
+        }
+        if (options.height !== undefined) {
+          const h = parseInt(options.height, 10);
+          if (!Number.isFinite(h) || h < 16 || h > 4320) {
+            exitWithError(usageError(
+              `Invalid --height: ${options.height}`,
+              "Must be an integer between 16 and 4320.",
+            ));
+          }
         }
 
         if (options.dryRun) {

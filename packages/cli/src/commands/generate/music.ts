@@ -145,6 +145,18 @@ export function registerMusicCommand(parent: Command): void {
           validateOutputPath(options.output);
         }
 
+        // Validate duration up-front so dry-run rejects nonsense values
+        // before they're echoed as a "plan" the user could copy and run.
+        if (options.duration !== undefined) {
+          const d = parseFloat(options.duration);
+          if (!Number.isFinite(d) || d <= 0 || d > 600) {
+            exitWithError(usageError(
+              `Invalid --duration: ${options.duration}`,
+              "Must be a positive number ≤ 600s (ElevenLabs 3-600, Replicate 1-30).",
+            ));
+          }
+        }
+
         const provider = (options.provider || "elevenlabs").toLowerCase();
 
         if (options.dryRun) {

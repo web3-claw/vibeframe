@@ -76,26 +76,32 @@ Examples:
     printReport(results);
   });
 
-/** FFmpeg filters required by offline commands */
+/** FFmpeg filters required by offline commands.
+ *
+ * The Homebrew core `ffmpeg` formula on macOS ships **without** several
+ * libs we need (`libfreetype` → drawtext, `libass` → subtitles). The
+ * `homebrew-ffmpeg/ffmpeg` tap rebuilds with the kitchen sink. Apple's
+ * suggestions used to read "brew reinstall ffmpeg" — that does nothing
+ * because the formula itself omits the libs. Fixed in v0.79.1. */
 const REQUIRED_FFMPEG_FILTERS: Record<string, { commands: string[]; fix: Record<string, string> }> = {
   drawtext: {
     commands: ["edit text-overlay", "edit caption"],
     fix: {
-      darwin: "brew uninstall ffmpeg && brew install ffmpeg",
+      darwin: "brew tap homebrew-ffmpeg/ffmpeg && brew install homebrew-ffmpeg/ffmpeg/ffmpeg --with-freetype (Homebrew core ffmpeg lacks libfreetype)",
       linux: "sudo apt install ffmpeg (or rebuild with --enable-libfreetype)",
     },
   },
   subtitles: {
     commands: ["edit caption"],
     fix: {
-      darwin: "brew uninstall ffmpeg && brew install ffmpeg",
+      darwin: "brew tap homebrew-ffmpeg/ffmpeg && brew install homebrew-ffmpeg/ffmpeg/ffmpeg --with-libass (Homebrew core ffmpeg lacks libass)",
       linux: "sudo apt install ffmpeg (or rebuild with --enable-libass)",
     },
   },
   afftdn: {
     commands: ["edit noise-reduce"],
     fix: {
-      darwin: "brew uninstall ffmpeg && brew install ffmpeg",
+      darwin: "brew install ffmpeg (afftdn ships in the default Homebrew formula; a reinstall is rarely needed)",
       linux: "sudo apt install ffmpeg (or rebuild with --enable-libfftw3)",
     },
   },
