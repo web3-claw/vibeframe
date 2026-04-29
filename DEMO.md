@@ -64,7 +64,7 @@ pnpm vibe generate image \
   "A polished VibeFrame CLI demo hero frame: a modern terminal window producing cinematic video assets, subtle timeline elements, crisp product-documentation style, 16:9 composition, high contrast, no readable brand logos" \
   -p openai \
   -m 2 \
-  -s 1536x1024 \
+  --size 1536x1024 \
   --quality hd \
   -o demo-output/vibe-cli-generated-image.png
 ```
