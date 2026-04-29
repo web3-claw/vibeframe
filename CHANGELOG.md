@@ -5,130 +5,111 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.72.0] - 2026-04-28
-
-**Issue #33 — CLI UX standardization.** Every CLI command now emits a canonical `--json` envelope. **Breaking change** for agents that parse `--json` output: payload moved from top-level keys into a `data` namespace, the redundant `success: true` key was dropped (exit code 0 is the success signal), and `estimatedCost` (formatted string) was replaced with numeric `costUsd`. Pre-1.0 → no transition shim; one-version migration via `jq .data | <existing>`.
-
-Closes part of #33. Sub-PRs: #192 (audit baseline), #193 (raw `process.exit` cleanup), #194 (canary), #195/#196/#197 (sweep). Remaining work tracked in #33: 2c-coverage (commands lacking `--json`), 2d (`--describe` quality sweep), 2e (snapshot tests).
-
-### Breaking changes
-
-- **`--json` envelope shape** — every command's success output is now:
-  ```json
-  {
-    "command": "generate image",
-    "dryRun"?: true,
-    "elapsedMs": 1234,
-    "costUsd": 0.04,
-    "warnings": [],
-    "data": { /* domain-specific keys (provider, images, outputPath, …) */ }
-  }
-  ```
-  Agent migration:
-  - `jq .images` / `.video` / `.outputPath` / etc. → `jq .data.<same>`
-  - `jq .estimatedCost` (string) → `jq .costUsd` (number)
-  - `jq .success` → drop; rely on exit code (`$?`) or check `data.success: false` for the few sites that emit failure metadata to stdout (scene render/build/compose-prompts when JSON mode is on)
-
-- **Errors still go to stderr** (unchanged): `{ success: false, error, code, exitCode, suggestion?, retryable }` via `exitWithError()`. The new envelope only changes the **stdout success** shape.
-
-- **`--fields` filter now targets `data` keys, not envelope keys** — `vibe analyze video x.mp4 "..." --fields response,model` now returns the envelope with `data.response` and `data.model` filled in, not an empty envelope. Matches the documented `--fields response,model` UX.
+## [0.73.0] - 2026-04-29
 
 ### Added
 
-- **Canonical `outputSuccess()` helper** in `packages/cli/src/commands/output.ts` — takes `{ command, data, startedAt, costUsd?, warnings?, dryRun? }`, computes `elapsedMs`, defaults `costUsd` to `COST_ESTIMATES[command].max` for dry-run / 0 for real run.
-- **First real demo case for `warnings`** — `generate image` with Gemini's `latest`/`3.1-flash` auto-fallback to `flash` now surfaces the fallback as a structured warning in `data.warnings` instead of a stderr-mixed log line.
-- **CLI UX audit doc** at `docs/CLI_UX_AUDIT.md` (#192) — inventories every command's `--json` / `--dry-run` / envelope shape / exit code path; defines the `ExitCode` enum (0–6) as the canonical scheme.
+- align landing page with init / build / render headline *(web)*
+- add top-level `vibe build` / `vibe render` and refactor scene flow *(cli)*
+- surface Seedance as primary name with `seedance` alias *(providers)*
+- improve --describe enum extraction (Issue #33 — 2d, final) (#201) *(cli)*
+- --json coverage for timeline + project + export (Issue #33 — 2c-coverage) (#199) *(cli)*
 
-### Changed
+### CI/CD
 
-- **Raw `process.exit()` replaced** in 7 sites inside Commander action handlers (#193): `ai-highlights.ts` (2× `process.exit(0)` → `return`), `scene.ts` (5× `process.exit(1)` → `process.exitCode = 1; return;`). Lets Commander finish cleanly so `finally` blocks run, multiple actions can run in one process for tests, etc.
-- **Doctor JSON shape flattened** — `data: { result: { scope, system, … } }` → `data: { scope, system, … }`. Saves one nesting level for agents.
+- resolve Vercel ignoreCommand from repo root
+- add Vercel ignored build step for OSS preview cost control
 
-### Note for downstream consumers
+### Documentation
 
-VibeFrame is pre-1.0 (semver allows breaking minor bumps). 105 stars, no known npm-package downstream consumers, so we skipped the dual-emit transition shim. If your agent code parses `--json` output and breaks, the migration is a one-liner: `jq .data | <existing-jq-expression>`. The full migration table is in the audit doc.
+- align docs / demo page / mcp README with Seedance + build/render rename
+- rewrite README and DEMO around init / build / render flow
+- agent-era headline + v0.72 sync across README, landing, ROADMAP
+
+### Fixed
+
+- align init.test.ts with new `--type scene` default *(cli)*
+- make twitter-image runtime export static *(web)*
+
+### Maintenance
+
+- regenerate .env.example after Seedance rename *(env)*
+- replace cinematic-v060 promo with sample-demo-final *(demos)*
+- drop examples/ in favor of `vibe init` + docs walkthrough
+- drop stale v0.69-deprecated test markdowns *(scripts)*
+- standardize VHS tapes + new index README *(demos)*
+
+### Testing
+
+- --describe + --dry-run envelope snapshot tests (Issue #33 — 2e) (#200) *(cli)*
+
+## [0.72.0] - 2026-04-28
+
+### Added
+
+- complete envelope migration — scene/timeline/pipeline/analyze (Issue #33 — 2c-sweep-3) (#197) *(cli)*
+- migrate edit/audio/detect/batch/project/export/init to outputSuccess (Issue #33 — 2c-sweep-2) (#196) *(cli)*
+- migrate generate.* to outputSuccess envelope (Issue #33 — 2c-sweep-1) (#195) *(cli)*
+- new --json envelope on generate image (Issue #33 — 2c-canary) (#194) *(cli)*
+- GEMINI.md scaffold for Gemini CLI parity (4c, deferred from #184) (#190) *(init)*
+
+### Documentation
+
+- CLI UX audit baseline (Issue #33 — 2a, no code changes) (#192)
+- expand host coverage + Walkthrough section (4d, deferred from #184) (#191) *(mcp-server)*
+- expand AGENTS.md template host list to all six (4b, deferred from #184) (#189) *(init)*
+
+### Fixed
+
+- exit code enforcement — replace raw process.exit (Issue #33 — 2b) (#193) *(cli)*
+
+### Maintenance
+
+- rename claude.tape → host-agent.tape (4a, deferred from #184) (#188) *(demos)*
+
+### Release
+
+- v0.72.0 — Issue #33 --json envelope standardization (#198)
 
 ## [0.71.0] - 2026-04-28
 
-Agent-host coverage + CLI-only walkthroughs. Closes the last Claude-Code-only positioning gap on top of Plan H. All changes are additive — no breaking changes. Counts: MCP 65 → 66, Agent 81 → 82.
-
 ### Added
 
-- **Gemini CLI + OpenCode host detection (#183)** — \`agent-host-detect.ts\` now recognises six hosts (Claude Code, OpenAI Codex, Cursor, Aider, Gemini CLI, OpenCode). \`vibe doctor\` auto-detects, \`vibe init --agent gemini-cli|opencode\` scaffolds AGENTS.md, \`--agent all\` covers everyone. Detection follows the existing pattern (binary on PATH OR config dir in \$HOME).
-- **\`vibe walkthrough <topic>\` command (#185)** — universal CLI equivalent of Claude Code's \`/vibe-scene\` and \`/vibe-pipeline\` slash commands. Topics: \`scene\`, \`pipeline\`. Without a topic, lists the catalog. \`--json\` returns a structured \`{topic, title, summary, steps, relatedCommands, content}\` shape for agent hosts. Source content vendored as TS template literals (zero filesystem dependencies). Manifest tool \`walkthrough\` exposes the same primitive on MCP / Agent surfaces.
+- vibe walkthrough — universal slash-command equivalent (#185)
+- recognize Gemini CLI + OpenCode (#183) *(agent-detect)*
 
-### Changed
+### Documentation
 
-- **README + landing rewritten for agent-agnostic positioning (#184)** — closes issue #52. New "Agent host support" matrix in the README enumerates all six detected hosts with their \`vibe init\` scaffold + Plan H skill layout. Hero / Section ② / SEO keywords updated to lead with "any bash-capable AI coding agent" instead of Claude Code only. Honest matrix — only host-specific signals the codebase actually emits, no fabricated capability claims.
-- **"Claude Code deeper integration" → "Universal walkthroughs" (#186)** — once \`vibe walkthrough\` shipped, the slash-command-as-Tier-2 framing became misleading. Slash commands are now positioned as a one-keystroke shortcut to the same universal walkthrough content, not a Claude-Code-exclusive feature. \`.claude/skills/vibe-{scene,pipeline}/\` files unchanged — same install path still works.
+- fold "Claude Code deeper integration" into universal walkthroughs (#186)
+- expand to all 6 detected agent hosts (closes #52) (#184) *(positioning)*
 
-### Maintenance
+### Release
 
-- v0.71.0 release — bump version + CHANGELOG (this PR)
+- v0.71.0 — agent-host coverage + universal walkthroughs (#187)
 
 ## [0.70.0] - 2026-04-28
 
-**Plan H — agentic-native composer.** Closes the architectural smell where `vibe scene build` made VibeFrame's CLI run its own Anthropic / OpenAI / Gemini call hidden behind the host agent. Now the host agent (Claude Code, Cursor, Codex, Aider) is the sole reasoner; VibeFrame ships skill files into the user's project and provides a deterministic toolbelt around them. The internal-LLM batch path is preserved as a fallback for CI / non-agent contexts.
-
-Counts: MCP 63 → 65, Agent 79 → 81.
-
 ### Added
 
-- **Multi-provider scene composer (#176)** — `vibe scene build --composer <claude|openai|gemini>` (default: auto-resolve from available API keys, claude > gemini > openai). The Phase 0 spike showed all three providers pass first-shot lint on the vibeframe-promo fixture; the new `composer-resolve.ts` helper picks the right one. Cost / latency table (per beat): Claude $0.060 / 9.4 s, Gemini $0.023 / 20 s, OpenAI gpt-5 $0.056 / 71 s. Backed by a generic `LLMCallFn` injection in `compose-scenes-skills.ts` (replaces the direct Anthropic SDK calls).
-- **Plan H Phase 1 — install Hyperframes skill (#177)** — `vibe scene install-skill [project-dir]` and `scene_install_skill` manifest tool. Writes a universal `SKILL.md` + `references/*.md` at the project root, plus host-specific layouts: `.claude/skills/hyperframes/SKILL.md` (Agent Skills standard, Claude Code) and `.cursor/rules/hyperframes.mdc` (Cursor frontmatter with auto-activate globs on `compositions/**/*.html`). Codex / Aider read the universal `SKILL.md` via AGENTS.md. `vibe scene init` auto-installs for detected hosts. Idempotent (skip-on-exist), `--force` to overwrite, `--dry-run` reports.
-- **Plan H Phase 2 — agentic compose primitive (#178)** — `vibe scene compose-prompts <project-dir> [--beat <id>]` and `scene_compose_prompts` manifest tool. Reads STORYBOARD.md + DESIGN.md and emits a structured plan: each beat's `outputPath`, `userPrompt`, `body`, `cues`, `duration`, `exists`, plus `skillReference` / `designReference` and a 5-step instruction list for the host agent. **No LLM call from inside VibeFrame.** Pairs with the H1 skill files: host agent reads SKILL.md, authors HTML at the indicated paths, runs `vibe scene lint --fix`, then `vibe scene render`.
-- **Plan H Phase 3 — `vibe scene build` mode dispatch (#180)** — `--mode <agent|batch|auto>` with auto-resolve (`agent` if any agent host is detected, `batch` otherwise). `VIBE_BUILD_MODE` env var overrides everything. Agent mode skips the internal-LLM compose call: when any `compositions/scene-*.html` is missing, returns `phase: "needs-author"` with the H2 plan; when all are present, proceeds to lint + render. New `phase: "done" | "compose-only" | "needs-author" | "failed"` discriminator on `SceneBuildResult` so callers branch on actual outcome.
-- **Plan H Phase 4 — doctor + setup readiness (#181)** — `vibe doctor` gains a "Scene composer (vibe scene build)" section reporting the resolved mode, the auto-picked composer (with env var), and SKILL.md status for the cwd. `pickNextStep()` nudges `vibe scene install-skill` when the cwd is a scene project missing the skill. Setup wizard surfaces the agent-mode auto-dispatch on its "Setup complete" screen.
+- scene composer readiness section (Plan H — Phase 4) (#181) *(doctor)*
+- mode dispatch on vibe scene build (Plan H — Phase 3) (#180) *(scene)*
+- scene_compose_prompts agentic primitive (Plan H — Phase 2) (#178) *(scene)*
+- install Hyperframes skill into user projects (Plan H — Phase 1) (#177) *(scene)*
+- unlock multi-provider composer (Claude / OpenAI / Gemini) (#176) *(scene)*
 
-### Changed
+### Release
 
-- `compose-scenes-skills.ts` refactored from direct Anthropic SDK calls to a generic `LLMCallFn` injection point (#176). `MODEL_SETTINGS` keyed on `(provider, effort)`. `computeCacheKey` folds provider id into the hash so switching composers doesn't serve cached HTML produced by a different model.
-- `vibe init` AGENTS.md template gains a "Scene composer" section pointing at `--composer` and the skill install (#176, #177).
-
-### Removed
-
-Nothing. Plan H is purely additive — the internal-LLM batch path stays as the fallback so CI and non-agent users keep working.
-
-### Maintenance
-
-- v0.70.0 release — bump version + CHANGELOG (this PR)
+- v0.70.0 — Plan H (agentic composer) + multi-provider composer (#182)
 
 ## [0.69.0] - 2026-04-28
-
-Plan G Phases 2–5 (OSS-first refactor) + a 3-PR CLI cleanup pass that retired ~6,000 lines of dead/deprecated surface. Counts: MCP 64 → 63, Agent 80 → 79.
-
-### ⚠ Breaking
-
-- **`pipeline_script_to_video` MCP tool / `vibe pipeline script-to-video` CLI subcommand / `executeScriptToVideo` library function removed (#174)** — text → MP4 lives in the skill-driven `vibe scene build` flow (idempotent, cached, per-beat editable). `pipeline regenerate-scene` is preserved for re-rendering individual scenes against an existing storyboard.{yaml,json}.
-- **`dalle` provider alias on `vibe generate image` removed (#174)** — soft-warned for 6+ minor versions; use `--provider openai` instead.
-
-### Added
-
-- `pnpm scaffold:provider <name>` and `pnpm scaffold:command <group> <name>` (#169) — generate boilerplate for new AI providers / CLI subcommands. Closes the OSS contributor 8-place-edit problem from Plan G's premise.
-- "Adding a New AI Provider" + "Adding a New CLI Subcommand" walkthroughs in CONTRIBUTING.md (#169).
-- `edit_fill_gaps` manifest entry (#170) — `executeFillGaps` extracted from the inline `.action()` body, now exposed to MCP + Agent. cli-sync SYNC_TABLE has zero `null` rows post-Plan G.
-- `commands/_shared/video-utils.ts` + `commands/_shared/video-providers.ts` (#168) — shared helpers for the regenerate-scene flow (uploadToImgbb, generateVideoWithRetry*, extendVideoToTarget, etc.). Re-exported from `ai-script-pipeline.ts` for backward compat.
-
-### Changed
-
-- **`commands/generate.ts` split into per-subcommand files (#164, #165)** — 2,533 → ~80 L barrel. Each of the 13 generate subcommands now lives in `commands/generate/<name>.ts` with its own schema + `executeXxx` + `register*Command`.
-- **`commands/ai-edit.ts` split into per-subcommand files (#166, #167)** — 1,589 L library file is now a thin re-export barrel; real implementations under `commands/_shared/edit/<name>.ts`. 9 consumer files mechanically updated.
-- `commands/ai-script-pipeline.ts`: 1,565 → 556 L (#168, #174). `executeRegenerateScene` retained; `executeScriptToVideo` removed.
-- `commands/ai-image/video/audio.ts`: pure library files now (#173). Kept the `executeXxx` exports manifest tools consume; dropped the dead `register*Commands` Commander chains (~2,560 L).
-- `commands/ai-suggest-edit.ts`: 323 → 75 L (#172). Pure library; manifest tool `analyze_suggest_edit` is the only caller.
-- `tools/manifest/edit.ts`: added `editFillGapsTool`; cli-sync mapping closes the v0.65 TODO row.
-- README + landing: refreshed scaffold workflow callout, OSS provider plugin comparison row, MCP tool count 64 → 63 (#171, #174).
-
-### Removed
-
-- **`commands/ai.ts`** (#172) — dead orchestrator. `program.addCommand(aiCommand)` was never called, so the entire `vibe ai *` namespace was unreachable. Library exports re-routed to their actual sources.
-- **`commands/ai-video-fx.ts`, `commands/ai-visual-fx.ts`** (#172) — only consumer was the dead `ai.ts`. The `upscale-video / interpolate / inpaint / track-object / grade / speed-ramp / reframe / style-transfer` subcommands have lived under `vibe edit *` (`edit-cmd.ts` + manifest) for several minor versions already.
-- **`commands/_shared/segments-to-scenes.ts`** + its test (#174) — only consumer was `executeScriptToVideo --format scenes`.
-- `pipelineScriptToVideoTool` from the manifest; CLI cost map, agent prompt references, e2e + integration tests, sync-counts entries, README rows for the deprecated tool (#174).
 
 ### Documentation
 
 - highlight scaffold workflow + OSS provider plugin row (#171) *(readme)*
+
+### Release
+
+- v0.69.0 — Plan G Phases 2–5 + CLI cleanup (~6,000 L removed) (#175)
 
 ## [0.68.0] - 2026-04-28
 
