@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.74.0] - 2026-04-29
+
+### Added
+
+- redesign top-level command UX for v0.74 *(cli)*
+
+### Documentation
+
+- align all surface docs with v0.74 CLI redesign
+
 ## [0.73.0] - 2026-04-29
 
 ### Added
