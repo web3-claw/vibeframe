@@ -32,7 +32,11 @@ interface CommanderLike {
 // `<group> <subname>` CLI invocation paired with the canonical manifest
 // tool name (or null if explicitly CLI-only).
 const CLI_TREE: Record<string, string[]> = {
-  scene:    ["init", "styles", "add", "lint", "render", "build", "install-skill", "compose-prompts"],
+  // v0.75: `scene init/build/render` were removed from the CLI surface
+  // (canonical: top-level `vibe init/build/render`). The manifest still
+  // exposes `scene_init/_build/_render` MCP tools so external hosts keep
+  // working — they delegate to the same shared executeXxx() functions.
+  scene:    ["styles", "add", "lint", "install-skill", "compose-prompts"],
   generate: ["image", "video", "video-status", "video-cancel", "video-extend", "speech", "sound-effect", "music", "music-status", "storyboard", "motion", "thumbnail", "background"],
   edit:     ["silence-cut", "caption", "noise-reduce", "fade", "translate-srt", "jump-cut", "fill-gaps", "grade", "text-overlay", "speed-ramp", "reframe", "image", "interpolate", "upscale-video"],
   // v0.74: `voices` → `list-voices`, `voice-clone` → `clone-voice`
@@ -59,21 +63,19 @@ const CLI_TREE: Record<string, string[]> = {
 // (interactive flows, REPLs, schema dumps) that don't fit the
 // "manifest-as-tool" mold.
 const CLI_ONLY_TOP_LEVEL = new Set([
-  "setup", "init", "doctor", "demo", "agent", "run", "batch", "schema",
-  "context", "media", "help", "export",
+  "setup", "init", "build", "render", "doctor", "demo", "agent", "run",
+  "batch", "schema", "context", "media", "help",
 ]);
 
 // CLI subcommands → expected manifest tool name (or null = intentionally
 // CLI-only). Renames happen here (e.g., `pipeline animated-caption` →
 // manifest `edit_animated_caption`; `edit upscale-video` → `edit_upscale`).
 const CLI_TO_MANIFEST: Record<string, string | null> = {
-  // scene
-  "scene init":          "scene_init",
+  // scene (v0.75: init/build/render dropped from CLI; manifest keeps
+  // scene_init/_build/_render for MCP back-compat — see CLI_TREE note)
   "scene styles":        "scene_styles",
   "scene add":           "scene_add",
   "scene lint":          "scene_lint",
-  "scene render":        "scene_render",
-  "scene build":         "scene_build",
   "scene install-skill": "scene_install_skill",
   "scene compose-prompts": "scene_compose_prompts",
   // generate

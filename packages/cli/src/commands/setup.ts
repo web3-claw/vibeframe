@@ -164,7 +164,7 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
   const topLabels = [
     `Edit videos offline ${chalk.dim("(silence-cut, fade, noise-reduce, detect)")} ${chalk.green("no API keys")}`,
     `AI features ${chalk.dim("(pick what you need — images, videos, audio, editing)")}`,
-    `Full AI pipeline ${chalk.dim("(scene build, highlights, auto-shorts)")}`,
+    `Full AI pipeline ${chalk.dim("(build, remix highlights, auto-shorts)")}`,
     `Custom setup ${chalk.dim("(choose providers one by one)")}`,
   ];
 
@@ -426,8 +426,8 @@ function showComplete(
 
   // Tailored hint when an agent host is detected — points at the file
   // `vibe init` will scaffold for that host, and surfaces the Plan H
-  // agentic compose path so they know `vibe scene build` will dispatch
-  // to their host agent automatically.
+  // agentic compose path so they know `vibe build` will dispatch to
+  // their host agent automatically.
   const hosts = detectedAgentHosts();
   const primary = hosts[0];
   if (primary) {

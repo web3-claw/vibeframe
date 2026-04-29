@@ -30,9 +30,9 @@ describe("CLI command groups", () => {
     });
   });
 
-  describe("pipeline highlights", () => {
+  describe("remix highlights", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} pipeline highlights --help`, {
+      const output = execSync(`${CLI} remix highlights --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -48,7 +48,7 @@ describe("CLI command groups", () => {
 
     it("fails without API keys", () => {
       expect(() => {
-        execSync(`${CLI} pipeline highlights /tmp/nonexistent.mp4`, {
+        execSync(`${CLI} remix highlights /tmp/nonexistent.mp4`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, OPENAI_API_KEY: undefined, ANTHROPIC_API_KEY: undefined },
@@ -58,7 +58,7 @@ describe("CLI command groups", () => {
 
     it("fails with nonexistent file", () => {
       expect(() => {
-        execSync(`${CLI} pipeline highlights /tmp/nonexistent_video_12345.mp4`, {
+        execSync(`${CLI} remix highlights /tmp/nonexistent_video_12345.mp4`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, OPENAI_API_KEY: "test", ANTHROPIC_API_KEY: "test" },
@@ -67,21 +67,19 @@ describe("CLI command groups", () => {
     });
   });
 
-  // pipeline b-roll, pipeline viral, pipeline narrate were removed in v0.63.
-  // Skills + agent flows replaced them: agents drive `vibe analyze video` +
-  // `vibe generate speech` for narration, `vibe pipeline auto-shorts` plus
-  // manual review for viral optimisation, B-roll matching is a hand-curated
-  // step in the agent loop now. See docs/archive/ROADMAP-v0.58.md for the
-  // pre-pivot positioning.
+  // `pipeline b-roll`, `pipeline viral`, `pipeline narrate` were removed in
+  // v0.63. The whole `pipeline` group itself was renamed to `remix` in v0.74
+  // and the `pipeline` alias was dropped in v0.75. Both `vibe pipeline foo`
+  // and `vibe remix b-roll` now surface the same Commander "unknown command"
+  // error — this regression test pins the rename + the v0.63 removal.
 
-  describe("pipeline (deletion regression cover)", () => {
+  describe("remix (deletion regression cover)", () => {
     it.each(["b-roll", "viral", "narrate"])(
       "%s subcommand is gone — Commander surfaces 'unknown command'",
       (sub) => {
-        // Commander prints `error: unknown command '<sub>'` to stderr but
-        // VibeFrame's error handler exits 0 — so check stdout/stderr text
+        // VibeFrame's error handler exits 0 so check stdout/stderr text
         // rather than the exit code.
-        const output = execSync(`${CLI} pipeline ${sub} 2>&1 || true`, {
+        const output = execSync(`${CLI} remix ${sub} 2>&1 || true`, {
           cwd: process.cwd(),
           encoding: "utf-8",
         });
@@ -164,9 +162,9 @@ describe("CLI command groups", () => {
   });
 
   // Voice & Audio Features
-  describe("audio voice-clone", () => {
+  describe("audio clone-voice", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} audio voice-clone --help`, {
+      const output = execSync(`${CLI} audio clone-voice --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -181,7 +179,7 @@ describe("CLI command groups", () => {
 
     it("requires name option when cloning", () => {
       expect(() => {
-        execSync(`${CLI} audio voice-clone sample.mp3`, {
+        execSync(`${CLI} audio clone-voice sample.mp3`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, ELEVENLABS_API_KEY: "test" },
@@ -191,7 +189,7 @@ describe("CLI command groups", () => {
 
     it("fails without API key", () => {
       expect(() => {
-        execSync(`${CLI} audio voice-clone sample.mp3 --name "TestVoice"`, {
+        execSync(`${CLI} audio clone-voice sample.mp3 --name "TestVoice"`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, ELEVENLABS_API_KEY: undefined },

@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { describe, expect, it, beforeEach, afterEach, vi, type MockInstance } from "vitest";
 
 import { apiError, emitDeprecationWarning, _resetDeprecationMemoryForTesting } from "./output.js";
 
@@ -187,14 +187,18 @@ describe("emitDeprecationWarning", () => {
   const originalEnv = { ...process.env };
   const originalIsTTY = process.stderr.isTTY;
   let stderrChunks: string[] = [];
-  let stderrSpy: ReturnType<typeof vi.spyOn>;
+  // process.stderr.write has overloads vitest's MockInstance can't unify, so
+  // we type the spy as the loosest unknown-args form and cast the
+  // implementation accordingly. This is the documented escape hatch when
+  // mocking native node Writable streams.
+  let stderrSpy: MockInstance<unknown[], unknown>;
 
   beforeEach(() => {
     stderrChunks = [];
-    stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation((chunk: unknown) => {
+    stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(((chunk: string | Uint8Array): boolean => {
       stderrChunks.push(typeof chunk === "string" ? chunk : String(chunk));
       return true;
-    });
+    }) as never) as unknown as MockInstance<unknown[], unknown>;
     _resetDeprecationMemoryForTesting();
     delete process.env.VIBE_JSON_OUTPUT;
     delete process.env.VIBE_QUIET_OUTPUT;

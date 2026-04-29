@@ -13,7 +13,7 @@
  */
 
 import { Command } from "commander";
-import { basename, resolve, relative, dirname } from "node:path";
+import { resolve, relative, dirname } from "node:path";
 import { mkdir, readFile, writeFile, access, copyFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import chalk from "chalk";
@@ -31,19 +31,13 @@ import {
   type TtsProviderName,
 } from "./_shared/tts-resolve.js";
 import {
-  scaffoldSceneProject,
-  describeSceneScaffold,
-  isSceneScaffoldProfile,
   aspectToDims,
-  type SceneAspect,
-  type SceneScaffoldProfile,
   type VibeProjectConfig,
 } from "./_shared/scene-project.js";
 import {
   getVisualStyle,
   listVisualStyles,
   visualStyleNames,
-  type VisualStyle,
 } from "./_shared/visual-styles.js";
 import {
   emitSceneHtml,
@@ -60,23 +54,17 @@ import {
   rootExists,
   type ProjectLintResult,
 } from "./_shared/scene-lint.js";
-import {
-  executeSceneRender,
-  type RenderFps,
-  type RenderFormat,
-  type RenderQuality,
-} from "./_shared/scene-render.js";
-import {
-  executeSceneBuild,
-  type SceneBuildProgressEvent,
-} from "./_shared/scene-build.js";
+// `executeSceneRender` and `executeSceneBuild` are no longer wired into
+// the `scene` Commander group in v0.75 — the canonical entry points are
+// `vibe render` and `vibe build` (top-level). The execute functions
+// themselves live in _shared/ and are still consumed by the top-level
+// commands and the manifest tools.
 import {
   exitWithError,
   generalError,
   usageError,
   outputSuccess,
   isJsonMode,
-  isQuietMode,
 } from "./output.js";
 import { getApiKey } from "../utils/api-key.js";
 import { getAudioDuration } from "../utils/audio.js";
@@ -87,16 +75,6 @@ import {
   type InstallSkillHost,
 } from "./_shared/install-skill.js";
 import { getComposePrompts } from "./_shared/compose-prompts.js";
-
-const VALID_ASPECTS: SceneAspect[] = ["16:9", "9:16", "1:1", "4:5"];
-const VALID_SCENE_INIT_PROFILES: SceneScaffoldProfile[] = ["minimal", "agent", "full"];
-
-function validateAspect(value: string): SceneAspect {
-  if (!VALID_ASPECTS.includes(value as SceneAspect)) {
-    exitWithError(usageError(`Invalid aspect ratio: ${value}`, `Valid: ${VALID_ASPECTS.join(", ")}`));
-  }
-  return value as SceneAspect;
-}
 
 function validateDuration(value: string): number {
   const n = parseFloat(value);
@@ -111,26 +89,6 @@ function validatePreset(value: string): ScenePreset {
     exitWithError(usageError(`Invalid style: ${value}`, `Valid: ${SCENE_PRESETS.join(", ")}`));
   }
   return value as ScenePreset;
-}
-
-function validateVisualStyle(value: string): VisualStyle {
-  const found = getVisualStyle(value);
-  if (!found) {
-    exitWithError(
-      usageError(
-        `Unknown visual style: ${value}`,
-        `Valid: ${visualStyleNames()}. Browse details with \`vibe scene styles\`.`,
-      ),
-    );
-  }
-  // exitWithError aborts; this branch is unreachable but typescript needs it.
-  return found as VisualStyle;
-}
-
-function formatSceneInitProfile(profile: SceneScaffoldProfile): string {
-  if (profile === "minimal") return "authoring files only; build will add render scaffold when needed";
-  if (profile === "agent") return "authoring files plus local composition rules for host agents";
-  return "complete authoring, agent, and render scaffold";
 }
 
 export const sceneCommand = new Command("scene")
@@ -151,180 +109,6 @@ The \`scene init\`, \`scene build\`, and \`scene render\` legacy aliases
 are still callable but hidden from this help — they will be removed in v1.0.
 Run 'vibe schema scene.<command>' for structured parameter info.`);
 
-// `vibe scene init` is the legacy entry point; the canonical user-facing
-// command is now `vibe init [project-dir] --type scene`. Hidden from
-// `--help` in v0.74 (Phase 7 of CLI redesign) but kept callable to avoid
-// breaking external scripts. Commander's `hidden: true` just removes it
-// from auto-generated help; it is still parsed normally.
-sceneCommand
-  .command("init", { hidden: true })
-  .description("Scaffold a new scene project (or safely augment an existing project) [legacy — prefer `vibe init`]")
-  .argument("<dir>", "Project directory (created if it doesn't exist)")
-  .option("-n, --name <name>", "Project name (defaults to directory basename)")
-  .option("-r, --ratio <ratio>", "Aspect ratio: 16:9, 9:16, 1:1, 4:5", "16:9")
-  .option("-d, --duration <sec>", "Default root composition duration (seconds)", "10")
-  .option("--visual-style <name>", `Seed DESIGN.md from a named style (browse via \`vibe scene styles\`). E.g. "Swiss Pulse"`)
-  .option("--profile <profile>", "Scene profile: minimal (storyboard/design only), agent (recommended), full (render scaffold upfront)", "agent")
-  .option("--dry-run", "Preview parameters without writing files")
-  .action(async (dir: string, options) => {
-    const startedAt = Date.now();
-    const aspect = validateAspect(options.ratio);
-    const duration = validateDuration(options.duration);
-    const name = (options.name as string | undefined) ?? basename(dir.replace(/\/+$/, ""));
-    const visualStyle = options.visualStyle
-      ? validateVisualStyle(options.visualStyle as string)
-      : undefined;
-    const profile = String(options.profile ?? "agent");
-    if (!isSceneScaffoldProfile(profile)) {
-      exitWithError(usageError(`Invalid --profile: ${profile}`, `Must be one of: ${VALID_SCENE_INIT_PROFILES.join(", ")}`));
-    }
-    const groups = describeSceneScaffold({ dir, profile });
-
-    if (options.dryRun) {
-      if (!isJsonMode() && !isQuietMode()) {
-        printSceneInitDryRun({ dir, name, aspect, duration, visualStyleName: visualStyle?.name ?? null, profile, groups });
-        return;
-      }
-      outputSuccess({
-        command: "scene init",
-        startedAt,
-        dryRun: true,
-        data: {
-          params: {
-            dir,
-            name,
-            aspect,
-            duration,
-            visualStyle: visualStyle?.name ?? null,
-            profile,
-          },
-          groups,
-        },
-      });
-      return;
-    }
-
-    const spinner = isJsonMode() || isQuietMode() ? null : ora(`Scaffolding scene project at ${dir}...`).start();
-    try {
-      const result = await scaffoldSceneProject({ dir, name, aspect, duration, visualStyle, profile });
-
-      // Phase H1: drop the Hyperframes skill into the project so the host
-      // agent (Claude Code, Cursor, Codex, Aider, …) can read it directly.
-      // This is what unlocks the agentic compose path — without skill
-      // files in context, the agent can't reason about composition rules.
-      // Only host-specific layouts are written for hosts that the user
-      // actually has installed; the universal `SKILL.md` + `references/`
-      // are always written so AGENTS.md can `@SKILL.md`-reference them.
-      const detectedIds = detectedAgentHosts().map((h) => h.id);
-      const skillHosts = deriveInstallHosts(detectedIds);
-      const projectAbs = resolve(dir);
-      const skillResult = profile === "agent" || profile === "full"
-        ? await installHyperframesSkill({
-            projectDir: projectAbs,
-            hosts: skillHosts,
-          })
-        : { success: true, files: [], bundleVersion: "not-installed" };
-
-      if (isJsonMode() || isQuietMode()) {
-        outputSuccess({
-          command: "scene init",
-          startedAt,
-          data: {
-            dir,
-            name,
-            aspect,
-            duration,
-            visualStyle: visualStyle?.name ?? null,
-            profile,
-            created: result.created,
-            merged: result.merged,
-            skipped: result.skipped,
-            groups: result.groups,
-            skillFiles: skillResult.files,
-            skillBundleVersion: skillResult.bundleVersion,
-          },
-        });
-        return;
-      }
-
-      spinner?.succeed(chalk.green(`Video project ready: ${dir}`));
-      console.log();
-      console.log(chalk.bold.cyan("Edit first"));
-      console.log(chalk.dim("─".repeat(60)));
-      console.log(`  ${chalk.bold("STORYBOARD.md")} ${chalk.dim("# beats: narration, backdrop, minimum duration")}`);
-      console.log(`  ${chalk.bold("DESIGN.md")}     ${chalk.dim("# palette, typography, motion rules")}`);
-      console.log();
-      console.log(chalk.bold.cyan("Profile"));
-      console.log(chalk.dim("─".repeat(60)));
-      console.log(`  ${chalk.bold(profile)} ${chalk.dim(formatSceneInitProfile(profile))}`);
-      console.log();
-      console.log(chalk.bold.cyan("Files"));
-      console.log(chalk.dim("─".repeat(60)));
-      for (const f of result.created) console.log(chalk.green("  +"), f);
-      for (const f of result.merged)  console.log(chalk.yellow("  ~"), f, chalk.dim("(merged)"));
-      for (const f of result.skipped) console.log(chalk.dim("  ·"), f, chalk.dim("(kept existing)"));
-
-      const skillWritten = skillResult.files.filter((f) => f.status === "wrote");
-      const skillSkipped = skillResult.files.filter((f) => f.status === "skipped-exists");
-      if (skillWritten.length + skillSkipped.length > 0) {
-        console.log();
-        console.log(chalk.bold.cyan("Composition rules"));
-        console.log(chalk.dim("─".repeat(60)));
-        for (const f of skillWritten) console.log(chalk.green("  +"), f.path);
-        for (const f of skillSkipped) console.log(chalk.dim("  ·"), f.path, chalk.dim("(kept existing)"));
-        console.log(chalk.dim(`  Bundle: ${skillResult.bundleVersion}`));
-      }
-
-      console.log();
-      console.log(chalk.bold.cyan("Next steps"));
-      console.log(chalk.dim("─".repeat(60)));
-      if (visualStyle) {
-        console.log(`  ${chalk.dim("DESIGN.md seeded with")} ${chalk.bold(visualStyle.name)} ${chalk.dim("— review and customise.")}`);
-      } else {
-        console.log(`  ${chalk.cyan("vibe scene styles")}        ${chalk.dim("# pick a named style for DESIGN.md")}`);
-      }
-      if (profile === "agent" || profile === "full") {
-        console.log(`  ${chalk.dim("Your agent now has composition rules in")} ${chalk.cyan("SKILL.md")} ${chalk.dim("— ask it to author scene HTML directly.")}`);
-      } else {
-        console.log(`  ${chalk.cyan("vibe scene install-skill")} ${chalk.dim("# add agent authoring rules later")}`);
-      }
-      console.log(`  ${chalk.cyan("vibe scene add")} <name>    ${chalk.dim("# fallback: 5-preset emit (no agent)")}`);
-      console.log(`  ${chalk.cyan("vibe build")}               ${chalk.dim("# build STORYBOARD.md into scenes/assets")}`);
-      console.log(`  ${chalk.cyan("vibe render")}              ${chalk.dim("# render to video")}`);
-    } catch (error) {
-      spinner?.fail("Failed to scaffold scene project");
-      const msg = error instanceof Error ? error.message : String(error);
-      exitWithError(generalError(`Failed to scaffold: ${msg}`));
-    }
-  });
-
-function printSceneInitDryRun(opts: {
-  dir: string;
-  name: string;
-  aspect: SceneAspect;
-  duration: number;
-  visualStyleName: string | null;
-  profile: SceneScaffoldProfile;
-  groups: ReturnType<typeof describeSceneScaffold>;
-}): void {
-  console.log();
-  console.log(chalk.bold.cyan("VibeFrame Scene Init - dry run"));
-  console.log(chalk.dim("-".repeat(60)));
-  console.log(`  Project:      ${chalk.bold(opts.dir)}`);
-  console.log(`  Name:         ${chalk.bold(opts.name)}`);
-  console.log(`  Profile:      ${chalk.bold(opts.profile)} ${chalk.dim(formatSceneInitProfile(opts.profile))}`);
-  console.log(`  Aspect:       ${opts.aspect}`);
-  console.log(`  Duration:     ${opts.duration}s`);
-  console.log(`  Visual style: ${opts.visualStyleName ?? "none"}`);
-  console.log();
-  console.log(chalk.bold.cyan("Files that would be prepared"));
-  console.log(chalk.dim("-".repeat(60)));
-  for (const file of opts.groups.authoring) console.log(`  authoring  ${file}`);
-  for (const file of opts.groups.agent) console.log(`  agent      ${file}`);
-  for (const file of opts.groups.render) console.log(`  render     ${file}`);
-  console.log();
-  console.log(chalk.dim("No files were written."));
-}
 
 // ---------------------------------------------------------------------------
 // `vibe scene install-skill` — drop the Hyperframes skill into a project
@@ -1174,339 +958,3 @@ function severityTag(severity: "error" | "warning" | "info"): string {
   return chalk.blue("ℹ info   ");
 }
 
-// ---------------------------------------------------------------------------
-// `vibe scene render`
-// ---------------------------------------------------------------------------
-
-const VALID_FPS: ReadonlyArray<RenderFps> = [24, 30, 60];
-const VALID_QUALITIES: ReadonlyArray<RenderQuality> = ["draft", "standard", "high"];
-const VALID_FORMATS: ReadonlyArray<RenderFormat> = ["mp4", "webm", "mov"];
-
-function validateFps(value: string): RenderFps {
-  const n = parseInt(value, 10);
-  if (!VALID_FPS.includes(n as RenderFps)) {
-    exitWithError(usageError(`Invalid --fps: ${value}`, `Valid: ${VALID_FPS.join(", ")}`));
-  }
-  return n as RenderFps;
-}
-
-function validateQuality(value: string): RenderQuality {
-  if (!VALID_QUALITIES.includes(value as RenderQuality)) {
-    exitWithError(usageError(`Invalid --quality: ${value}`, `Valid: ${VALID_QUALITIES.join(", ")}`));
-  }
-  return value as RenderQuality;
-}
-
-function validateFormat(value: string): RenderFormat {
-  if (!VALID_FORMATS.includes(value as RenderFormat)) {
-    exitWithError(usageError(`Invalid --format: ${value}`, `Valid: ${VALID_FORMATS.join(", ")}`));
-  }
-  return value as RenderFormat;
-}
-
-function validateWorkers(value: string): number {
-  const n = parseInt(value, 10);
-  if (!Number.isFinite(n) || n < 1 || n > 16) {
-    exitWithError(usageError(`Invalid --workers: ${value}`, "Must be an integer between 1 and 16"));
-  }
-  return n;
-}
-
-// Hidden in v0.74 (Phase 7) — canonical is `vibe render`. Still callable
-// for back-compat with existing scripts and the agentic compose path.
-sceneCommand
-  .command("render", { hidden: true })
-  .description("Render a scene project to MP4/WebM/MOV via the Hyperframes producer (requires Chrome) [legacy — prefer `vibe render`]")
-  .argument("[root]", "Root composition file relative to --project", "index.html")
-  .option("--project <dir>", "Project directory", ".")
-  .option("-o, --out <path>", "Output file (default: renders/<name>-<timestamp>.<format>)")
-  .option("--fps <n>", `Frames per second: ${VALID_FPS.join("|")}`, "30")
-  .option("--quality <q>", `Quality preset: ${VALID_QUALITIES.join("|")}`, "standard")
-  .option("--format <f>", `Output container: ${VALID_FORMATS.join("|")}`, "mp4")
-  .option("--workers <n>", "Capture workers (1-16, default 1)", "1")
-  .option("--dry-run", "Preview parameters without rendering")
-  .action(async (root: string, options) => {
-    const startedAt = Date.now();
-    const fps = validateFps(options.fps);
-    const quality = validateQuality(options.quality);
-    const format = validateFormat(options.format);
-    const workers = validateWorkers(options.workers);
-    const projectDir = resolve(options.project as string);
-
-    if (options.dryRun) {
-      outputSuccess({
-        command: "scene render",
-        startedAt,
-        dryRun: true,
-        data: {
-          params: {
-            projectDir,
-            root,
-            output: options.out,
-            fps,
-            quality,
-            format,
-            workers,
-          },
-        },
-      });
-      return;
-    }
-
-    const spinner = isJsonMode() ? null : ora("Rendering scene project...").start();
-
-    const result = await executeSceneRender({
-      projectDir,
-      root,
-      output: options.out,
-      fps,
-      quality,
-      format,
-      workers,
-      onProgress: (pct, stage) => {
-        if (spinner) spinner.text = `Rendering [${Math.round(pct * 100)}%] ${stage}`;
-      },
-    });
-
-    if (!result.success) {
-      spinner?.fail("Render failed");
-      if (isJsonMode()) {
-        outputSuccess({
-          command: "scene render",
-          startedAt,
-          data: { ...result },
-        });
-        process.exitCode = 1;
-        return;
-      }
-      exitWithError(generalError(result.error ?? "Render failed"));
-    }
-
-    if (isJsonMode()) {
-      outputSuccess({
-        command: "scene render",
-        startedAt,
-        data: { ...result },
-      });
-      return;
-    }
-
-    spinner?.succeed(chalk.green(`Render complete: ${result.outputPath}`));
-    console.log();
-    console.log(chalk.bold.cyan("Render"));
-    console.log(chalk.dim("─".repeat(60)));
-    console.log(`  output    ${chalk.bold(result.outputPath)}`);
-    console.log(`  duration  ${(((result.durationMs ?? 0) / 1000)).toFixed(1)}s`);
-    console.log(`  frames    ${result.framesRendered ?? "?"}${result.totalFrames ? ` / ${result.totalFrames}` : ""}`);
-    console.log(`  config    ${result.fps}fps · ${result.quality} · ${result.format}`);
-    if (result.audioCount && result.audioCount > 0) {
-      const muxStatus = result.audioMuxApplied
-        ? chalk.green(`✓ ${result.audioCount} track${result.audioCount === 1 ? "" : "s"} muxed`)
-        : chalk.yellow(`⚠ ${result.audioCount} track${result.audioCount === 1 ? "" : "s"} skipped`);
-      console.log(`  audio     ${muxStatus}`);
-      if (result.audioMuxWarning) {
-        console.log(chalk.dim(`            ${result.audioMuxWarning}`));
-      }
-    }
-  });
-
-// ── vibe scene build — v0.60 one-shot storyboard → MP4 ──────────────────
-// Hidden in v0.74 (Phase 7) — canonical is `vibe build`.
-
-sceneCommand
-  .command("build", { hidden: true })
-  .description("One-shot: read STORYBOARD.md cues, dispatch TTS + image-gen per beat, compose, render to MP4 [legacy — prefer `vibe build`]")
-  .argument("[project-dir]", "Project directory containing STORYBOARD.md", ".")
-  .option("--mode <mode>", "Build mode: agent (host-agent authors HTML) | batch (CLI's internal LLM authors HTML) | auto (agent if any host detected) [Plan H — Phase 3]", "auto")
-  .option("--effort <level>", "Compose effort tier (batch mode only): low|medium|high", "medium")
-  .option("--composer <provider>", "LLM that composes scene HTML in batch mode: claude|openai|gemini (default: auto-resolve from available API keys, claude > gemini > openai)")
-  .option("--skip-narration", "Don't dispatch TTS even when beats declare narration cues")
-  .option("--skip-backdrop", "Don't dispatch image-gen even when beats declare backdrop cues")
-  .option("--skip-render", "Compose only — don't render to MP4")
-  .option("--tts <provider>", "TTS provider: auto|elevenlabs|kokoro (overrides frontmatter)")
-  .option("--voice <id>", "Voice id (provider-specific — overrides frontmatter)")
-  .option("--image-provider <name>", "Image provider: openai (only one supported in v0.60)")
-  .option("--quality <q>", "Image quality: standard|hd", "hd")
-  .option("--image-size <s>", "Image size: 1024x1024|1536x1024|1024x1536", "1536x1024")
-  .option("--force", "Re-dispatch primitives even when assets already exist")
-  .option("--dry-run", "Preview parameters without dispatching")
-  .action(async (projectDirArg: string, options) => {
-    const startedAt = Date.now();
-    const projectDir = resolve(projectDirArg);
-
-    if (options.dryRun) {
-      outputSuccess({
-        command: "scene build",
-        startedAt,
-        dryRun: true,
-        data: {
-          params: {
-            projectDir,
-            mode: options.mode,
-            effort: options.effort,
-            composer: options.composer,
-            skipNarration: options.skipNarration ?? false,
-            skipBackdrop: options.skipBackdrop ?? false,
-            skipRender: options.skipRender ?? false,
-            ttsProvider: options.tts,
-            voice: options.voice,
-            imageProvider: options.imageProvider,
-            imageQuality: options.quality,
-            imageSize: options.imageSize,
-            force: options.force ?? false,
-          },
-        },
-      });
-      return;
-    }
-
-    const validEfforts = ["low", "medium", "high"] as const;
-    if (!validEfforts.includes(options.effort)) {
-      exitWithError(usageError(`Invalid --effort: ${options.effort}`, `Must be one of: ${validEfforts.join(", ")}`));
-    }
-
-    const validComposers = ["claude", "openai", "gemini"] as const;
-    if (options.composer !== undefined && !validComposers.includes(options.composer)) {
-      exitWithError(usageError(`Invalid --composer: ${options.composer}`, `Must be one of: ${validComposers.join(", ")}`));
-    }
-
-    const validModes = ["agent", "batch", "auto"] as const;
-    if (options.mode !== undefined && !validModes.includes(options.mode)) {
-      exitWithError(usageError(`Invalid --mode: ${options.mode}`, `Must be one of: ${validModes.join(", ")}`));
-    }
-
-    const spinner = isJsonMode() ? null : ora("Reading STORYBOARD.md...").start();
-
-    const result = await executeSceneBuild({
-      projectDir,
-      mode: options.mode as "agent" | "batch" | "auto" | undefined,
-      effort: options.effort,
-      composer: options.composer,
-      skipNarration: options.skipNarration,
-      skipBackdrop: options.skipBackdrop,
-      skipRender: options.skipRender,
-      ttsProvider: options.tts,
-      voice: options.voice,
-      imageProvider: options.imageProvider,
-      imageQuality: options.quality,
-      imageSize: options.imageSize,
-      force: options.force,
-      onProgress: (e: SceneBuildProgressEvent) => {
-        if (!spinner) return;
-        if (e.type === "phase-start") {
-          spinner.text = `Phase: ${e.phase}...`;
-        } else if (e.type === "narration-generated") {
-          spinner.text = `Narration ${e.beatId} → ${e.path} (${e.provider})`;
-        } else if (e.type === "backdrop-generated") {
-          spinner.text = `Backdrop ${e.beatId} → ${e.path} (${e.provider})`;
-        } else if (e.type === "beat-fresh") {
-          spinner.text = `Composed beat ${e.beatId} ($${(e.costUsd ?? 0).toFixed(3)} · ${e.latencyMs ?? 0}ms)`;
-        } else if (e.type === "beat-cached") {
-          spinner.text = `Composed beat ${e.beatId} (cached)`;
-        } else if (e.type === "render-start") {
-          spinner.text = "Rendering...";
-        } else if (e.type === "render-done") {
-          spinner.text = `Rendered: ${e.outputPath}`;
-        }
-      },
-    });
-
-    if (!result.success) {
-      spinner?.fail(`Build failed: ${result.error}`);
-      if (isJsonMode()) {
-        outputSuccess({
-          command: "scene build",
-          startedAt,
-          data: { ...result },
-        });
-        process.exitCode = 1;
-        return;
-      }
-      exitWithError(generalError(result.error ?? "Build failed"));
-    }
-
-    if (isJsonMode()) {
-      outputSuccess({
-        command: "scene build",
-        startedAt,
-        data: { ...result },
-      });
-      return;
-    }
-
-    // Phase H3: agent mode may pause with a "needs-author" plan instead
-    // of producing an MP4. Render this distinctly so the host agent (and
-    // human users) know what to do next.
-    if (result.phase === "needs-author") {
-      spinner?.info(chalk.cyan("Agent mode — host agent must author scene HTML before rendering"));
-      console.log();
-      console.log(chalk.bold.cyan("Beats requiring authorship"));
-      console.log(chalk.dim("─".repeat(60)));
-      const plan = result.composePrompts;
-      if (plan) {
-        for (const b of plan.beats) {
-          const status = b.exists ? chalk.dim("(exists)") : chalk.green("(needs author)");
-          const dur = b.duration !== undefined ? chalk.dim(` ${b.duration}s`) : "";
-          console.log(`  ${chalk.bold(b.id)}${dur} → ${b.outputPath} ${status}`);
-        }
-        console.log();
-        console.log(chalk.bold.cyan("Instructions"));
-        console.log(chalk.dim("─".repeat(60)));
-        for (const line of plan.instructions) console.log(`  ${line}`);
-        if (plan.warnings.length > 0) {
-          console.log();
-          for (const w of plan.warnings) console.log(chalk.yellow(`  ⚠ ${w}`));
-        }
-      }
-      console.log();
-      console.log(chalk.dim("Once you've authored each beat's HTML, re-run `vibe build` to lint + render."));
-      console.log(chalk.dim("Or pass `--mode batch` to use the internal LLM compose path instead."));
-      return;
-    }
-
-    spinner?.succeed(chalk.green(
-      result.outputPath
-        ? `Build complete: ${result.outputPath}`
-        : "Build complete (compose only — render skipped)",
-    ));
-    console.log();
-    console.log(chalk.bold.cyan("Beats"));
-    console.log(chalk.dim("─".repeat(60)));
-    for (const b of result.beats) {
-      const narration = formatPrimitiveStatus(b.narrationStatus, b.narrationPath);
-      const backdrop = formatPrimitiveStatus(b.backdropStatus, b.backdropPath);
-      console.log(`  ${chalk.bold(b.beatId.padEnd(12))} narration: ${narration}   backdrop: ${backdrop}`);
-      if (b.narrationError) console.log(chalk.red(`    ! narration: ${b.narrationError}`));
-      if (b.backdropError) console.log(chalk.red(`    ! backdrop: ${b.backdropError}`));
-    }
-    if (result.composeData) {
-      console.log();
-      console.log(chalk.bold.cyan("Compose"));
-      console.log(chalk.dim("─".repeat(60)));
-      console.log(`  beats     ${result.composeData.beats}`);
-      console.log(`  cache     ${result.composeData.cacheHits} hit / ${result.composeData.beats - result.composeData.cacheHits} fresh`);
-      console.log(`  cost      $${result.composeData.totalCostUsd.toFixed(4)}`);
-    }
-    if (result.outputPath) {
-      console.log();
-      console.log(chalk.bold.cyan("Render"));
-      console.log(chalk.dim("─".repeat(60)));
-      console.log(`  output    ${chalk.bold(result.outputPath)}`);
-      if (result.renderResult?.audioCount && result.renderResult.audioCount > 0) {
-        console.log(`  audio     ${result.renderResult.audioCount} track${result.renderResult.audioCount === 1 ? "" : "s"} muxed`);
-      }
-    }
-    console.log();
-    console.log(chalk.dim(`Total: ${(result.totalLatencyMs / 1000).toFixed(1)}s`));
-  });
-
-function formatPrimitiveStatus(status: string, path?: string): string {
-  switch (status) {
-    case "generated": return chalk.green(`✓ ${path}`);
-    case "cached":    return chalk.dim(`◇ ${path} (cached)`);
-    case "skipped":   return chalk.dim("· skipped");
-    case "no-cue":    return chalk.dim("· no cue");
-    case "failed":    return chalk.red("✗ failed");
-    default:          return status;
-  }
-}

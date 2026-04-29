@@ -1,7 +1,11 @@
-# CLI redesign — v0.74
+# CLI redesign — v0.74 → v0.75
 
 VibeFrame's top-level CLI surface was reshaped in v0.74.0 around three
-principles drawn from established CLI design guides:
+principles drawn from established CLI design guides. **v0.75.0 dropped all
+the deprecation aliases** that v0.74 carried for one cycle — the
+canonical names below are now the only way to invoke each command.
+
+The principles:
 
 - **Implicit area pattern** — the project is the implicit subject; commands
   that don't carry an area act on the current/implicit project.
@@ -13,34 +17,34 @@ principles drawn from established CLI design guides:
   help once the canonical entry point is at the top level.
   ([clig.dev][clig])
 
-Every legacy name is preserved as a Commander alias so external scripts
-keep working through the v0.74.x line. Aliases will be removed in v1.0.
+v0.74 kept every legacy name as a Commander alias (with a one-line
+deprecation warning to stderr). v0.75 removed those aliases — invoking an
+old name now produces a Commander `unknown command` error. Pre-v0.74
+scripts must migrate to the canonical names below.
 
-## Top-level renames
+## Top-level renames (v0.74)
 
-| Before | After | Aliases (deprecated, removed in v1.0) |
+| Before | After | Aliases status |
 |---|---|---|
-| `vibe pipeline` | `vibe remix` | `pipeline`, `pipe` |
-| `vibe analyze` | `vibe inspect` | `analyze`, `az` |
-
-Both old names still parse identically. Invoking via the deprecated alias
-emits a single-line warning to stderr — suppressed under `--json`,
-`--quiet`, or when stderr is not a TTY (CI, piped logs).
+| `vibe pipeline` | `vibe remix` | removed in v0.75 |
+| `vibe analyze` | `vibe inspect` | removed in v0.75 |
 
 The canonical name is what shows up in the JSON envelope's `command:`
 field, in `vibe schema --list`, and in `--describe` output.
 
-## Audio leaf renames (verb-first)
+## Audio leaf renames (verb-first; v0.74)
 
-| Before | After | Aliases |
+| Before | After | Aliases status |
 |---|---|---|
-| `vibe audio voices` | `vibe audio list-voices` | `voices` |
-| `vibe audio voice-clone` | `vibe audio clone-voice` | `voice-clone` |
+| `vibe audio voices` | `vibe audio list-voices` | removed in v0.75 |
+| `vibe audio voice-clone` | `vibe audio clone-voice` | removed in v0.75 |
 
-## Hidden from `--help` (still callable)
+## Removed entirely (v0.75)
 
-The following commands work but no longer appear in `--help`. They will
-be removed in v1.0.
+The following commands existed as hidden Commander entries in v0.74 and
+were deleted from `packages/cli/src/commands/scene.ts` in v0.75. The
+underlying execute functions remain in `_shared/` and back the canonical
+top-level commands plus the manifest MCP tools.
 
 - `vibe scene init` → use `vibe init`
 - `vibe scene build` → use `vibe build`
@@ -60,19 +64,23 @@ Automation         — run / agent / batch + schema / context / walkthrough
 
 ## What did not change
 
-- **MCP tool names stay the same** (`pipeline_*`, `analyze_*`, etc.) so
-  external MCP hosts and `@vibeframe/mcp-server` users see no break.
-  The CLI ↔ manifest mapping handles the rename internally.
+- **MCP tool names stay the same** (`pipeline_*`, `analyze_*`,
+  `scene_init/build/render`) so external MCP hosts and
+  `@vibeframe/mcp-server` users see no break. The CLI ↔ manifest mapping
+  in `cli-sync.test.ts` handles the rename internally.
 - **`vibe schema <path>`, `vibe context`, `vibe walkthrough <topic>`**
   remain top-level commands. We considered consolidating them under
   `vibe agent`, but the cost (parent-chain refactor + deprecation noise
   on widely-used `vibe schema X` invocations) outweighed the visual win
   from Phase 1's help reorg.
-- **Walkthrough topic name `pipeline`** still routes to the same content.
-  Topic-name rename is deferred to v0.75.
+- **Walkthrough topic name `pipeline`** still routes to the same content
+  (topic-name rename deferred — low value, breaks any saved bookmarks).
 - **Provider flag `-p`** — Microsoft guidance reserves `-p` for
   `--property`, but the VibeFrame domain meaning of "provider" is well
   established; we keep it.
+- **`emitDeprecationWarning` helper** stays in `output.ts` even though
+  v0.75 has no callers — it's the canonical place to wire future
+  deprecations and the unit tests pin its semantics.
 
 ## What we deliberately did not do (and why)
 
@@ -88,6 +96,9 @@ Automation         — run / agent / batch + schema / context / walkthrough
   stay.
 
 ## Migration checklist for external scripts
+
+These are now hard breaks — no aliases. Pin to v0.73 or earlier if you
+can't migrate yet.
 
 1. Replace `vibe pipeline X` with `vibe remix X`.
 2. Replace `vibe analyze X` with `vibe inspect X`.

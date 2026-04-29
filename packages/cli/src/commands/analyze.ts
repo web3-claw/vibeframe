@@ -2,10 +2,9 @@
  * @module inspect
  *
  * Top-level `vibe inspect` command group for media analysis. (Renamed
- * from `analyze` in v0.74; the old `analyze` and `az` aliases stay
- * until v1.0 with a deprecation warning. The rename clarifies the
- * read-only intent — `analyze` doubled as both group and verb in the
- * old design.)
+ * from `analyze` in v0.74; `analyze` and `az` aliases were removed in
+ * v0.75. The rename clarifies the read-only intent — `analyze` doubled
+ * as both group and verb in the old design.)
  *
  * Commands:
  *   inspect media   - Unified analysis for images, videos, and YouTube URLs (Gemini)
@@ -27,20 +26,12 @@ import { requireApiKey } from "../utils/api-key.js";
 import { applySuggestion } from "./ai-helpers.js";
 import { executeAnalyze, executeGeminiVideo } from "./ai-analyze.js";
 import { registerReviewCommand } from "./ai-review.js";
-import { isJsonMode, outputSuccess, exitWithError, apiError, emitDeprecationWarning } from "./output.js";
+import { isJsonMode, outputSuccess, exitWithError, apiError } from "./output.js";
 import { sanitizeLLMResponse } from "./sanitize.js";
 import { rejectControlChars } from "./validate.js";
 
 export const analyzeCommand = new Command("inspect")
-  .alias("analyze")
-  .alias("az")
   .description("Inspect media using AI (images, videos, YouTube URLs)")
-  .hook("preAction", () => {
-    const invoked = process.argv[2];
-    if (invoked === "analyze" || invoked === "az") {
-      emitDeprecationWarning(invoked, "inspect", "v1.0");
-    }
-  })
   .addHelpText(
     "after",
     `
@@ -55,7 +46,6 @@ Examples:
 API Keys:
   GOOGLE_API_KEY  Required for all inspect commands (Gemini)
 
-Aliases: \`analyze\`, \`az\` (deprecated — removed in v1.0).
 Use '--fields response,model' to limit output size.
 Run 'vibe schema inspect.<command>' for structured parameter info.
 `

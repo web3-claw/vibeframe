@@ -2,10 +2,8 @@
  * @module remix
  *
  * Top-level `vibe remix` command group for AI media transformations
- * on existing video / audio files. (Renamed from `pipeline` in v0.74
- * to avoid the word collision with `vibe run <pipeline.yaml>`. The
- * `pipeline` and `pipe` aliases stay until v1.0 with a deprecation
- * warning.)
+ * on existing video / audio files. (Renamed from `pipeline` in v0.74;
+ * the `pipeline` and `pipe` aliases were removed in v0.75.)
  *
  * For BUILDING new video from text intent (storyboard -> MP4), see
  * `vibe build` (v0.60+) - that's the skills-driven path. Remix here
@@ -28,23 +26,12 @@ import ora from "ora";
 import { registerScriptPipelineCommands } from "./ai-script-pipeline-cli.js";
 import { registerHighlightsCommands } from "./ai-highlights.js";
 import { executeAnimatedCaption, type AnimatedCaptionStyle } from "./ai-animated-caption.js";
-import { isJsonMode, outputSuccess, exitWithError, notFoundError, usageError, apiError, generalError, emitDeprecationWarning } from "./output.js";
+import { isJsonMode, outputSuccess, exitWithError, notFoundError, usageError, apiError, generalError } from "./output.js";
 
 export const pipelineCommand = new Command("remix")
-  .alias("pipeline")
-  .alias("pipe")
   .description(
     "AI media transformations on existing video / audio (highlights, auto-shorts, animated captions). For BUILD-from-text flows see `vibe build`."
   )
-  .hook("preAction", () => {
-    // Fire deprecation if the user invoked the old alias directly. The
-    // user-typed name is in argv[2] (after `node vibe`); when invoked
-    // through the CLI binary it's argv[2] too.
-    const invoked = process.argv[2];
-    if (invoked === "pipeline" || invoked === "pipe") {
-      emitDeprecationWarning(invoked, "remix", "v1.0");
-    }
-  })
   .addHelpText(
     "after",
     `
@@ -73,7 +60,6 @@ Cost tiers:
   animated-caption:    $   Low (~$0.01)
   regenerate-scene:    $$$ High (per-scene re-run; depends on provider)
 
-Aliases: \`pipeline\`, \`pipe\` (deprecated — removed in v1.0).
 Use '--dry-run' to preview parameters before execution.
 Run 'vibe schema remix.<command>' for structured parameter info.
 `

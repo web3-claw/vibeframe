@@ -5,9 +5,9 @@
  *
  * Commands:
  *   audio transcribe   - Transcribe audio using Whisper
- *   audio list-voices  - List available ElevenLabs voices (alias: voices)
+ *   audio list-voices  - List available ElevenLabs voices
  *   audio isolate      - Isolate vocals from audio (ElevenLabs)
- *   audio clone-voice  - Clone a voice from audio samples (alias: voice-clone)
+ *   audio clone-voice  - Clone a voice from audio samples (ElevenLabs)
  *   audio dub          - Dub audio/video to another language (Whisper + Claude + ElevenLabs)
  *   audio duck         - Auto-duck background music when voice is present (FFmpeg)
  *
@@ -29,7 +29,7 @@ import { getApiKey, requireApiKey } from "../utils/api-key.js";
 import { execSafe, commandExists, execSafeSync } from "../utils/exec-safe.js";
 import { detectFormat, formatTranscript } from "../utils/subtitle.js";
 import { formatTime } from "./ai-helpers.js";
-import { isJsonMode, outputSuccess, exitWithError, notFoundError, usageError, apiError, generalError, emitDeprecationWarning } from "./output.js";
+import { isJsonMode, outputSuccess, exitWithError, notFoundError, usageError, apiError, generalError } from "./output.js";
 import { rejectControlChars, validateOutputPath } from "./validate.js";
 
 export const audioCommand = new Command("audio")
@@ -53,7 +53,6 @@ API Keys:
   OPENAI_API_KEY + ANTHROPIC_API_KEY + ELEVENLABS_API_KEY  dub (full pipeline)
   No key needed       duck (FFmpeg only)
 
-Aliases (deprecated, removed in v1.0): voices → list-voices, voice-clone → clone-voice
 Run 'vibe schema audio.<command>' for structured parameter info.
 `
   );
@@ -142,16 +141,12 @@ audioCommand
 
 // ── audio list-voices ──────────────────────────────────────────────────
 // Renamed from `voices` in v0.74 for verb-first leaf consistency
-// (Microsoft CLI design guidance §3.3). The bare `voices` alias stays
-// until v1.0; deprecation warning fires when invoked under that name.
+// (Microsoft CLI design guidance §3.3). The `voices` alias was removed
+// in v0.75.
 
 audioCommand
   .command("list-voices")
-  .alias("voices")
   .description("List available ElevenLabs voices")
-  .hook("preAction", () => {
-    if (process.argv[3] === "voices") emitDeprecationWarning("audio voices", "audio list-voices", "v1.0");
-  })
   .option("-k, --api-key <key>", "ElevenLabs API key (or set ELEVENLABS_API_KEY env)")
   .action(async (options) => {
     const startedAt = Date.now();
@@ -261,15 +256,11 @@ audioCommand
 
 // ── audio clone-voice ──────────────────────────────────────────────────
 // Renamed from `voice-clone` in v0.74 for verb-first consistency. The
-// `voice-clone` alias stays until v1.0.
+// `voice-clone` alias was removed in v0.75.
 
 audioCommand
   .command("clone-voice")
-  .alias("voice-clone")
   .description("Clone a voice from audio samples using ElevenLabs")
-  .hook("preAction", () => {
-    if (process.argv[3] === "voice-clone") emitDeprecationWarning("audio voice-clone", "audio clone-voice", "v1.0");
-  })
   .argument("[samples...]", "Audio sample files (1-25 files)")
   .option("-k, --api-key <key>", "ElevenLabs API key (or set ELEVENLABS_API_KEY env)")
   .option("-n, --name <name>", "Voice name (required)")

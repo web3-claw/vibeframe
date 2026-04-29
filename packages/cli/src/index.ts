@@ -25,7 +25,6 @@ import { audioCommand } from "./commands/audio.js";
 import { pipelineCommand } from "./commands/pipeline.js";
 import { schemaCommand } from "./commands/schema.js";
 import { mediaCommand } from "./commands/media.js";
-import { exportCommand } from "./commands/export.js";
 import { batchCommand } from "./commands/batch.js";
 import { detectCommand } from "./commands/detect.js";
 import { setupCommand } from "./commands/setup.js";
@@ -122,7 +121,7 @@ Automation & agents:
   vibe walkthrough scene              Step-by-step authoring guide
 
 Cost tiers (per call):
-  Free     detect, edit (silence-cut/fade/noise-reduce), project, timeline, export
+  Free     detect, edit (silence-cut/fade/noise-reduce), project, timeline
   Low      inspect, audio transcribe, generate image               ~$0.01-$0.10
   High     generate video, edit image                              ~$1-$5
   V.High   remix (regenerate-scene, highlights, auto-shorts)      ~$5-$50+
@@ -226,10 +225,6 @@ program.addCommand(agentCommand);
 program.addCommand(projectCommand);
 program.addCommand(sceneCommand);
 program.addCommand(timelineCommand);
-// `export` is functionally a render variant; in v0.74 we hide it from
-// top-level help (the canonical user-facing command is `vibe render`).
-// Still registered so existing scripts keep working.
-program.addCommand(exportCommand, { hidden: true });
 program.addCommand(detectCommand);
 program.addCommand(batchCommand);
 

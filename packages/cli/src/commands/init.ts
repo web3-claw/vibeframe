@@ -209,7 +209,7 @@ export const initCommand = new Command("init")
     }
     console.log(chalk.dim("    cp .env.example .env          Add your API keys"));
     console.log(chalk.dim("    vibe doctor                   Check what's configured"));
-    console.log(chalk.dim("    vibe scene init my-promo      Scaffold a starter scene project"));
+    console.log(chalk.dim("    vibe init my-promo --type scene  Scaffold a starter video project"));
     console.log();
   });
 

@@ -155,10 +155,10 @@ interface DiagnosticResults {
       summary: string;
     };
     /**
-     * Plan H — `vibe scene build` agentic dispatch readiness.
+     * Plan H — `vibe build` agentic dispatch readiness.
      *
      * `recommendedMode` mirrors `resolveSceneBuildMode()` so the user
-     * sees what `vibe scene build` will actually do without flags.
+     * sees what `vibe build` will actually do without flags.
      * `composer` reports the auto-resolved batch fallback (claude /
      * gemini / openai) so they know which key powers `--mode batch`.
      * `sceneProjectInCwd` + `skillInstalled` flag whether the local
@@ -404,7 +404,7 @@ function printReport(results: DiagnosticResults): void {
 
   // Plan H — scene composer ─────────────────────────────────────────────
   console.log();
-  console.log(chalk.bold("  Scene composer (vibe scene build)"));
+  console.log(chalk.bold("  Scene composer (vibe build)"));
   const sc = results.scope.sceneComposer;
   const modeBadge = sc.recommendedMode === "agent"
     ? chalk.cyan("agent")
