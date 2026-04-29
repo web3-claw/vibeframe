@@ -83,23 +83,22 @@ export default function DemoPage() {
         </div>
       </section>
 
-      {/* Four reproducible surfaces — VHS tape recipes, run locally with
-          `vhs assets/demos/<name>.tape`. The actual rendered demo MP4s
-          aren't committed; the tapes are the source of truth. */}
+      {/* Reproducible surfaces — VHS tape recipes, run locally with
+          `vhs assets/demos/<name>.tape`. */}
       <section className="pt-32 pb-20 px-4">
         <div className="mx-auto max-w-5xl">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/5 px-4 py-1.5 text-sm text-cyan-400 mb-8 animate-fade-in">
               <Terminal className="w-4 h-4" />
-              <span>Four surfaces · run any tape locally</span>
+              <span>Reproducible surfaces · run any tape locally</span>
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 animate-fade-in-up">
               Use VibeFrame how<br />
               <span className="bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">you already work.</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-12 animate-fade-in-up delay-100">
-              Plain CLI, stand-alone agent, or Claude Code — same tools, four
-              entry points. Each surface below ships a VHS tape; install{" "}
+              Plain CLI, stand-alone agent, or a host agent — same tools,
+              multiple entry points. Each surface below ships a VHS tape; install{" "}
               <a
                 href="https://github.com/charmbracelet/vhs"
                 target="_blank"
@@ -116,25 +115,25 @@ export default function DemoPage() {
             <TapeCard
               badge="1 · CLI"
               title="vibe (terminal)"
-              note="Hand-authored STORYBOARD → vibe scene build → MP4"
+              note="Hand-authored STORYBOARD -> vibe build -> vibe render"
               command="vhs assets/demos/cli.tape"
             />
             <TapeCard
               badge="2 · Agent"
               title="vibe agent"
-              note="BYOK · natural language → vibe scene build"
+              note="BYOK · natural language -> real vibe commands"
               command="vhs assets/demos/agent.tape"
             />
             <TapeCard
               badge="3 · Host agent"
-              title="scene build"
-              note="Host agent drives storyboard → multi-beat MP4 (recorded with Claude Code)"
+              title="storyboard build"
+              note="Host agent drives storyboard -> multi-beat MP4"
               command="vhs assets/demos/host-agent.tape"
             />
             <TapeCard
               badge="4 · Host agent"
               title="primitive chain"
-              note="t2i (gpt-image-2) → i2v (Seedance 2.0) → narration → mux (recorded with Claude Code)"
+              note="t2i -> i2v (Seedance) -> narration -> composed video"
               command="vhs assets/demos/host-agent-i2v.tape"
             />
           </div>
@@ -173,25 +172,25 @@ export default function DemoPage() {
             <CommandCard
               icon={<Image className="w-5 h-5" />}
               title="Generate Image"
-              command='vibe gen img "sunset over mountains" -o scene.png'
+              command='vibe generate image "sunset over mountains" -p openai -o scene.png'
               color="from-blue-500 to-cyan-500"
             />
             <CommandCard
               icon={<Video className="w-5 h-5" />}
               title="Image to Video"
-              command='vibe gen vid "camera zooms in" -i scene.png -o scene.mp4'
+              command='vibe generate video "camera zooms in" -p seedance -i scene.png -d 8 -o scene.mp4'
               color="from-purple-500 to-pink-500"
             />
             <CommandCard
               icon={<Wand2 className="w-5 h-5" />}
               title="Generate Narration"
-              command='vibe gen tts "Welcome to VibeFrame" -o narration.mp3'
+              command='vibe generate speech "Welcome to VibeFrame" -o narration.mp3'
               color="from-orange-500 to-yellow-500"
             />
             <CommandCard
               icon={<Music className="w-5 h-5" />}
               title="Generate Music"
-              command='vibe gen music "cinematic ambient" -o bgm.mp3 -d 20'
+              command='vibe generate music "cinematic ambient" -o bgm.mp3 -d 20'
               color="from-green-500 to-emerald-500"
             />
           </div>

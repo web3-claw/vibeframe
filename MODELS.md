@@ -115,7 +115,7 @@ Used for Remotion component code generation (`vibe generate motion`).
 
 | Provider | Model | Env Key | CLI Option | Notes |
 |----------|-------|---------|------------|-------|
-| OpenAI | `gpt-image-2` | `OPENAI_API_KEY` | `-p openai` (default) | **Default since v0.56.** Artificial Analysis ELO 1332, #1 on text-to-image leaderboard. ~$0.04–$0.35/image |
+| OpenAI | `gpt-image-2` | `OPENAI_API_KEY` | `-p openai` | Flagship OpenAI image model |
 | OpenAI | `gpt-image-1.5` | `OPENAI_API_KEY` | `-p openai -m 1.5` | Previous default, still strong on editing (#1 editing leaderboard). Quality tiers: low ($0.009), medium ($0.035), high ($0.133) |
 | Gemini | `gemini-2.5-flash-image` | `GOOGLE_API_KEY` | `-p gemini` | Nano Banana Flash - **GA**, fast. Auto-selected when only `GOOGLE_API_KEY` is set |
 | Gemini | `gemini-3.1-flash-image-preview` | `GOOGLE_API_KEY` | `-p gemini -m 3.1-flash` | Nano Banana 2 - Image Search grounding, 512px |
@@ -150,7 +150,7 @@ Grok Imagine supports 14 aspect ratios: `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:
 
 | Provider | Model | Duration | Audio | Env Key | CLI Option | Notes |
 |----------|-------|----------|-------|---------|------------|-------|
-| Seedance via fal.ai | `seedance-2.0` (ByteDance) | 4-15 sec | Yes | `FAL_KEY` | `-p seedance` | **Auto-default when `FAL_KEY` set** (since v0.57). Artificial Analysis ELO 1270 #2 text, 1347 #2 image. ByteDance has no public API — fal.ai is the gateway. |
+| Seedance via fal.ai | `seedance-2.0` (ByteDance) | 4-15 sec | Yes | `FAL_KEY` | `-p seedance` | ByteDance Seedance through fal.ai |
 | Seedance via fal.ai | `seedance-2.0-fast` | 4-15 sec | Yes | `FAL_KEY` | `-p seedance --seedance-model fast` | Lower-latency / lower-cost variant of Seedance 2.0 |
 | xAI Grok | `grok-imagine-video` | 1-15 sec | Yes | `XAI_API_KEY` | `-p grok` | Fallback default when `FAL_KEY` is unset. Best lip-sync/native audio. $0.07/s (720p) |
 | Kling | `kling-v2-5-turbo` | 5-10 sec | No | `KLING_API_KEY` | `-p kling` | Fast (~36s generation) |
@@ -180,7 +180,7 @@ All text-to-video providers also support image-to-video. Key differences per pro
 
 | Provider | Model | I2V Support | Image Input | Notes |
 |----------|-------|-------------|-------------|-------|
-| fal.ai | `seedance-2.0` | Yes | **URL only** | Auto-uploads via ImgBB (`IMGBB_API_KEY`). Supports `--last-frame` for end-frame transition. |
+| Seedance via fal.ai | `seedance-2.0` | Yes | **URL only** | Auto-uploads via ImgBB (`IMGBB_API_KEY`) for local image paths. |
 | xAI Grok | `grok-imagine-video` | Yes | URL or data URI | Same pricing as T2V |
 | Kling | all v2.5+ models | Yes | **URL only** | Auto-uploads via ImgBB (`IMGBB_API_KEY`) |
 | Veo | all models | Yes | base64 (first frame) | Supports `--last-frame` for frame interpolation |
@@ -227,105 +227,36 @@ export REPLICATE_API_TOKEN="..."      # Replicate (music)
 | `vibe -p gemini` | `GOOGLE_API_KEY` | Gemini 2.5 Flash (Agent LLM) |
 | `vibe -p xai` | `XAI_API_KEY` | Grok 4.1 Fast (Agent LLM) |
 | `vibe -p openrouter` | `OPENROUTER_API_KEY` | OpenRouter Auto (Agent LLM) |
-| `vibe generate image` | `GOOGLE_API_KEY` | Gemini Nano Banana |
-| `vibe generate image -p openai` | `OPENAI_API_KEY` | GPT Image 1.5 |
+| `vibe generate image -p openai` | `OPENAI_API_KEY` | OpenAI image generation |
+| `vibe generate image -p gemini` | `GOOGLE_API_KEY` | Gemini image generation |
 | `vibe edit image` | `GOOGLE_API_KEY` | Gemini Nano Banana |
 | `vibe generate speech` | `ELEVENLABS_API_KEY` | ElevenLabs |
 | `vibe generate music` | `ELEVENLABS_API_KEY` | ElevenLabs Music (default) |
 | `vibe generate music -p replicate` | `REPLICATE_API_TOKEN` | Replicate MusicGen |
-| `vibe generate video` | `XAI_API_KEY` | Grok Imagine (default) |
+| `vibe generate video -p seedance` | `FAL_KEY` | Seedance via fal.ai |
+| `vibe generate video -p grok` | `XAI_API_KEY` | Grok Imagine |
 | `vibe generate video -p kling` | `KLING_API_KEY` | Kling v2.5-turbo |
 | `vibe generate image -p grok` | `XAI_API_KEY` | Grok Imagine |
 | `vibe generate video -p veo` | `GOOGLE_API_KEY` | Veo 3.1 |
 
 ---
 
-## Benchmark Rankings (Artificial Analysis, March 2026)
+## Provider Selection Notes
 
-> Source: [artificialanalysis.ai](https://artificialanalysis.ai/) — ELO scores from blind side-by-side user voting.
+Provider defaults depend on which API keys are configured. For public docs and
+demos, prefer explicit provider flags so the required key is obvious:
 
-### Text-to-Image (Top 15 of 119 models)
+```bash
+vibe generate image "..." -p openai
+vibe generate image "..." -p gemini
+vibe generate video "..." -p seedance
+vibe generate video "..." -p veo
+```
 
-| Rank | Model | ELO | VibeFrame |
-|------|-------|-----|-----------|
-| **1** | **GPT Image 1.5 (high)** | **1,266** | `vibe gen img -p openai` |
-| **2** | **Nano Banana 2 (Gemini 3.1 Flash)** | **1,258** | `vibe gen img -m 3.1-flash` |
-| 3 | Riverflow 2.0 | 1,254 | - |
-| **4** | **Nano Banana Pro (Gemini 3 Pro)** | **1,214** | `vibe gen img -m pro` |
-| 5 | FLUX.2 [max] | 1,200 | - |
-| 6 | Seedream 4.0 | 1,185 | - |
-| 7 | FLUX.2 [pro] | 1,181 | - |
-| 8 | FLUX.2 [flex] | 1,180 | - |
-| 9 | Imagen 4 Ultra Preview | 1,175 | - |
-| 10 | Seedream 4.5 | 1,172 | - |
-| **11** | **Grok Imagine** | **1,171** | `vibe gen img -p grok` |
-| 12 | Imagen 4 Preview | 1,171 | - |
-| 13 | Imagen 4 Ultra | 1,169 | - |
-| 14 | FLUX.2 [dev] Turbo | 1,164 | - |
-| **15** | **Nano Banana (Gemini 2.5 Flash)** | **1,164** | `vibe gen img` (default) |
+Use command help as the runtime source of truth for supported flags:
 
-### Image Editing (Top 10 of 53 models)
-
-| Rank | Model | ELO | VibeFrame |
-|------|-------|-----|-----------|
-| 1 | Riverflow 2.0 | 1,283 | - |
-| **2** | **GPT Image 1.5 (high)** | **1,271** | `vibe ed image -p openai` |
-| **3** | **Nano Banana Pro** | **1,250** | `vibe ed image -m pro` |
-| **4** | **Nano Banana 2** | **1,244** | `vibe ed image -m 3.1-flash` |
-| **5** | **Grok Imagine** | **1,225** | `vibe ed image -p grok` |
-| 6 | HunyuanImage 3.0 Instruct | 1,223 | - |
-| 7 | Grok Imagine Pro | 1,214 | - |
-| 8 | Kling Image 3.0 | 1,205 | - |
-| 9 | Wan 2.6 Image | 1,197 | - |
-| 10 | Seedream 4.5 | 1,196 | - |
-
-### Text-to-Video (Top 15 of 79 models)
-
-| Rank | Model | ELO | $/min | VibeFrame |
-|------|-------|-----|-------|-----------|
-| 1 | Seedance 2.0 | 1,273 | No API | - |
-| 2 | SkyReels V4 | 1,245 | $7.20 | - |
-| **3** | **Kling 3.0 Pro** | **1,241** | **$13.44** | `vibe gen vid -p kling -m v3` |
-| 4 | PixVerse V6 | 1,239 | No API | - |
-| **5** | **Kling 3.0 Omni Pro** | **1,232** | **$13.44** | `vibe gen vid -p kling -m v3-omni` |
-| **6** | **Veo 3.1 Preview** | **1,230** | **$12.00** | `vibe gen vid -p veo --veo-model 3.1` |
-| **7** | **Grok Imagine Video** | **1,229** | **$4.20** | `vibe gen vid` (default) |
-| 8 | PixVerse V5.6 | 1,228 | $9.00 | - |
-| **9** | **Runway Gen-4.5** | **1,227** | API | `vibe gen vid -p runway` |
-| 10 | Vidu Q3 Pro | 1,223 | $9.60 | - |
-| 11 | Veo 3 | 1,221 | $12.00 | - |
-| **12** | **Kling 3.0 Std** | **1,220** | **$10.08** | `vibe gen vid -p kling -m v3` |
-| 13 | Kling 3.0 Omni Std | 1,219 | $10.08 | - |
-| **14** | **Veo 3.1 Fast** | **1,218** | **$6.00** | `vibe gen vid -p veo` (default Veo) |
-| 15 | Veo 3.1 Fast Preview | 1,215 | $6.00 | - |
-
-### Image-to-Video (Top 15 of 73 models)
-
-| Rank | Model | ELO | $/min | VibeFrame |
-|------|-------|-----|-------|-----------|
-| 1 | Seedance 2.0 | 1,352 | No API | - |
-| 2 | PixVerse V6 | 1,344 | No API | - |
-| **3** | **Grok Imagine Video** | **1,334** | **$4.20** | `vibe gen vid -i img.png` (default) |
-| 4 | GenFlare 2.0 | 1,326 | No API | - |
-| **5** | **Kling 3.0 Omni Pro** | **1,298** | **$13.44** | `vibe gen vid -i img.png -p kling -m v3-omni` |
-| **6** | **Kling 2.5 Turbo** | **1,296** | **$4.20** | `vibe gen vid -i img.png -p kling` |
-| 7 | PixVerse V5.6 | 1,291 | $9.00 | - |
-| **8** | **Veo 3.1 Fast** | **1,291** | **$6.00** | `vibe gen vid -i img.png -p veo` |
-| 9 | SkyReels V4 | 1,289 | $7.20 | - |
-| **10** | **Veo 3.1 Preview** | **1,289** | **$12.00** | `vibe gen vid -i img.png -p veo --veo-model 3.1` |
-| 11 | Vidu Q3 Pro | 1,288 | $9.60 | - |
-| 12 | Hailuo 02 0616 | 1,286 | $4.90 | - |
-| 13 | Veo 3.1 Fast Preview | 1,285 | $6.00 | - |
-| 14 | Kling 2.6 Std | 1,282 | No API | - |
-| **15** | **Kling 3.0 Pro** | **1,278** | **$13.44** | `vibe gen vid -i img.png -p kling -m v3` |
-
-### Coverage Summary
-
-| Category | Models (total) | VibeFrame supported | Top 10 coverage |
-|----------|---------------|--------------------|-----------------|
-| Text-to-Image | 119 | 5 | 3 of top 5 (1st, 2nd, 4th) |
-| Image Editing | 53 | 4 | 4 of top 5 (2nd-5th) |
-| Text-to-Video | 79 | 6 | 6 of top 15 (3rd, 5th, 6th, 7th, 9th, 14th) |
-| Image-to-Video | 73 | 5 | 5 of top 15 (3rd, 5th, 6th, 8th, 10th) |
-
-> VibeFrame focuses on top-ranked models with public APIs. Models without API access (Seedance, PixVerse, GenFlare) are excluded. Default providers (Gemini for image, Grok for video) rank in the top tier of each category.
+```bash
+vibe generate image --help
+vibe generate video --help
+vibe edit image --help
+```

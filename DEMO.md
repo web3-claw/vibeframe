@@ -205,9 +205,10 @@ pnpm vibe build my-video \
   --skip-render
 ```
 
-If all composition HTML already exists, this proceeds to render. If a beat is
-missing, `--mode agent` returns a plan telling the host agent which
-`compositions/scene-*.html` files to author.
+With `--skip-render`, this prepares narration/assets and validates the scene
+plan without exporting the final MP4. If a beat is missing, `--mode agent`
+returns a plan telling the host agent which `compositions/scene-*.html` files
+to author. Run `vibe render` after the project is ready.
 
 To exercise the full paid AI image asset path, remove `--skip-backdrop` and
 choose the image provider you want.
@@ -217,14 +218,13 @@ choose the image provider you want.
 ```bash
 pnpm vibe scene lint index.html \
   --project my-video \
-  --fix \
-  --json
+  --fix
 ```
 
 Expected result:
 
 ```text
-errorCount: 0
+No fatal lint errors.
 ```
 
 Info-level messages about CDN scripts are okay for this demo.

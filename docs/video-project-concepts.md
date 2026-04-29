@@ -42,10 +42,17 @@ Use providers for what they are:
 
 ```bash
 vibe generate image "..." -p openai
-vibe generate video "..." -p fal
+vibe generate video "..." -p seedance
 ```
 
-`fal` is the provider gateway. The default fal video model is currently Seedance. When you want a specific fal model, pass the model flag documented by `vibe schema generate.video`.
+`seedance` is the explicit provider name for ByteDance Seedance through
+fal.ai. `fal` remains a backwards-compatible alias, but docs and demos should
+prefer `seedance` so new users can see which video model they are selecting.
+When you want a provider-specific option, check the command help:
+
+```bash
+vibe generate video --help
+```
 
 ## Dry Runs
 
@@ -54,7 +61,7 @@ Use `--dry-run` before paid generation:
 ```bash
 vibe build my-video --dry-run
 vibe render my-video --dry-run
-vibe generate video "..." -p fal --dry-run
+vibe generate video "..." -p seedance --dry-run
 ```
 
 Dry runs do not create assets, call paid providers, or render files. They show the planned parameters so humans and agents can confirm the next action.

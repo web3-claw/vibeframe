@@ -1,101 +1,79 @@
-# VibeFrame vs Hyperframes — what each ships
+# VibeFrame And Hyperframes
 
-A scene project authored once, rendered through both pipelines. The point is
-*not* that one is better — VibeFrame uses the Hyperframes producer for the
-actual frame capture. The point is what each layer adds on top.
+VibeFrame uses Hyperframes as its HTML scene rendering layer. They are not
+competing abstractions in this repository: Hyperframes handles deterministic
+browser-based composition and capture, while VibeFrame adds CLI workflows,
+provider routing, YAML orchestration, agent guidance, media generation, and
+traditional editing commands around that renderer.
 
-## Setup
+## Current Mental Model
 
-Create one small scene project, duplicate it, then point each renderer at a
-copy.
+Use VibeFrame when you want a video workflow that an agent or shell script can
+drive end to end:
 
 ```bash
-# Identical project, two renderers
-vibe init project-A --profile full --visual-style "Swiss Pulse" -r 16:9 -d 18
-cp -r project-A project-B
-for p in project-A project-B; do
-  vibe scene add narrated --project "$p" --style explainer \
-    --kicker "WHY VIBEFRAME" --headline "Edit text, not pixels." \
-    --narration "Each word lights up the moment it is spoken." \
-    --tts kokoro --duration 6 --no-image
-done
-
-vibe scene render --project project-A --quality draft --fps 24 --workers 6 -o A.mp4
-( cd project-B && npx hyperframes render --quality draft --fps 24 -o ../B.mp4 )
+vibe init my-video --profile agent
+vibe build my-video
+vibe render my-video -o renders/final.mp4
 ```
 
-## Output comparison (`ffprobe`)
+Use the lower-level scene namespace only when you need direct scene operations:
 
-| Metric | `vibe scene render` | `npx hyperframes render` |
+```bash
+vibe scene lint index.html --project my-video --fix
+vibe scene render index.html --project my-video --quality draft
+```
+
+Use Hyperframes directly when your task is only HTML composition/rendering and
+you do not need VibeFrame's provider routing, YAML pipelines, MCP tools, or
+editing commands.
+
+## What Each Layer Provides
+
+| Concern | Hyperframes | VibeFrame |
 |---|---|---|
-| File size | 851 KB | 818 KB |
-| Video codec | h264 (Constrained Baseline) | h264 (Constrained Baseline) |
-| Video duration | 24.000 s | 24.000 s |
-| Video bitrate | 277.9 kbps | 278.2 kbps |
-| **Audio codec** | **AAC** | _(none)_ |
-| **Audio duration** | **20.85 s** | _(none)_ |
-| **Audio bitrate** | **10.6 kbps** | _(none)_ |
+| HTML scene composition and browser capture | Primary layer | Uses it through the scene renderer |
+| Visual scene files | HTML/CSS/JS composition | `compositions/*.html` inside a VibeFrame project |
+| Storyboard authoring | Not the main abstraction | `STORYBOARD.md` + `DESIGN.md` |
+| Project-level flow | Hyperframes project commands | `vibe init` -> `vibe build` -> `vibe render` |
+| AI image/video generation | Out of scope | `vibe generate image`, `vibe generate video`, YAML actions |
+| Editing existing media | Out of scope | `vibe edit`, `vibe audio`, `vibe pipeline` |
+| Agent guidance | Host-specific skills/rules | `AGENTS.md`, `SKILL.md`, host scaffolding, walkthroughs |
+| MCP surface | Out of scope | `@vibeframe/mcp-server` typed tools |
+| Video-as-code pipelines | Out of scope | `vibe run pipeline.yaml` |
 
-Same h264 stream both directions — VibeFrame uses the Hyperframes producer
-for frame capture, then runs a single ffmpeg pass with `-c:v copy` to mux
-audio. No video re-encode, +33 KB on disk for the AAC track.
+## Why Hyperframes Still Appears In Projects
 
-## Wall-clock render time (1080p draft, 24 fps, 24 s output)
+Some generated project files may include `hyperframes.json` or Hyperframes
+skill references. Treat those as renderer metadata and composition guidance,
+not as the primary VibeFrame project API.
 
-| Mode | Workers | Time | Notes |
-|---|---|---|---|
-| `npx hyperframes render` | 6 (default) | **~16 s** | silent video only |
-| `vibe scene render` | 1 (default, more reliable) | ~31 s | + audio mux |
-| `vibe scene render --workers 6` | 6 | **~10 s** | + audio mux |
+New users should start with:
 
-VibeFrame's audio-mux pass is bounded by ffmpeg `-c:v copy` so it costs
-roughly the I/O of the video file (≈800 KB), not a re-encode. Capture is
-the long pole; with the same worker count, VibeFrame ends up slightly
-ahead because Chrome warm-up amortises across more frames.
+```bash
+vibe init my-video --profile agent
+```
 
-## What each layer ships
+The default project surface is:
 
-| Concern | Hyperframes (producer) | VibeFrame on top |
-|---|---|---|
-| Scene HTML primitive (`<div class="clip">` + GSAP) | ✓ | inherited |
-| Frame capture (Chrome BeginFrame / screenshot) | ✓ | inherited |
-| In-process lint (`runHyperframeLint`) | ✓ | inherited |
-| `npx hyperframes tts` (Kokoro local) | ✓ | wired into `vibe scene add --tts kokoro` |
-| `npx hyperframes transcribe` (Whisper) | ✓ | wired into `vibe scene add` (auto when audio + key) |
-| Project scaffold (`init`) — bilingual layout | own format | `vibe scene init` writes both `vibe.project.yaml` + `hyperframes.json` |
-| **Audio in rendered MP4** | not yet (silent output) | `vibe scene render` ffmpeg post-mux pass |
-| **Word-sync captions** | manual JS hardcoding (see [`hyperframe-learn` example](https://github.com/heygen-com/hyperframes)) | `vibe scene add` emits `<span class="word">` from transcript automatically |
-| One-shot STORYBOARD → MP4 | not in scope | `vibe scene build` (v0.60+) |
-| Provider routing (TTS/image/video) | n/a | `--tts auto\|kokoro\|elevenlabs`, `--image-provider gemini\|openai`, `-g grok\|kling\|runway\|veo` |
-| Agent + MCP tool surface | n/a | 63 MCP tools incl. `scene_init/add/build/lint/render/styles` |
-| Pricing | $0 (local) | $0 with Kokoro+Gemini, ≤$0.10 with ElevenLabs+OpenAI |
+```text
+STORYBOARD.md
+DESIGN.md
+SKILL.md
+vibe.project.yaml
+```
 
-## What VibeFrame is *not* solving
+Render/backend files are created when the selected profile or later build step
+needs them.
 
-- Replacing Hyperframes' scene rendering. We import `@hyperframes/producer`
-  and call its `executeRenderJob` directly. The producer is the engine.
-- Running on a server. Both VibeFrame and Hyperframes assume Chrome is
-  available locally — same constraint as Remotion.
-- Removing the Chrome dependency. The frame-capture model needs a real
-  browser; that's the deal you sign for HTML composability.
+## What VibeFrame Is Not Trying To Replace
 
-## Why "AI-native CLI" is the gap, not "another renderer"
+VibeFrame does not replace Hyperframes' renderer. It builds on it. The practical
+boundary is:
 
-Hyperframes is a complete composition + rendering framework: producer,
-linter, Studio editor, 50+ installable blocks/components, plugin
-manifests for Claude Code / Cursor / Codex, and a five-skill agent
-ecosystem (`hyperframes`, `gsap`, `hyperframes-cli`, `hyperframes-registry`,
-`website-to-hyperframes`). VibeFrame addresses a different concern: AI
-asset generation, multi-provider routing, and headless YAML pipelines
-that orchestrate the full `script → assets → compose → render` chain.
-If your need is "give me clean HTML composition tooling and a
-deterministic renderer," `npx hyperframes` is the right answer.
-VibeFrame layers on top of that with the agent / MCP / pipeline surface.
+- choose Hyperframes for focused HTML scene authoring and rendering;
+- choose VibeFrame for agent-driven video workflows that combine storyboards,
+  AI media generation, YAML pipelines, editing commands, narration, and export.
 
-## Reproducing this comparison
-
-The script that produced these numbers lives in
-[`tests/comparison/render-bench.sh`](../tests/comparison/render-bench.sh)
-(self-contained — creates a temporary scene project, runs both renderers, prints
-the table above). Numbers above were measured on macOS 14.x, Apple Silicon,
-Chrome 138, ffmpeg 8.1.
+This boundary keeps VibeFrame's CLI clear while still benefiting from the
+Hyperframes rendering engine.

@@ -100,7 +100,7 @@ vibe generate video \
   "The interface animates into a polished product demo" \
   -p seedance \
   -i frame.png \
-  -d 5 \
+  -d 8 \
   -o motion.mp4
 ```
 
@@ -146,7 +146,7 @@ steps:
     prompt: "Slow camera push-in, subtle interface motion"
     image: $image.output
     provider: seedance
-    duration: 5
+    duration: 8
     output: motion.mp4
 ```
 

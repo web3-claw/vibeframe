@@ -4,7 +4,8 @@
 > The v0.58-era architectural pivot doc is preserved for historical
 > context at [`docs/archive/ROADMAP-v0.58.md`](docs/archive/ROADMAP-v0.58.md)
 > — its substance landed in v0.59 (`compose-scenes-with-skills`) and v0.60
-> (`vibe scene build`), so it no longer drives active development.
+> (`vibe build` / `vibe render` on top of the scene primitives), so it no
+> longer drives active development.
 >
 > This file is the longer-running plan: what shipped (Phases 1-4),
 > what's on the horizon (Phases 5-7).
@@ -24,13 +25,13 @@
 This is where day-to-day work happens. Major capabilities all delivered through v0.58:
 
 ### BUILD-from-text (Scene authoring)
-- `vibe scene build` — v0.60 one-shot STORYBOARD.md → MP4 driver (per-beat YAML cues, sha256 cache)
-- `vibe scene init/add/lint/render` — primitives behind the orchestrator
+- `vibe init` / `vibe build` / `vibe render` — project-level storyboard → final video workflow
+- `vibe scene ...` — lower-level primitives behind the project commands
 
 ### PROCESS existing video (`vibe pipeline`)
 - `vibe pipeline highlights` / `auto-shorts` (FFmpeg + Whisper + Claude analysis)
 - `vibe pipeline animated-caption` (6 styles across ASS fast-path and Remotion overlay)
-- (`vibe pipeline script-to-video` deprecated v0.63 — superseded by `vibe scene build`)
+- (`vibe pipeline script-to-video` was superseded by the storyboard build/render flow)
 
 ### Smart editing & analysis (`vibe edit` / `vibe analyze`)
 silence-cut, jump-cut, caption, grade, reframe, speed-ramp, fade, noise-reduce, text-overlay, upscale-video, interpolate, fill-gaps, translate-srt, image edit, video review (100+ commands total).
@@ -39,29 +40,37 @@ silence-cut, jump-cut, caption, grade, reframe, speed-ramp, fade, noise-reduce, 
 TTS (ElevenLabs + Kokoro local fallback), voice-clone, dub, duck, music generation, sound effects, isolation.
 
 ### Scene authoring (Hyperframes-backed)
-`vibe scene init/add/lint/render/build` produces editable per-scene HTML instead of opaque MP4s. v0.58 added the DESIGN.md hard-gate + 8 named visual styles. v0.59 shipped `compose-scenes-with-skills` (Claude + vendored Hyperframes skill bundle, sha256 cache, per-beat fanout). v0.60 added `vibe scene build` — one-shot STORYBOARD.md → MP4 with per-beat YAML cues for narration / backdrop / duration. The cinematic demo MP4 (`assets/demos/cinematic-v060.mp4`) is the first end-to-end output of this stack.
+`vibe build` produces editable per-scene HTML instead of opaque intermediate
+MP4s, then `vibe render` exports the final video. The lower-level
+`vibe scene ...` namespace remains available for direct lint/render/add
+operations. The current sample output is
+[`assets/demos/sample-demo-final.mp4`](assets/demos/sample-demo-final.mp4).
 
 ### CLI UX
 Aliases (`gen`, `ed`, `az`, `pipe`, …), `--describe`, `--dry-run` cost preview, `--json`/auto-JSON, `--quiet`, `--fields`, structured exit codes (0–6), provider auto-fallback, `vibe doctor`, `vibe context`, `vibe demo`, smart error hints, `--budget-usd` ceiling.
 
 ### Video as Code
-`vibe run pipeline.yaml` — 20+ actions, `$step.output` references, `.pipeline-state.yaml` checkpointing, `--dry-run`/`--resume`, budget ceilings. See [`examples/README.md`](examples/README.md).
+`vibe run pipeline.yaml` — multi-step actions, `$step.output` references,
+checkpointing, `--dry-run`/`--resume`, and budget ceilings. See
+[`DEMO.md`](DEMO.md) and [`docs/cookbook.md`](docs/cookbook.md).
 
 ### Agent surface
-`vibe agent` REPL (BYO LLM × 6 — Claude / OpenAI / Gemini / Grok / OpenRouter / Ollama). MCP server bundled (66 tools). Claude Code skill pack (`/vibe-pipeline`, `/vibe-scene`) — consolidated 4 → 2 in v0.62.
+`vibe agent` REPL (BYO LLM × 6 — Claude / OpenAI / Gemini / Grok /
+OpenRouter / Ollama). MCP server bundled for typed tool-call hosts. Project
+scaffolds include host guidance for Codex, Claude Code, Cursor, Aider, Gemini
+CLI, OpenCode, and a universal `AGENTS.md` fallback.
 
 ### Demo & showcase
-- [x] Asciinema recordings (CLI / agent / Claude Code) — README hero
-- [x] [`DEMO.md`](DEMO.md) three-surface follow-along
-- [x] Cinematic-finish demo MP4 (v0.60.0) — [`assets/demos/cinematic-v060.mp4`](assets/demos/cinematic-v060.mp4), produced by `vibe scene build` end-to-end
-- [x] VHS tape recordings (`assets/demos/{cli,agent,host-agent,host-agent-i2v}.tape`) — reproducible per-surface demos (v0.61+)
-- [x] `vibe init` setup wizard (v0.61) — post-install scaffold of `CLAUDE.md` / `AGENTS.md` / `.env.example` based on detected agent host
+- [x] [`assets/demos/sample-demo-final.mp4`](assets/demos/sample-demo-final.mp4) — current storyboard sample with Kokoro narration, composed scenes, and Seedance motion media
+- [x] [`DEMO.md`](DEMO.md) copy-paste follow-along
+- [x] VHS tape recordings (`assets/demos/{cli,agent,host-agent,host-agent-i2v}.tape`) — reproducible terminal clips
+- [x] `vibe init` project scaffold — authoring docs plus host guidance based on the selected profile
 
 ### Open items in Phase 4 (tracked as GitHub issues)
 
 These were the v0.61+ candidates from earlier ROADMAP drafts. Each now has a tracking issue with current code references and acceptance criteria:
 
-- **[#202](https://github.com/vericontext/vibeframe/issues/202)** — Multi-provider T2I in `scene build` (Gemini + Grok routing; help text fix)
+- **[#202](https://github.com/vericontext/vibeframe/issues/202)** — Multi-provider T2I in the storyboard build flow (Gemini + Grok routing; help text fix)
 - **[#203](https://github.com/vericontext/vibeframe/issues/203)** — I2V backdrop integration (motion video from Runway / Kling / Veo / fal.ai instead of still + Ken-Burns)
 - **[#204](https://github.com/vericontext/vibeframe/issues/204)** — `compose-scenes-with-skills` narration awareness (word-level transcript timings into compose prompt)
 - **[#205](https://github.com/vericontext/vibeframe/issues/205)** — Local subject tracking (MediaPipe / YOLO / SAM-2) for `vibe edit reframe --track` — `help wanted`
