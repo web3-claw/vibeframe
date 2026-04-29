@@ -88,10 +88,13 @@ program
     "after",
     `
 Global flags (work with any command):
+  -V, --version  Print version and exit
+  -h, --help     Print help for the command and exit
   --json         Output JSON (auto-enabled when piped)
   --fields       Limit output fields (e.g., --fields "path,duration")
-  --quiet        Output only the result value (path, URL, or ID)
+  -q, --quiet    Output only the result value (path, URL, or ID)
   --stdin        Read options from stdin as JSON (for agent/script use)
+  --describe     Print the command's JSON schema and exit (no execution)
   --dry-run      Preview without executing (most commands)
 
 Get started (90% of users start here):

@@ -53,7 +53,7 @@ const sceneStylesSchema = z.object({
 });
 
 export const sceneStylesTool = defineTool({
-  name: "scene_styles",
+  name: "scene_list_styles",
   category: "scene",
   cost: "free",
   description:
@@ -65,7 +65,7 @@ export const sceneStylesTool = defineTool({
       if (!style) {
         return {
           success: false,
-          error: `Unknown visual style "${args.name}". Run scene_styles with no name to list all 8.`,
+          error: `Unknown visual style "${args.name}". Run scene_list_styles with no name to list all 8.`,
         };
       }
       return {
@@ -106,7 +106,7 @@ export const sceneStylesTool = defineTool({
           (s) => `   • ${s.name} (${s.slug}) — ${s.mood}; best for ${s.bestFor}`,
         ),
         ``,
-        `Run scene_styles { name: "<slug>" } to fetch the full DESIGN.md hard-gate body for one style.`,
+        `Run scene_list_styles { name: "<slug>" } to fetch the full DESIGN.md hard-gate body for one style.`,
       ],
     };
   },

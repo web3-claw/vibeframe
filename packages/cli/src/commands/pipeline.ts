@@ -30,7 +30,7 @@ import { isJsonMode, outputSuccess, exitWithError, notFoundError, usageError, ap
 
 export const pipelineCommand = new Command("remix")
   .description(
-    "AI media transformations on existing video / audio (highlights, auto-shorts, animated captions). For BUILD-from-text flows see `vibe build`."
+    "Transform existing media (highlights, auto-shorts, animated captions, regenerate-scene)"
   )
   .addHelpText(
     "after",

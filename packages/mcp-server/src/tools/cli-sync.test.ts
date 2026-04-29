@@ -36,9 +36,10 @@ const CLI_TREE: Record<string, string[]> = {
   // (canonical: top-level `vibe init/build/render`). The manifest still
   // exposes `init/_build/_render` MCP tools so external hosts keep
   // working — they delegate to the same shared executeXxx() functions.
-  scene:    ["styles", "add", "lint", "install-skill", "compose-prompts"],
+  // v0.77: `styles` → `list-styles` (verb-first leaf consistency).
+  scene:    ["list-styles", "add", "lint", "install-skill", "compose-prompts"],
   generate: ["image", "video", "video-status", "video-cancel", "video-extend", "speech", "sound-effect", "music", "music-status", "storyboard", "motion", "thumbnail", "background"],
-  edit:     ["silence-cut", "caption", "noise-reduce", "fade", "translate-srt", "jump-cut", "fill-gaps", "grade", "text-overlay", "speed-ramp", "reframe", "image", "interpolate", "upscale-video"],
+  edit:     ["silence-cut", "caption", "noise-reduce", "fade", "translate-srt", "jump-cut", "fill-gaps", "grade", "text-overlay", "speed-ramp", "reframe", "image", "interpolate", "upscale"],
   // v0.74: `voices` → `list-voices`, `voice-clone` → `clone-voice`
   // (verb-first leaf consistency). Old names remain as Commander aliases.
   audio:    ["transcribe", "list-voices", "isolate", "clone-voice", "dub", "duck"],
@@ -47,7 +48,10 @@ const CLI_TREE: Record<string, string[]> = {
   // but the canonical name reported by Commander is `remix`.
   remix:    ["highlights", "auto-shorts", "animated-caption", "regenerate-scene"],
   detect:   ["scenes", "silence", "beats"],
-  timeline: ["add-source", "add-clip", "add-track", "add-effect", "trim", "list", "split", "duplicate", "delete", "move"],
+  // v0.77: bare verbs (`trim`, `split`, etc.) became verb-noun
+  // (`trim-clip`, `split-clip`, ...) to match the existing `add-*`
+  // pattern. `list` stays bare since it lists multi-type contents.
+  timeline: ["add-source", "add-clip", "add-track", "add-effect", "trim-clip", "list", "split-clip", "duplicate-clip", "delete-clip", "move-clip"],
   project:  ["create", "info", "set"],
   // `analyze` was renamed to `inspect` in v0.74 (see remix note above).
   // `analyze` and `az` remain as deprecated Commander aliases.
@@ -69,11 +73,11 @@ const CLI_ONLY_TOP_LEVEL = new Set([
 
 // CLI subcommands → expected manifest tool name (or null = intentionally
 // CLI-only). Renames happen here (e.g., `pipeline animated-caption` →
-// manifest `edit_animated_caption`; `edit upscale-video` → `edit_upscale`).
+// manifest `edit_animated_caption`; `edit upscale` → `edit_upscale`).
 const CLI_TO_MANIFEST: Record<string, string | null> = {
   // scene (v0.75: init/build/render dropped from CLI; manifest keeps
   // init/_build/_render for MCP back-compat — see CLI_TREE note)
-  "scene styles":        "scene_styles",
+  "scene list-styles":   "scene_list_styles",
   "scene add":           "scene_add",
   "scene lint":          "scene_lint",
   "scene install-skill": "scene_install_skill",
@@ -106,7 +110,7 @@ const CLI_TO_MANIFEST: Record<string, string | null> = {
   "edit reframe":       "edit_reframe",
   "edit image":         "edit_image",
   "edit interpolate":   "edit_interpolate",
-  "edit upscale-video": "edit_upscale",
+  "edit upscale": "edit_upscale",
   // audio
   "audio transcribe":  "audio_transcribe",
   "audio list-voices": null, // CLI-only: ElevenLabs voice list dump
@@ -124,17 +128,17 @@ const CLI_TO_MANIFEST: Record<string, string | null> = {
   "detect scenes":  "detect_scenes",
   "detect silence": "detect_silence",
   "detect beats":   "detect_beats",
-  // timeline
-  "timeline add-source": "timeline_add_source",
-  "timeline add-clip":   "timeline_add_clip",
-  "timeline add-track":  "timeline_add_track",
-  "timeline add-effect": "timeline_add_effect",
-  "timeline trim":       "timeline_trim_clip",
-  "timeline list":       "timeline_list",
-  "timeline split":      "timeline_split_clip",
-  "timeline duplicate":  "timeline_duplicate_clip",
-  "timeline delete":     "timeline_delete_clip",
-  "timeline move":       "timeline_move_clip",
+  // timeline (v0.77: now 1:1 token-for-token with manifest names)
+  "timeline add-source":      "timeline_add_source",
+  "timeline add-clip":        "timeline_add_clip",
+  "timeline add-track":       "timeline_add_track",
+  "timeline add-effect":      "timeline_add_effect",
+  "timeline trim-clip":       "timeline_trim_clip",
+  "timeline list":            "timeline_list",
+  "timeline split-clip":      "timeline_split_clip",
+  "timeline duplicate-clip":  "timeline_duplicate_clip",
+  "timeline delete-clip":     "timeline_delete_clip",
+  "timeline move-clip":       "timeline_move_clip",
   // project
   "project create": "project_create",
   "project info":   "project_info",

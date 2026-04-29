@@ -242,7 +242,7 @@ describe("timeline commands", () => {
     });
   });
 
-  describe("timeline trim", () => {
+  describe("timeline trim-clip", () => {
     let clipId: string;
 
     beforeEach(() => {
@@ -265,7 +265,7 @@ describe("timeline commands", () => {
 
     it("trims clip duration", () => {
       execSync(
-        `${CLI} timeline trim "${projectFile}" ${clipId} --duration 5`,
+        `${CLI} timeline trim-clip "${projectFile}" ${clipId} --duration 5`,
         { cwd: process.cwd(), encoding: "utf-8" }
       );
 
@@ -275,7 +275,7 @@ describe("timeline commands", () => {
 
     it("trims clip start", () => {
       execSync(
-        `${CLI} timeline trim "${projectFile}" ${clipId} --start 2`,
+        `${CLI} timeline trim-clip "${projectFile}" ${clipId} --start 2`,
         { cwd: process.cwd(), encoding: "utf-8" }
       );
 
@@ -350,7 +350,7 @@ describe("timeline commands", () => {
     });
   });
 
-  describe("timeline split", () => {
+  describe("timeline split-clip", () => {
     let clipId: string;
 
     beforeEach(() => {
@@ -372,7 +372,7 @@ describe("timeline commands", () => {
     });
 
     it("splits a clip at given time", () => {
-      execSync(`${CLI} timeline split "${projectFile}" ${clipId} --time 4`, {
+      execSync(`${CLI} timeline split-clip "${projectFile}" ${clipId} --time 4`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -386,7 +386,7 @@ describe("timeline commands", () => {
 
     it("fails with invalid split time", () => {
       expect(() => {
-        execSync(`${CLI} timeline split "${projectFile}" ${clipId} --time 0`, {
+        execSync(`${CLI} timeline split-clip "${projectFile}" ${clipId} --time 0`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           stdio: "pipe",
@@ -395,7 +395,7 @@ describe("timeline commands", () => {
     });
   });
 
-  describe("timeline duplicate", () => {
+  describe("timeline duplicate-clip", () => {
     let clipId: string;
 
     beforeEach(() => {
@@ -417,7 +417,7 @@ describe("timeline commands", () => {
     });
 
     it("duplicates a clip after original", () => {
-      execSync(`${CLI} timeline duplicate "${projectFile}" ${clipId}`, {
+      execSync(`${CLI} timeline duplicate-clip "${projectFile}" ${clipId}`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -430,7 +430,7 @@ describe("timeline commands", () => {
 
     it("duplicates a clip at specified time", () => {
       execSync(
-        `${CLI} timeline duplicate "${projectFile}" ${clipId} --time 20`,
+        `${CLI} timeline duplicate-clip "${projectFile}" ${clipId} --time 20`,
         { cwd: process.cwd(), encoding: "utf-8" }
       );
 
@@ -439,7 +439,7 @@ describe("timeline commands", () => {
     });
   });
 
-  describe("timeline delete", () => {
+  describe("timeline delete-clip", () => {
     let clipId: string;
 
     beforeEach(() => {
@@ -464,7 +464,7 @@ describe("timeline commands", () => {
       const contentBefore = JSON.parse(readFileSync(projectFile, "utf-8"));
       expect(contentBefore.state.clips).toHaveLength(1);
 
-      execSync(`${CLI} timeline delete "${projectFile}" ${clipId}`, {
+      execSync(`${CLI} timeline delete-clip "${projectFile}" ${clipId}`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -475,7 +475,7 @@ describe("timeline commands", () => {
 
     it("fails with non-existent clip", () => {
       expect(() => {
-        execSync(`${CLI} timeline delete "${projectFile}" non-existent`, {
+        execSync(`${CLI} timeline delete-clip "${projectFile}" non-existent`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           stdio: "pipe",
@@ -484,7 +484,7 @@ describe("timeline commands", () => {
     });
   });
 
-  describe("timeline move", () => {
+  describe("timeline move-clip", () => {
     let clipId: string;
 
     beforeEach(() => {
@@ -506,7 +506,7 @@ describe("timeline commands", () => {
     });
 
     it("moves a clip to new time", () => {
-      execSync(`${CLI} timeline move "${projectFile}" ${clipId} --time 15`, {
+      execSync(`${CLI} timeline move-clip "${projectFile}" ${clipId} --time 15`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -526,7 +526,7 @@ describe("timeline commands", () => {
       const newTrackId = content.state.tracks[2].id;
 
       execSync(
-        `${CLI} timeline move "${projectFile}" ${clipId} --track ${newTrackId}`,
+        `${CLI} timeline move-clip "${projectFile}" ${clipId} --track ${newTrackId}`,
         { cwd: process.cwd(), encoding: "utf-8" }
       );
 

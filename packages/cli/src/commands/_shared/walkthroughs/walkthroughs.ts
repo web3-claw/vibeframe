@@ -95,7 +95,7 @@ Safe to invoke on user-provided projects.
 
 \`\`\`bash
 vibe scene init <dir> [-r 16:9|9:16|1:1|4:5] [-d <sec>] [--visual-style "<name>"]
-vibe scene styles [<name>]                   # list / show vendored visual identities
+vibe scene list-styles [<name>]                   # list / show vendored visual identities
 vibe scene install-skill [<dir>] [--host all]  # retroactive composition-rules install
 vibe scene add <name> --style <preset> [...]
 vibe scene compose-prompts [<dir>] [--beat <id>]   # H2: emit plan, no LLM call
@@ -285,7 +285,7 @@ const META: Record<WalkthroughTopic, Pick<WalkthroughResult, "title" | "summary"
     ],
     relatedCommands: [
       "vibe init",
-      "vibe scene styles",
+      "vibe scene list-styles",
       "vibe scene install-skill",
       "vibe scene compose-prompts",
       "vibe build",

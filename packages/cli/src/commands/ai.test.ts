@@ -18,10 +18,10 @@ describe("CLI command groups", () => {
     });
   });
 
-  describe("analyze suggest", () => {
+  describe("inspect suggest", () => {
     it("fails without API key", () => {
       expect(() => {
-        execSync(`${CLI} analyze suggest /tmp/nonexistent.json "trim clip"`, {
+        execSync(`${CLI} inspect suggest /tmp/nonexistent.json "trim clip"`, {
           cwd: process.cwd(),
           encoding: "utf-8",
           env: { ...process.env, GOOGLE_API_KEY: undefined },
@@ -113,9 +113,9 @@ describe("CLI command groups", () => {
     });
   });
 
-  describe("edit upscale-video", () => {
+  describe("edit upscale", () => {
     it("shows help", () => {
-      const output = execSync(`${CLI} edit upscale-video --help`, {
+      const output = execSync(`${CLI} edit upscale --help`, {
         cwd: process.cwd(),
         encoding: "utf-8",
       });
@@ -129,7 +129,7 @@ describe("CLI command groups", () => {
 
     it("validates scale option", () => {
       expect(() => {
-        execSync(`${CLI} edit upscale-video /tmp/video.mp4 --scale 3 --ffmpeg`, {
+        execSync(`${CLI} edit upscale /tmp/video.mp4 --scale 3 --ffmpeg`, {
           cwd: process.cwd(),
           encoding: "utf-8",
         });

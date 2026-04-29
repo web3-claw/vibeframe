@@ -36,7 +36,7 @@ const SCENE_GROUP_TOOL_NAMES = [
   "scene_compose_prompts",
   "scene_install_skill",
   "scene_lint",
-  "scene_styles",
+  "scene_list_styles",
 ] as const;
 const sceneToolDefinitions = (): ReadonlyArray<ToolDefinition> =>
   registry.getDefinitions().filter((d) => (SCENE_GROUP_TOOL_NAMES as readonly string[]).includes(d.name));

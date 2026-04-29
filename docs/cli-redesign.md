@@ -1,4 +1,4 @@
-# CLI redesign — v0.74 → v0.75
+# CLI redesign — v0.74 → v0.77
 
 VibeFrame's top-level CLI surface was reshaped in v0.74.0 around three
 principles drawn from established CLI design guides. **v0.75.0 dropped all
@@ -99,6 +99,26 @@ have hardcoded the old names and can't migrate yet.
 - **`emitDeprecationWarning` helper** stays in `output.ts` even though
   v0.75 has no callers — it's the canonical place to wire future
   deprecations and the unit tests pin its semantics.
+
+## v0.77 polish (HIGH + MEDIUM diagnosis follow-up)
+
+After v0.74-v0.76 shipped, a re-diagnosis surfaced five remaining
+inconsistencies. v0.77 fixes them all (still hard breaks per the 0.x
+policy).
+
+| Category | Before | After |
+|---|---|---|
+| Verb-first leaf | `vibe scene styles` | `vibe scene list-styles` |
+| Verb-first leaf | `vibe edit upscale-video` | `vibe edit upscale` (the `-video` was redundant in the `edit` group) |
+| Timeline verb-noun symmetry with `add-*` | `vibe timeline {trim,split,delete,duplicate,move}` | `vibe timeline {trim-clip,split-clip,delete-clip,duplicate-clip,move-clip}` (`list` stays bare — multi-type contents) |
+| Group description length | `remix` had a 27-word description with a `vibe build` cross-ref | trimmed to 8 words ("Transform existing media (highlights, auto-shorts, animated captions, regenerate-scene)") to match other groups |
+| Help bottom "Global flags" section | only listed `--json/--fields/--quiet/--stdin/--dry-run` | added `-V/--version`, `-h/--help`, `-q` short form on `--quiet`, and `--describe` |
+
+MCP tools follow the CLI rename per the v0.76 alignment rule:
+`scene_styles` → `scene_list_styles`. `edit_upscale` was already named
+correctly. Timeline manifest tools were already `timeline_trim_clip` /
+`_split_clip` / etc., so v0.77 makes the CLI side 1:1 with the manifest
+(no rename needed on the manifest side).
 
 ## What we deliberately did not do (and why)
 

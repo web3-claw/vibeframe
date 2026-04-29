@@ -27,8 +27,8 @@ defineProvider({
     "generate speech",
     "generate sound-effect",
     "generate music",
-    "audio voices",
-    "audio voice-clone",
+    "audio list-voices",
+    "audio clone-voice",
     "audio dub",
   ],
 });

@@ -16,7 +16,7 @@
  *   edit reframe        - Reframe aspect ratio (Claude Vision + FFmpeg)
  *   edit image          - Image editing (Gemini/OpenAI/Grok)
  *   edit interpolate    - Frame interpolation / slow motion (FFmpeg)
- *   edit upscale-video  - Video upscaling (FFmpeg / Replicate)
+ *   edit upscale  - Video upscaling (FFmpeg / Replicate)
  *   edit fill-gaps      - Fill timeline gaps with AI video (Kling)
  *
  * @dependencies Whisper, Claude, Gemini, Kling, Replicate, FFmpeg
@@ -955,10 +955,10 @@ editCommand
     }
   });
 
-// ── edit upscale-video (video upscaling) ────────────────────────────────
+// ── edit upscale (video upscaling) ────────────────────────────────
 
 editCommand
-  .command("upscale-video")
+  .command("upscale")
   .description("Upscale video resolution using AI or FFmpeg")
   .argument("<video>", "Video file path")
   .option("-o, --output <path>", "Output file path")
@@ -984,7 +984,7 @@ editCommand
 
       if (options.dryRun) {
         outputSuccess({
-          command: "edit upscale-video",
+          command: "edit upscale",
           startedAt,
           dryRun: true,
           data: {
@@ -1023,7 +1023,7 @@ editCommand
 
           if (isJsonMode()) {
             outputSuccess({
-              command: "edit upscale-video",
+              command: "edit upscale",
               startedAt,
               data: {
                 dimensions: `${newWidth}x${newHeight}`,

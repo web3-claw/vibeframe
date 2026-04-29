@@ -102,7 +102,7 @@ Examples:
   $ vibe scene lint                                       # Validate every scene against composition rules
   $ vibe scene lint --fix                                 # Auto-fix mechanical issues (e.g. missing class="clip")
   $ vibe scene lint --json                                # Structured output for agent loops
-  $ vibe scene styles                                     # Browse seed visual styles for DESIGN.md
+  $ vibe scene list-styles                                     # Browse seed visual styles for DESIGN.md
 
 For the project flow (init / build / render), use the top-level commands.
 The \`scene init\`, \`scene build\`, and \`scene render\` legacy aliases
@@ -271,11 +271,13 @@ sceneCommand
   });
 
 // ---------------------------------------------------------------------------
-// `vibe scene styles` — list / show vendored visual identities
+// `vibe scene list-styles` — list / show vendored visual identities
+// (Renamed from `styles` in v0.77 for verb-first leaf consistency, matching
+// `audio list-voices`. The leaf is verb-first across the CLI now.)
 // ---------------------------------------------------------------------------
 
 sceneCommand
-  .command("styles")
+  .command("list-styles")
   .description("List vendored visual styles (or show one) for DESIGN.md seeding")
   .argument("[name]", "Style name to inspect (omit to list all)")
   .action((name?: string) => {
@@ -284,7 +286,7 @@ sceneCommand
       const all = listVisualStyles();
       if (isJsonMode()) {
         outputSuccess({
-          command: "scene styles",
+          command: "scene list-styles",
           startedAt,
           data: {
             count: all.length,
@@ -308,7 +310,7 @@ sceneCommand
         );
       }
       console.log();
-      console.log(chalk.dim("Show details: "), chalk.cyan('vibe scene styles "<name>"'));
+      console.log(chalk.dim("Show details: "), chalk.cyan('vibe scene list-styles "<name>"'));
       console.log(chalk.dim("Seed DESIGN.md:"), chalk.cyan('vibe scene init <dir> --visual-style "<name>"'));
       return;
     }
@@ -326,7 +328,7 @@ sceneCommand
 
     if (isJsonMode()) {
       outputSuccess({
-        command: "scene styles",
+        command: "scene list-styles",
         startedAt,
         data: { style },
       });

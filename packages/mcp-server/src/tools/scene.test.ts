@@ -34,7 +34,7 @@ describe("MCP scene tools — registration", () => {
       "scene_compose_prompts",
       "scene_install_skill",
       "scene_lint",
-      "scene_styles",
+      "scene_list_styles",
     ]);
   });
 

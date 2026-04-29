@@ -184,7 +184,7 @@ export function buildDesignMd(opts: {
 
   const intro = style
     ? `Visual identity for **${name}**, scaffolded from the **${style.name}** style (after ${style.designer}). Customise freely — this file is the single source of truth for every scene's palette, typography, and motion.`
-    : `Visual identity for **${name}**. Fill the sections below before authoring any scene HTML or generating any backdrop. Pick a named style with \`vibe scene styles\` if you want a credible starting point.`;
+    : `Visual identity for **${name}**. Fill the sections below before authoring any scene HTML or generating any backdrop. Pick a named style with \`vibe scene list-styles\` if you want a credible starting point.`;
 
   const moodLine = style
     ? `**Mood:** ${style.mood} · **Best for:** ${style.bestFor}`
@@ -253,7 +253,7 @@ ${avoid}
 
 ---
 
-_Browse other named styles: \`vibe scene styles\`_
+_Browse other named styles: \`vibe scene list-styles\`_
 ${style ? `_This file was seeded by \`vibe scene init --visual-style "${style.name}"\`._` : `_Seed this file from a named style: \`vibe scene init <dir> --visual-style "<name>"\`._`}
 `;
 }
@@ -323,7 +323,7 @@ typography, motion, and transition rules. Both the agent-driven path and
 the fallback emit reference it; scenes that contradict DESIGN.md are
 rejected by the Hyperframes \`hyperframes\` skill.
 
-Browse named styles: \`vibe scene styles\`. Re-seed from one with
+Browse named styles: \`vibe scene list-styles\`. Re-seed from one with
 \`vibe scene init . --visual-style "Swiss Pulse"\` (idempotent).
 
 ## Skills — USE THESE FIRST

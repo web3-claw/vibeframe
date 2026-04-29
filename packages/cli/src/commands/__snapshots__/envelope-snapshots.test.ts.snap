@@ -1397,10 +1397,10 @@ exports[`CLI --describe schemas (drift detection) > vibe edit translate-srt --de
 }
 `;
 
-exports[`CLI --describe schemas (drift detection) > vibe edit upscale-video --describe 1`] = `
+exports[`CLI --describe schemas (drift detection) > vibe edit upscale --describe 1`] = `
 {
   "description": "Upscale video resolution using AI or FFmpeg",
-  "name": "edit.upscale-video",
+  "name": "edit.upscale",
   "parameters": {
     "properties": {
       "apiKey": {
@@ -3123,10 +3123,10 @@ exports[`CLI --describe schemas (drift detection) > vibe scene lint --describe 1
 }
 `;
 
-exports[`CLI --describe schemas (drift detection) > vibe scene styles --describe 1`] = `
+exports[`CLI --describe schemas (drift detection) > vibe scene list-styles --describe 1`] = `
 {
   "description": "List vendored visual styles (or show one) for DESIGN.md seeding",
-  "name": "scene.styles",
+  "name": "scene.list-styles",
   "parameters": {
     "properties": {
       "name": {
@@ -3338,10 +3338,10 @@ exports[`CLI --describe schemas (drift detection) > vibe timeline add-track --de
 }
 `;
 
-exports[`CLI --describe schemas (drift detection) > vibe timeline delete --describe 1`] = `
+exports[`CLI --describe schemas (drift detection) > vibe timeline delete-clip --describe 1`] = `
 {
   "description": "Delete a clip from the timeline",
-  "name": "timeline.delete",
+  "name": "timeline.delete-clip",
   "parameters": {
     "properties": {
       "clip-id": {
@@ -3366,10 +3366,10 @@ exports[`CLI --describe schemas (drift detection) > vibe timeline delete --descr
 }
 `;
 
-exports[`CLI --describe schemas (drift detection) > vibe timeline duplicate --describe 1`] = `
+exports[`CLI --describe schemas (drift detection) > vibe timeline duplicate-clip --describe 1`] = `
 {
   "description": "Duplicate a clip",
-  "name": "timeline.duplicate",
+  "name": "timeline.duplicate-clip",
   "parameters": {
     "properties": {
       "clip-id": {
@@ -3429,10 +3429,10 @@ exports[`CLI --describe schemas (drift detection) > vibe timeline list --describ
 }
 `;
 
-exports[`CLI --describe schemas (drift detection) > vibe timeline move --describe 1`] = `
+exports[`CLI --describe schemas (drift detection) > vibe timeline move-clip --describe 1`] = `
 {
   "description": "Move a clip to a new position",
-  "name": "timeline.move",
+  "name": "timeline.move-clip",
   "parameters": {
     "properties": {
       "clip-id": {
@@ -3465,10 +3465,10 @@ exports[`CLI --describe schemas (drift detection) > vibe timeline move --describ
 }
 `;
 
-exports[`CLI --describe schemas (drift detection) > vibe timeline split --describe 1`] = `
+exports[`CLI --describe schemas (drift detection) > vibe timeline split-clip --describe 1`] = `
 {
   "description": "Split a clip at a specific time",
-  "name": "timeline.split",
+  "name": "timeline.split-clip",
   "parameters": {
     "properties": {
       "clip-id": {
@@ -3498,10 +3498,10 @@ exports[`CLI --describe schemas (drift detection) > vibe timeline split --descri
 }
 `;
 
-exports[`CLI --describe schemas (drift detection) > vibe timeline trim --describe 1`] = `
+exports[`CLI --describe schemas (drift detection) > vibe timeline trim-clip --describe 1`] = `
 {
   "description": "Trim a clip",
-  "name": "timeline.trim",
+  "name": "timeline.trim-clip",
   "parameters": {
     "properties": {
       "clip-id": {

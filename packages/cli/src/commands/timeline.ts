@@ -14,12 +14,12 @@ export const timelineCommand = new Command("timeline")
 Examples:
   $ vibe timeline add-source project.vibe.json video.mp4         # Returns source ID
   $ vibe timeline add-clip project.vibe.json <source-id>         # Add clip from source
-  $ vibe timeline trim project.vibe.json <clip-id> --start 5 --end 30
-  $ vibe timeline split project.vibe.json <clip-id> --time 10
+  $ vibe timeline trim-clip project.vibe.json <clip-id> --start 5 --end 30
+  $ vibe timeline split-clip project.vibe.json <clip-id> --time 10
   $ vibe timeline list project.vibe.json --json
-  $ vibe timeline delete project.vibe.json <clip-id>
+  $ vibe timeline delete-clip project.vibe.json <clip-id>
 
-Typical workflow: create project → add-source → add-clip → trim/split → export
+Typical workflow: create project → add-source → add-clip → trim-clip/split-clip → export
 Cost: Free (no API keys needed).
 Run 'vibe schema timeline.<command>' for structured parameter info.`);
 
@@ -376,7 +376,7 @@ timelineCommand
   });
 
 timelineCommand
-  .command("trim")
+  .command("trim-clip")
   .description("Trim a clip")
   .argument("<project>", "Project file path")
   .argument("<clip-id>", "Clip ID")
@@ -392,7 +392,7 @@ timelineCommand
 
       if (options.dryRun) {
         outputSuccess({
-          command: "timeline trim",
+          command: "timeline trim-clip",
           startedAt,
           dryRun: true,
           data: {
@@ -432,7 +432,7 @@ timelineCommand
 
       if (isJsonMode()) {
         outputSuccess({
-          command: "timeline trim",
+          command: "timeline trim-clip",
           startedAt,
           data: {
             id: updatedClip.id,
@@ -570,7 +570,7 @@ timelineCommand
   });
 
 timelineCommand
-  .command("split")
+  .command("split-clip")
   .description("Split a clip at a specific time")
   .argument("<project>", "Project file path")
   .argument("<clip-id>", "Clip ID to split")
@@ -585,7 +585,7 @@ timelineCommand
 
       if (options.dryRun) {
         outputSuccess({
-          command: "timeline split",
+          command: "timeline split-clip",
           startedAt,
           dryRun: true,
           data: {
@@ -629,7 +629,7 @@ timelineCommand
 
       if (isJsonMode()) {
         outputSuccess({
-          command: "timeline split",
+          command: "timeline split-clip",
           startedAt,
           data: {
             first: { id: first.id, duration: first.duration },
@@ -650,7 +650,7 @@ timelineCommand
   });
 
 timelineCommand
-  .command("duplicate")
+  .command("duplicate-clip")
   .description("Duplicate a clip")
   .argument("<project>", "Project file path")
   .argument("<clip-id>", "Clip ID to duplicate")
@@ -665,7 +665,7 @@ timelineCommand
 
       if (options.dryRun) {
         outputSuccess({
-          command: "timeline duplicate",
+          command: "timeline duplicate-clip",
           startedAt,
           dryRun: true,
           data: {
@@ -704,7 +704,7 @@ timelineCommand
 
       if (isJsonMode()) {
         outputSuccess({
-          command: "timeline duplicate",
+          command: "timeline duplicate-clip",
           startedAt,
           data: {
             id: duplicated.id,
@@ -727,7 +727,7 @@ timelineCommand
   });
 
 timelineCommand
-  .command("delete")
+  .command("delete-clip")
   .description("Delete a clip from the timeline")
   .argument("<project>", "Project file path")
   .argument("<clip-id>", "Clip ID to delete")
@@ -741,7 +741,7 @@ timelineCommand
 
       if (options.dryRun) {
         outputSuccess({
-          command: "timeline delete",
+          command: "timeline delete-clip",
           startedAt,
           dryRun: true,
           data: {
@@ -777,7 +777,7 @@ timelineCommand
 
       if (isJsonMode()) {
         outputSuccess({
-          command: "timeline delete",
+          command: "timeline delete-clip",
           startedAt,
           data: {
             id: clipId,
@@ -794,7 +794,7 @@ timelineCommand
   });
 
 timelineCommand
-  .command("move")
+  .command("move-clip")
   .description("Move a clip to a new position")
   .argument("<project>", "Project file path")
   .argument("<clip-id>", "Clip ID to move")
@@ -811,7 +811,7 @@ timelineCommand
 
       if (options.dryRun) {
         outputSuccess({
-          command: "timeline move",
+          command: "timeline move-clip",
           startedAt,
           dryRun: true,
           data: {
@@ -853,7 +853,7 @@ timelineCommand
 
       if (isJsonMode()) {
         outputSuccess({
-          command: "timeline move",
+          command: "timeline move-clip",
           startedAt,
           data: {
             id: updated.id,

@@ -237,7 +237,7 @@ async function runSceneInit(projectDirArg: string, options: Record<string, unkno
     ? getVisualStyle(String(options.visualStyle))
     : undefined;
   if (options.visualStyle && !visualStyle) {
-    exitWithError(usageError(`Unknown visual style: ${String(options.visualStyle)}`, `Valid: ${visualStyleNames()}. Browse with \`vibe scene styles\`.`));
+    exitWithError(usageError(`Unknown visual style: ${String(options.visualStyle)}`, `Valid: ${visualStyleNames()}. Browse with \`vibe scene list-styles\`.`));
   }
 
   const projectDir = resolve(projectDirArg);

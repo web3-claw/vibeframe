@@ -98,7 +98,7 @@ Tool names are MCP-side. Your host typically prefixes them (e.g. Claude shows th
 
 | Tool | Description |
 |------|-------------|
-| `scene_styles` | List the 8 vendored visual identities (Swiss Pulse, Data Drift, …) or fetch one |
+| `scene_list_styles` | List the 8 vendored visual identities (Swiss Pulse, Data Drift, …) or fetch one |
 | `scene_add` | Append a beat (narration + backdrop + composed HTML) |
 | `scene_install_skill` | Install the Hyperframes skill bundle into a scene project |
 | `scene_lint` | Validate composition HTML against the visual identity |
