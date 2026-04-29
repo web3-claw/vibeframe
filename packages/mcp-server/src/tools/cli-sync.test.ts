@@ -34,7 +34,7 @@ interface CommanderLike {
 const CLI_TREE: Record<string, string[]> = {
   // v0.75: `scene init/build/render` were removed from the CLI surface
   // (canonical: top-level `vibe init/build/render`). The manifest still
-  // exposes `scene_init/_build/_render` MCP tools so external hosts keep
+  // exposes `init/_build/_render` MCP tools so external hosts keep
   // working — they delegate to the same shared executeXxx() functions.
   scene:    ["styles", "add", "lint", "install-skill", "compose-prompts"],
   generate: ["image", "video", "video-status", "video-cancel", "video-extend", "speech", "sound-effect", "music", "music-status", "storyboard", "motion", "thumbnail", "background"],
@@ -72,7 +72,7 @@ const CLI_ONLY_TOP_LEVEL = new Set([
 // manifest `edit_animated_caption`; `edit upscale-video` → `edit_upscale`).
 const CLI_TO_MANIFEST: Record<string, string | null> = {
   // scene (v0.75: init/build/render dropped from CLI; manifest keeps
-  // scene_init/_build/_render for MCP back-compat — see CLI_TREE note)
+  // init/_build/_render for MCP back-compat — see CLI_TREE note)
   "scene styles":        "scene_styles",
   "scene add":           "scene_add",
   "scene lint":          "scene_lint",
@@ -111,15 +111,15 @@ const CLI_TO_MANIFEST: Record<string, string | null> = {
   "audio transcribe":  "audio_transcribe",
   "audio list-voices": null, // CLI-only: ElevenLabs voice list dump
   "audio isolate":     "audio_isolate",
-  "audio clone-voice": "audio_voice_clone",
+  "audio clone-voice": "audio_clone_voice",
   "audio dub":         "audio_dub",
   "audio duck":        "audio_duck",
   // remix (was: pipeline — manifest tool names keep `pipeline_*` prefix
   // since MCP tool names are externally locked)
-  "remix highlights":         "pipeline_highlights",
-  "remix auto-shorts":        "pipeline_auto_shorts",
+  "remix highlights":         "remix_highlights",
+  "remix auto-shorts":        "remix_auto_shorts",
   "remix animated-caption":   "edit_animated_caption",
-  "remix regenerate-scene":   "pipeline_regenerate_scene",
+  "remix regenerate-scene":   "remix_regenerate_scene",
   // detect
   "detect scenes":  "detect_scenes",
   "detect silence": "detect_silence",
@@ -140,10 +140,10 @@ const CLI_TO_MANIFEST: Record<string, string | null> = {
   "project info":   "project_info",
   "project set":    null, // CLI-only: vibe.project.yaml writer; agents use fs_write
   // inspect (was: analyze — manifest tool names keep `analyze_*` prefix)
-  "inspect media":   "analyze_media",
-  "inspect video":   "analyze_video",
-  "inspect review":  "analyze_review",
-  "inspect suggest": "analyze_suggest",
+  "inspect media":   "inspect_media",
+  "inspect video":   "inspect_video",
+  "inspect review":  "inspect_review",
+  "inspect suggest": "inspect_suggest",
   // walkthrough — both topics route through the single `walkthrough`
   // manifest tool (the topic is a tool arg, not a separate tool)
   "walkthrough scene":    "walkthrough",

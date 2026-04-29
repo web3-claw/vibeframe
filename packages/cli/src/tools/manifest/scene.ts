@@ -1,6 +1,6 @@
 /**
  * @module manifest/scene
- * @description Scene authoring tools (scene_init/add/lint/render/build/styles).
+ * @description Scene authoring tools (init/add/lint/render/build/styles).
  */
 
 import { z } from "zod";
@@ -57,7 +57,7 @@ export const sceneStylesTool = defineTool({
   category: "scene",
   cost: "free",
   description:
-    "List the 8 vendored visual identities available for `scene_init --visual-style` (Swiss Pulse, Data Drift, …) or, when `name` is provided, return the full DESIGN.md hard-gate body for one style. The DESIGN.md content is what the LLM uses as a non-negotiable visual rulebook during compose-scenes-with-skills.",
+    "List the 8 vendored visual identities available for `init --visual-style` (Swiss Pulse, Data Drift, …) or, when `name` is provided, return the full DESIGN.md hard-gate body for one style. The DESIGN.md content is what the LLM uses as a non-negotiable visual rulebook during compose-scenes-with-skills.",
   schema: sceneStylesSchema,
   async execute(args) {
     if (args.name) {
@@ -113,7 +113,7 @@ export const sceneStylesTool = defineTool({
 });
 
 // ---------------------------------------------------------------------------
-// scene_init
+// init
 // ---------------------------------------------------------------------------
 
 const sceneInitSchema = z.object({
@@ -124,7 +124,7 @@ const sceneInitSchema = z.object({
 });
 
 export const sceneInitTool = defineTool({
-  name: "scene_init",
+  name: "init",
   category: "scene",
   cost: "free",
   description:
@@ -303,7 +303,7 @@ export const sceneLintTool = defineTool({
 });
 
 // ---------------------------------------------------------------------------
-// scene_render
+// render
 // ---------------------------------------------------------------------------
 
 const sceneRenderSchema = z.object({
@@ -317,7 +317,7 @@ const sceneRenderSchema = z.object({
 });
 
 export const sceneRenderTool = defineTool({
-  name: "scene_render",
+  name: "render",
   category: "scene",
   cost: "free",
   description:
@@ -337,7 +337,7 @@ export const sceneRenderTool = defineTool({
       workers: args.workers,
     });
     if (!result.success) {
-      return { success: false, error: result.error ?? "scene_render failed" };
+      return { success: false, error: result.error ?? "render failed" };
     }
     return {
       success: true,
@@ -361,7 +361,7 @@ export const sceneRenderTool = defineTool({
 });
 
 // ---------------------------------------------------------------------------
-// scene_build
+// build
 // ---------------------------------------------------------------------------
 
 const sceneBuildSchema = z.object({
@@ -381,11 +381,11 @@ const sceneBuildSchema = z.object({
 });
 
 export const sceneBuildTool = defineTool({
-  name: "scene_build",
+  name: "build",
   category: "scene",
   cost: "high",
   description:
-    "v0.60 one-shot orchestrator: read STORYBOARD.md per-beat YAML cues (narration / backdrop / duration), dispatch TTS + image generation per beat, compose scene HTML via the compose-scenes-with-skills pipeline, then render to MP4. Use this instead of chaining scene_init + scene_add + scene_render manually. Caches by SHA256 of (DESIGN.md + cue body) so re-runs are idempotent and cheap.",
+    "v0.60 one-shot orchestrator: read STORYBOARD.md per-beat YAML cues (narration / backdrop / duration), dispatch TTS + image generation per beat, compose scene HTML via the compose-scenes-with-skills pipeline, then render to MP4. Use this instead of chaining init + scene_add + render manually. Caches by SHA256 of (DESIGN.md + cue body) so re-runs are idempotent and cheap.",
   schema: sceneBuildSchema,
   async execute(args, ctx) {
     const projectDir = args.projectDir
@@ -407,7 +407,7 @@ export const sceneBuildTool = defineTool({
       force: args.force,
     });
     if (!result.success) {
-      return { success: false, error: result.error ?? "scene_build failed" };
+      return { success: false, error: result.error ?? "build failed" };
     }
     return {
       success: true,
@@ -510,7 +510,7 @@ export const sceneComposePromptsTool = defineTool({
   category: "scene",
   cost: "free",
   description:
-    "Emit the per-beat compose plan for the host agent to author scene HTML itself. Reads STORYBOARD.md + DESIGN.md and returns each beat's outputPath + userPrompt + cues + body, plus references to the project's SKILL.md (Hyperframes rules) and DESIGN.md (visual identity). The host agent writes each compositions/scene-<id>.html file directly — VibeFrame makes NO LLM call here. Pairs with scene_install_skill (Phase H1). Phase H2 of the agentic-native composer plan; the internal-LLM batch path (scene_build) remains as a fallback for non-agent contexts.",
+    "Emit the per-beat compose plan for the host agent to author scene HTML itself. Reads STORYBOARD.md + DESIGN.md and returns each beat's outputPath + userPrompt + cues + body, plus references to the project's SKILL.md (Hyperframes rules) and DESIGN.md (visual identity). The host agent writes each compositions/scene-<id>.html file directly — VibeFrame makes NO LLM call here. Pairs with scene_install_skill (Phase H1). Phase H2 of the agentic-native composer plan; the internal-LLM batch path (build) remains as a fallback for non-agent contexts.",
   schema: sceneComposePromptsSchema,
   async execute(args, ctx) {
     const projectDir = resolve(ctx.workingDirectory, args.projectDir);

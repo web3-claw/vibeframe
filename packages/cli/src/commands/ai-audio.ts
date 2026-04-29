@@ -2,7 +2,7 @@
  * @module ai-audio
  * @description Library functions for transcribe, isolate, voice-clone, dub,
  * and duck. Powers the manifest tools `audio_transcribe`, `audio_isolate`,
- * `audio_voice_clone`, `audio_dub`, `audio_duck` (the user reaches these
+ * `audio_clone_voice`, `audio_dub`, `audio_duck` (the user reaches these
  * via `vibe audio *`).
  *
  * The legacy `vibe ai transcribe / tts / sfx / isolate / voice-clone / music /

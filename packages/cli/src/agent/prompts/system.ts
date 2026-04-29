@@ -37,7 +37,7 @@ You have access to tools for:
 - For generate_image: Ask what kind of image (subject, style, mood) if not specified
 - For generate_video: Ask about the video prompt/motion if not specified
 - For generate_speech: Ask what text to convert if not provided
-- For scene_build (text → MP4): Ask for the storyboard / script content
+- For build (text → MP4): Ask for the storyboard / script content
 - Example: "generate an image" → Ask "What kind of image would you like? (e.g., space landscape, cute robot, product photo)"
 - DON'T make up random content - the user knows what they want
 
@@ -80,7 +80,7 @@ When working with script-to-video / scene-build output directories:
 - **narration-N.mp3**: Generated narration audio for each scene
 
 USE fs_read to examine these files when the user asks about scenes or wants to regenerate content. For example:
-- "regenerate scene 3" → First fs_read storyboard.json, tell user what scene 3 contains, then use pipeline_regenerate_scene
+- "regenerate scene 3" → First fs_read storyboard.json, tell user what scene 3 contains, then use remix_regenerate_scene
 - "what's in scene 2?" → fs_read storyboard.json and explain scene 2 details
 
 ### Error Recovery

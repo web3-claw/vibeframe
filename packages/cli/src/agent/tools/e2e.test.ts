@@ -111,7 +111,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
     console.log("\n");
   });
 
-  describe("analyze_video", () => {
+  describe("inspect_video", () => {
     const hasKey = checkApiKey("GOOGLE_API_KEY");
 
     it.skipIf(!hasKey)(
@@ -135,7 +135,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
           }
         }
 
-        const handler = registry.getHandler("analyze_video");
+        const handler = registry.getHandler("inspect_video");
         expect(handler).toBeDefined();
 
         const result = await handler!(
@@ -165,7 +165,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
       async () => {
         console.log("\n🎬 Testing ai_gemini_video with YouTube URL...");
 
-        const handler = registry.getHandler("analyze_video");
+        const handler = registry.getHandler("inspect_video");
 
         // Use a short, public domain video
         const result = await handler!(
@@ -331,7 +331,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
   // skill-based `vibe scene build` flow. The corresponding e2e cases
   // were dropped here.
 
-  describe("pipeline_highlights (with Gemini)", () => {
+  describe("remix_highlights (with Gemini)", () => {
     const hasGeminiKey = checkApiKey("GOOGLE_API_KEY");
 
     it.skipIf(!hasGeminiKey)(
@@ -361,7 +361,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
           }
         }
 
-        const handler = registry.getHandler("pipeline_highlights");
+        const handler = registry.getHandler("remix_highlights");
         expect(handler).toBeDefined();
 
         const result = await handler!(
@@ -388,7 +388,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
     );
   });
 
-  describe("pipeline_auto_shorts (analyze-only)", () => {
+  describe("remix_auto_shorts (analyze-only)", () => {
     const hasGeminiKey = checkApiKey("GOOGLE_API_KEY");
 
     it.skipIf(!hasGeminiKey)(
@@ -412,7 +412,7 @@ describe.skipIf(!RUN_E2E)("E2E: AI Pipeline Tools", () => {
           }
         }
 
-        const handler = registry.getHandler("pipeline_auto_shorts");
+        const handler = registry.getHandler("remix_auto_shorts");
         expect(handler).toBeDefined();
 
         const result = await handler!(

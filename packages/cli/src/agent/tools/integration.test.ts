@@ -252,13 +252,13 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
         "edit_translate_srt",
         "edit_image",
         // Analyze tools (3)
-        "analyze_review",
-        "analyze_video",
-        "analyze_media",
+        "inspect_review",
+        "inspect_video",
+        "inspect_media",
         // Pipeline tools (3)
-        "pipeline_highlights",
-        "pipeline_auto_shorts",
-        "pipeline_regenerate_scene",
+        "remix_highlights",
+        "remix_auto_shorts",
+        "remix_regenerate_scene",
       ];
       for (const name of aiTools) {
         expect(registry.get(name)).toBeDefined();
@@ -311,9 +311,9 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
   });
 
   describe("AI Pipeline Tools - Parameter Mapping", () => {
-    describe("pipeline_highlights", () => {
+    describe("remix_highlights", () => {
       it("should have all CLI options as parameters", () => {
-        const tool = registry.get("pipeline_highlights");
+        const tool = registry.get("remix_highlights");
         expect(tool).toBeDefined();
 
         const params = tool!.parameters.properties;
@@ -332,7 +332,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
 
       it("should have correct enum values for criteria", () => {
-        const tool = registry.get("pipeline_highlights");
+        const tool = registry.get("remix_highlights");
         const criteria = tool!.parameters.properties.criteria as {
           enum?: string[];
         };
@@ -343,9 +343,9 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
     });
 
-    describe("pipeline_auto_shorts", () => {
+    describe("remix_auto_shorts", () => {
       it("should have all CLI options as parameters", () => {
-        const tool = registry.get("pipeline_auto_shorts");
+        const tool = registry.get("remix_auto_shorts");
         expect(tool).toBeDefined();
 
         const params = tool!.parameters.properties;
@@ -365,14 +365,14 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
 
       it("should have correct enum values for aspect", () => {
-        const tool = registry.get("pipeline_auto_shorts");
+        const tool = registry.get("remix_auto_shorts");
         const aspect = tool!.parameters.properties.aspect as { enum?: string[] };
         expect(aspect.enum).toContain("9:16");
         expect(aspect.enum).toContain("1:1");
       });
 
       it("should have correct enum values for captionStyle", () => {
-        const tool = registry.get("pipeline_auto_shorts");
+        const tool = registry.get("remix_auto_shorts");
         const captionStyle = tool!.parameters.properties.captionStyle as {
           enum?: string[];
         };
@@ -382,9 +382,9 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
     });
 
-    describe("analyze_video", () => {
+    describe("inspect_video", () => {
       it("should have all CLI options as parameters", () => {
-        const tool = registry.get("analyze_video");
+        const tool = registry.get("inspect_video");
         expect(tool).toBeDefined();
 
         const params = tool!.parameters.properties;
@@ -400,7 +400,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
 
       it("should have correct enum values for model", () => {
-        const tool = registry.get("analyze_video");
+        const tool = registry.get("inspect_video");
         const model = tool!.parameters.properties.model as { enum?: string[] };
         expect(model.enum).toContain("flash");
         expect(model.enum).toContain("flash-2.5");
@@ -415,10 +415,10 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       projectPath: "/test/project.vibe.json",
     };
 
-    describe("pipeline_highlights handler", () => {
+    describe("remix_highlights handler", () => {
       it("should call executeHighlights with correct parameters", async () => {
         const { executeHighlights } = await import("../../commands/ai-highlights.js");
-        const handler = registry.getHandler("pipeline_highlights");
+        const handler = registry.getHandler("remix_highlights");
         expect(handler).toBeDefined();
 
         const result = await handler!(
@@ -431,7 +431,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
           mockContext
         );
 
-        // Manifest's pipeline_highlights passes args through raw; the legacy
+        // Manifest's remix_highlights passes args through raw; the legacy
         // handler used to resolve `media` against ctx.workingDirectory. If
         // path resolution is needed, executeHighlights handles it internally.
         expect(executeHighlights).toHaveBeenCalledWith(
@@ -447,10 +447,10 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
     });
 
-    describe("pipeline_auto_shorts handler", () => {
+    describe("remix_auto_shorts handler", () => {
       it("should call executeAutoShorts with correct parameters", async () => {
         const { executeAutoShorts } = await import("../../commands/ai-highlights.js");
-        const handler = registry.getHandler("pipeline_auto_shorts");
+        const handler = registry.getHandler("remix_auto_shorts");
         expect(handler).toBeDefined();
 
         const result = await handler!(
@@ -463,7 +463,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
           mockContext
         );
 
-        // Manifest passes args through raw (see pipeline_highlights note above).
+        // Manifest passes args through raw (see remix_highlights note above).
         expect(executeAutoShorts).toHaveBeenCalledWith(
           expect.objectContaining({
             video: "long-video.mp4",
@@ -477,7 +477,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
 
       it("should handle analyzeOnly mode", async () => {
-        const handler = registry.getHandler("pipeline_auto_shorts");
+        const handler = registry.getHandler("remix_auto_shorts");
         const result = await handler!(
           {
             video: "video.mp4",
@@ -490,10 +490,10 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       });
     });
 
-    describe("analyze_video handler", () => {
+    describe("inspect_video handler", () => {
       it("should call executeGeminiVideo with correct parameters", async () => {
         const { executeGeminiVideo } = await import("../../commands/ai-analyze.js");
-        const handler = registry.getHandler("analyze_video");
+        const handler = registry.getHandler("inspect_video");
         expect(handler).toBeDefined();
 
         const result = await handler!(
@@ -505,7 +505,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
           mockContext
         );
 
-        // Manifest passes args through raw (see pipeline_highlights note).
+        // Manifest passes args through raw (see remix_highlights note).
         expect(executeGeminiVideo).toHaveBeenCalledWith(
           expect.objectContaining({
             source: "video.mp4",
@@ -514,14 +514,14 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
           })
         );
         expect(result.success).toBe(true);
-        // Manifest's analyze_video humanLines reports the model, not the
+        // Manifest's inspect_video humanLines reports the model, not the
         // raw summary text — the summary is in result.data.text.
         expect(result.output).toContain("Analyzed video");
       });
 
       it("should handle YouTube URLs without modification", async () => {
         const { executeGeminiVideo } = await import("../../commands/ai-analyze.js");
-        const handler = registry.getHandler("analyze_video");
+        const handler = registry.getHandler("inspect_video");
 
         await handler!(
           {
@@ -557,12 +557,20 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       );
       const generateTools = allTools.filter((t) => t.name.startsWith("generate_"));
       const editTools = allTools.filter((t) => t.name.startsWith("edit_"));
-      const analyzeTools = allTools.filter((t) => t.name.startsWith("analyze_"));
-      const pipelineTools = allTools.filter((t) => t.name.startsWith("pipeline_"));
+      // v0.75: `analyze_*` renamed to `inspect_*`; `pipeline_*` renamed to
+      // `remix_*` (with `pipeline_run` becoming bare `run` since `vibe run`
+      // is groupless at the CLI). Top-level project-flow tools (`init`,
+      // `build`, `render`) likewise dropped their old `scene_` prefix.
+      const inspectTools = allTools.filter((t) => t.name.startsWith("inspect_"));
+      const remixTools = allTools.filter((t) => t.name.startsWith("remix_"));
       const exportTools = allTools.filter((t) => t.name.startsWith("export_"));
       const batchTools = allTools.filter((t) => t.name.startsWith("batch_"));
       const sceneTools = allTools.filter((t) => t.name.startsWith("scene_"));
+      const projectFlowTools = allTools.filter((t) =>
+        ["init", "build", "render"].includes(t.name),
+      );
       const walkthroughTools = allTools.filter((t) => t.name === "walkthrough");
+      const runTools = allTools.filter((t) => t.name === "run");
 
       expect(projectTools.length).toBe(5);
       expect(timelineTools.length).toBe(11);  // Added timeline_clear
@@ -570,25 +578,31 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       expect(mediaTools.length).toBe(12);  // +audio_isolate/voice_clone/dub/duck (Phase B v0.64)
       expect(generateTools.length).toBe(13);  // +background, video_status/cancel/extend, music_status (Phase B v0.64)
       expect(editTools.length).toBe(15);  // +grade, speed_ramp, reframe, interpolate, upscale, animated_caption (Phase B+D v0.64), edit_fill_gaps (Plan G Phase 4)
-      expect(analyzeTools.length).toBe(4);  // video, media, review, suggest
-      expect(pipelineTools.length).toBe(3);  // pipeline_script_to_video removed (cleanup PR3); pipeline_animated_caption renamed to edit_animated_caption (Phase D)
+      expect(inspectTools.length).toBe(4);  // v0.75: video, media, review, suggest (was analyze_*)
+      expect(remixTools.length).toBe(3);    // v0.75: highlights, auto_shorts, regenerate_scene (was pipeline_*)
+      expect(runTools.length).toBe(0);      // v0.75: bare `run` is MCP-only (`surfaces: ["mcp"]`); not registered into the agent surface
       expect(exportTools.length).toBe(3);
       expect(batchTools.length).toBe(3);
-      expect(sceneTools.length).toBe(8);  // v0.70 H1+H2: install-skill + compose-prompts (init/add/lint/render/build/styles/install-skill/compose-prompts)
+      expect(sceneTools.length).toBe(5);    // v0.75: init/build/render moved out (now project-flow); scene_* keeps add/lint/styles/install-skill/compose-prompts
+      expect(projectFlowTools.length).toBe(3);  // v0.75: init/build/render top-level
       expect(walkthroughTools.length).toBe(1);  // v0.71: universal slash-command equivalent
 
-      // Total: 5+11+4+12+13+15+4+3+3+3+8+1 = 82
+      // 5+11+4+12+13+15+4+3+0+3+3+5+3+1 = 82. Same total as v0.74 — the
+      // rename was zero-sum across surfaces. (The bare `run` tool is
+      // MCP-only, so it doesn't show up in the agent registry total.)
       const totalTools = projectTools.length +
           timelineTools.length +
           fsTools.length +
           mediaTools.length +
           generateTools.length +
           editTools.length +
-          analyzeTools.length +
-          pipelineTools.length +
+          inspectTools.length +
+          remixTools.length +
+          runTools.length +
           exportTools.length +
           batchTools.length +
           sceneTools.length +
+          projectFlowTools.length +
           walkthroughTools.length;
       expect(totalTools).toBe(82);
     });
@@ -633,8 +647,8 @@ describe("Tool Name Consistency", () => {
       "audio_",
       "generate_",
       "edit_",
-      "analyze_",
-      "pipeline_",
+      "inspect_",  // v0.75: was analyze_
+      "remix_",    // v0.75: was pipeline_
       "export_",
       "batch_",
       "scene_",
@@ -643,6 +657,10 @@ describe("Tool Name Consistency", () => {
     // list small — every entry is a deliberate naming exception.
     const exactMatches = new Set([
       "walkthrough", // v0.71: universal slash-command equivalent (one tool, multi-topic)
+      "init",        // v0.75: top-level project-flow tool (was scene_init)
+      "build",       // v0.75: top-level project-flow tool (was scene_build)
+      "render",      // v0.75: top-level project-flow tool (was scene_render)
+      "run",         // v0.75: top-level YAML pipeline runner (was pipeline_run)
     ]);
 
     for (const tool of tools) {

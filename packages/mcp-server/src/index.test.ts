@@ -61,18 +61,18 @@ describe("@vibeframe/mcp-server", () => {
 
     it("should have AI analysis tools", () => {
       const toolNames = tools.map((t) => t.name);
-      expect(toolNames).toContain("analyze_media");
-      expect(toolNames).toContain("analyze_video");
-      expect(toolNames).toContain("analyze_review");
+      expect(toolNames).toContain("inspect_media");
+      expect(toolNames).toContain("inspect_video");
+      expect(toolNames).toContain("inspect_review");
       expect(toolNames).toContain("generate_thumbnail");
     });
 
     it("should have AI pipeline tools", () => {
       const toolNames = tools.map((t) => t.name);
-      expect(toolNames).toContain("pipeline_highlights");
-      expect(toolNames).toContain("pipeline_auto_shorts");
-      expect(toolNames).toContain("pipeline_regenerate_scene");
-      expect(toolNames).toContain("pipeline_run");
+      expect(toolNames).toContain("remix_highlights");
+      expect(toolNames).toContain("remix_auto_shorts");
+      expect(toolNames).toContain("remix_regenerate_scene");
+      expect(toolNames).toContain("run");
     });
 
     it("should have AI generation tools", () => {
@@ -98,7 +98,7 @@ describe("@vibeframe/mcp-server", () => {
       const toolNames = tools.map((t) => t.name);
       expect(toolNames).toContain("audio_transcribe");
       expect(toolNames).toContain("audio_isolate");
-      expect(toolNames).toContain("audio_voice_clone");
+      expect(toolNames).toContain("audio_clone_voice");
       expect(toolNames).toContain("audio_dub");
       expect(toolNames).toContain("audio_duck");
     });

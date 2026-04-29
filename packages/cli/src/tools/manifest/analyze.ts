@@ -15,10 +15,10 @@ import {
 import { executeReview } from "../../commands/ai-review.js";
 import { executeSuggestEdit } from "../../commands/ai-suggest-edit.js";
 
-// ── analyze_media ───────────────────────────────────────────────────────────
+// ── inspect_media ───────────────────────────────────────────────────────────
 
 export const analyzeMediaTool = defineTool({
-  name: "analyze_media",
+  name: "inspect_media",
   category: "analyze",
   cost: "low",
   description:
@@ -47,10 +47,10 @@ export const analyzeMediaTool = defineTool({
   },
 });
 
-// ── analyze_video ───────────────────────────────────────────────────────────
+// ── inspect_video ───────────────────────────────────────────────────────────
 
 export const analyzeVideoTool = defineTool({
-  name: "analyze_video",
+  name: "inspect_video",
   category: "analyze",
   cost: "low",
   description:
@@ -79,10 +79,10 @@ export const analyzeVideoTool = defineTool({
   },
 });
 
-// ── analyze_review ──────────────────────────────────────────────────────────
+// ── inspect_review ──────────────────────────────────────────────────────────
 
 export const analyzeReviewTool = defineTool({
-  name: "analyze_review",
+  name: "inspect_review",
   category: "analyze",
   cost: "low",
   description:
@@ -111,10 +111,10 @@ export const analyzeReviewTool = defineTool({
   },
 });
 
-// ── analyze_suggest ─────────────────────────────────────────────────────────
+// ── inspect_suggest ─────────────────────────────────────────────────────────
 
 export const analyzeSuggestTool = defineTool({
-  name: "analyze_suggest",
+  name: "inspect_suggest",
   category: "analyze",
   cost: "low",
   description:

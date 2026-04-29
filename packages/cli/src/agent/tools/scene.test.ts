@@ -25,22 +25,26 @@ beforeEach(() => {
   registerManifestIntoAgent(registry, manifest);
 });
 
+// After the v0.75 MCP rename, the project-flow tools (`init`, `build`,
+// `render`) live at the top level and no longer carry a `scene_` prefix.
+// Test fixture filters by an explicit allowlist so it covers both.
+const SCENE_GROUP_TOOL_NAMES = [
+  "build",
+  "init",
+  "render",
+  "scene_add",
+  "scene_compose_prompts",
+  "scene_install_skill",
+  "scene_lint",
+  "scene_styles",
+] as const;
 const sceneToolDefinitions = (): ReadonlyArray<ToolDefinition> =>
-  registry.getDefinitions().filter((d) => d.name.startsWith("scene_"));
+  registry.getDefinitions().filter((d) => (SCENE_GROUP_TOOL_NAMES as readonly string[]).includes(d.name));
 
-describe("scene agent tools — registration + schema", () => {
-  it("registers exactly eight scene_* tools", () => {
+describe("scene + project-flow agent tools — registration + schema", () => {
+  it("registers exactly eight tools (3 project-flow + 5 scene_*)", () => {
     const names = sceneToolDefinitions().map((t) => t.name).sort();
-    expect(names).toEqual([
-      "scene_add",
-      "scene_build",
-      "scene_compose_prompts",
-      "scene_init",
-      "scene_install_skill",
-      "scene_lint",
-      "scene_render",
-      "scene_styles",
-    ]);
+    expect(names).toEqual([...SCENE_GROUP_TOOL_NAMES].sort());
   });
 
   it("scene tools all have well-formed JSON-schema-ish parameters", () => {
@@ -59,19 +63,19 @@ describe("scene agent tools — registration + schema", () => {
     }
   });
 
-  it("scene_init requires only `dir`; scene_add requires only `name`; lint+render are arg-free", () => {
+  it("init requires only `dir`; scene_add requires only `name`; lint+render are arg-free", () => {
     const byName = Object.fromEntries(sceneToolDefinitions().map((d) => [d.name, d]));
-    expect(byName.scene_init.parameters.required).toEqual(["dir"]);
+    expect(byName.init.parameters.required).toEqual(["dir"]);
     expect(byName.scene_add.parameters.required).toEqual(["name"]);
     expect(byName.scene_lint.parameters.required).toEqual([]);
-    expect(byName.scene_render.parameters.required).toEqual([]);
+    expect(byName.render.parameters.required).toEqual([]);
   });
 });
 
-describe("scene_init handler", () => {
+describe("init handler", () => {
   it("scaffolds a project relative to the agent's working directory", async () => {
     const cwd = await makeTmp();
-    const handler = registry.getHandler("scene_init")!;
+    const handler = registry.getHandler("init")!;
     const result = await handler({ dir: "promo", aspect: "9:16", duration: 8 }, ctx(cwd));
 
     expect(result.success).toBe(true);
@@ -85,7 +89,7 @@ describe("scene_init handler", () => {
 describe("scene_add handler — offline path", () => {
   it("adds a scene with skipAudio + skipImage and reports the new clip start/duration", async () => {
     const cwd = await makeTmp();
-    await registry.getHandler("scene_init")!({ dir: ".", aspect: "16:9", duration: 6 }, ctx(cwd));
+    await registry.getHandler("init")!({ dir: ".", aspect: "16:9", duration: 6 }, ctx(cwd));
 
     const result = await registry.getHandler("scene_add")!({
       name: "Intro Scene",
@@ -109,7 +113,7 @@ describe("scene_add handler — offline path", () => {
 
   it("returns a structured failure when a scene file already exists (no --force)", async () => {
     const cwd = await makeTmp();
-    await registry.getHandler("scene_init")!({ dir: "." }, ctx(cwd));
+    await registry.getHandler("init")!({ dir: "." }, ctx(cwd));
     await registry.getHandler("scene_add")!({
       name: "intro", duration: 3, skipAudio: true, skipImage: true,
     }, ctx(cwd));
@@ -125,7 +129,7 @@ describe("scene_add handler — offline path", () => {
 describe("scene_lint handler — offline path", () => {
   it("reports ok for a freshly scaffolded + populated project", async () => {
     const cwd = await makeTmp();
-    await registry.getHandler("scene_init")!({ dir: "." }, ctx(cwd));
+    await registry.getHandler("init")!({ dir: "." }, ctx(cwd));
     await registry.getHandler("scene_add")!({
       name: "hello", duration: 3, skipAudio: true, skipImage: true,
     }, ctx(cwd));
@@ -144,13 +148,13 @@ describe("scene_lint handler — offline path", () => {
   });
 });
 
-describe("scene_render handler — Chrome-gated", () => {
+describe("render handler — Chrome-gated", () => {
   it("returns a structured Chrome-not-found error when Chrome is missing OR the project is missing", async () => {
     // We don't try to render — we just exercise the validation surface so the
     // test stays Chrome-free. With a non-existent project the handler fails
     // before reaching the Chrome preflight.
     const cwd = await makeTmp();
-    const result = await registry.getHandler("scene_render")!({
+    const result = await registry.getHandler("render")!({
       projectDir: "no-such-dir",
     }, ctx(cwd));
     expect(result.success).toBe(false);

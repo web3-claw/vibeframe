@@ -62,12 +62,30 @@ Advanced authoring — project / scene / timeline
 Automation         — run / agent / batch + schema / context / walkthrough
 ```
 
+## MCP tool name alignment (v0.75)
+
+v0.74 deliberately kept the MCP tool names (`pipeline_*`, `analyze_*`,
+`scene_init/build/render`, `audio_voice_clone`) under their old labels
+so that `@vibeframe/mcp-server` clients wouldn't break during the CLI
+rename window. v0.75 finishes the alignment — every MCP tool now matches
+its CLI counterpart's group/leaf naming:
+
+| Before (v0.74) | After (v0.75) |
+|---|---|
+| `pipeline_highlights` | `remix_highlights` |
+| `pipeline_auto_shorts` | `remix_auto_shorts` |
+| `pipeline_regenerate_scene` | `remix_regenerate_scene` |
+| `pipeline_run` | `run` (groupless — matches `vibe run`) |
+| `analyze_media` / `_video` / `_review` / `_suggest` | `inspect_media` / `_video` / `_review` / `_suggest` |
+| `audio_voice_clone` | `audio_clone_voice` |
+| `scene_init` / `_build` / `_render` | `init` / `build` / `render` (project-flow tools, top-level) |
+
+This is a hard break for MCP hosts: the previous tool names no longer
+appear in `tools/list` after upgrading to v0.75. Pin to v0.74 if you
+have hardcoded the old names and can't migrate yet.
+
 ## What did not change
 
-- **MCP tool names stay the same** (`pipeline_*`, `analyze_*`,
-  `scene_init/build/render`) so external MCP hosts and
-  `@vibeframe/mcp-server` users see no break. The CLI ↔ manifest mapping
-  in `cli-sync.test.ts` handles the rename internally.
 - **`vibe schema <path>`, `vibe context`, `vibe walkthrough <topic>`**
   remain top-level commands. We considered consolidating them under
   `vibe agent`, but the cost (parent-chain refactor + deprecation noise
@@ -97,8 +115,10 @@ Automation         — run / agent / batch + schema / context / walkthrough
 
 ## Migration checklist for external scripts
 
-These are now hard breaks — no aliases. Pin to v0.73 or earlier if you
-can't migrate yet.
+These are hard breaks — no aliases. Pin to v0.73 or earlier if you can't
+migrate yet.
+
+### CLI scripts
 
 1. Replace `vibe pipeline X` with `vibe remix X`.
 2. Replace `vibe analyze X` with `vibe inspect X`.
@@ -108,6 +128,13 @@ can't migrate yet.
    top-level equivalents.
 5. If you parse the JSON envelope's `command:` field, update string
    matchers — the field reflects the canonical name now.
+
+### MCP hosts (`@vibeframe/mcp-server`)
+
+6. Rename calls per the v0.75 MCP table above. Hosts that hardcode tool
+   names (e.g. Claude Desktop config snippets, agent prompt allowlists)
+   need to swap `pipeline_*`, `analyze_*`, `audio_voice_clone`, and
+   `scene_init/build/render` for the new names.
 
 [clig]: https://clig.dev/
 [ms]: https://learn.microsoft.com/en-us/dotnet/standard/commandline/design-guidance

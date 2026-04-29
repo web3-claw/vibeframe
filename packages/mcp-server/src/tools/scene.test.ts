@@ -27,23 +27,23 @@ describe("MCP scene tools — registration", () => {
   it("exports eight tools with the canonical names", () => {
     const names = sceneMcpTools.map((t) => t.name).sort();
     expect(names).toEqual([
+      "build",
+      "init",
+      "render",
       "scene_add",
-      "scene_build",
       "scene_compose_prompts",
-      "scene_init",
       "scene_install_skill",
       "scene_lint",
-      "scene_render",
       "scene_styles",
     ]);
   });
 
   it("includes scene tools in the global MCP tools list", () => {
     const globalNames = new Set(tools.map((t) => t.name));
-    expect(globalNames.has("scene_init")).toBe(true);
+    expect(globalNames.has("init")).toBe(true);
     expect(globalNames.has("scene_add")).toBe(true);
     expect(globalNames.has("scene_lint")).toBe(true);
-    expect(globalNames.has("scene_render")).toBe(true);
+    expect(globalNames.has("render")).toBe(true);
   });
 
   it.each(sceneMcpTools.map((t) => [t.name, t] as const))(
@@ -56,21 +56,21 @@ describe("MCP scene tools — registration", () => {
     },
   );
 
-  it("scene_init declares `dir` as required; scene_add requires `name`; lint+render are arg-free", () => {
+  it("init declares `dir` as required; scene_add requires `name`; lint+render are arg-free", () => {
     const byName = Object.fromEntries(sceneMcpTools.map((t) => [t.name, t]));
-    expect(byName.scene_init.inputSchema.required).toEqual(["dir"]);
+    expect(byName.init.inputSchema.required).toEqual(["dir"]);
     expect(byName.scene_add.inputSchema.required).toEqual(["name"]);
     expect(byName.scene_lint.inputSchema.required).toEqual([]);
-    expect(byName.scene_render.inputSchema.required).toEqual([]);
+    expect(byName.render.inputSchema.required).toEqual([]);
   });
 });
 
 describe("handleToolCall — scene offline path", () => {
   // Absolute paths so the handler doesn't depend on process.cwd().
 
-  it("scene_init scaffolds a project at the given absolute dir", async () => {
+  it("init scaffolds a project at the given absolute dir", async () => {
     const dir = resolve(await makeTmp(), "promo");
-    const text = await callScene("scene_init", { dir, aspect: "9:16", duration: 6 });
+    const text = await callScene("init", { dir, aspect: "9:16", duration: 6 });
     const parsed = JSON.parse(text) as { success: boolean; created: string[] };
     expect(parsed.success).toBe(true);
     expect(parsed.created.length).toBeGreaterThan(0);
@@ -79,7 +79,7 @@ describe("handleToolCall — scene offline path", () => {
 
   it("scene_add → scene_lint flow: skipAudio/skipImage scene + lint reports ok", async () => {
     const projectDir = await makeTmp();
-    await callScene("scene_init", { dir: projectDir });
+    await callScene("init", { dir: projectDir });
 
     const addText = await callScene("scene_add", {
       projectDir,
@@ -102,15 +102,15 @@ describe("handleToolCall — scene offline path", () => {
     expect(lintParsed.files.length).toBeGreaterThan(0);
   });
 
-  it("scene_render returns a structured failure when no project exists", async () => {
-    const text = await callScene("scene_render", {
+  it("render returns a structured failure when no project exists", async () => {
+    const text = await callScene("render", {
       projectDir: resolve(await makeTmp(), "missing"),
     });
-    expect(text).toMatch(/scene_render failed|Project directory not found|Chrome not found|Root composition not found/);
+    expect(text).toMatch(/render failed|Project directory not found|Chrome not found|Root composition not found/);
   });
 
-  it("handleToolCall enforces required args (scene_init without dir → error message)", async () => {
-    const result = await handleToolCall("scene_init", {});
+  it("handleToolCall enforces required args (init without dir → error message)", async () => {
+    const result = await handleToolCall("init", {});
     expect(result.content[0].text).toMatch(/missing required argument.*dir/);
   });
 });

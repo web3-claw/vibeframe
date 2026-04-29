@@ -2,7 +2,7 @@
  * @module manifest/audio
  * @description Audio post-processing tools.
  *   audio_transcribe (Whisper), audio_isolate (ElevenLabs vocals isolation),
- *   audio_voice_clone (ElevenLabs IVC), audio_dub (Whisper+Claude+ElevenLabs),
+ *   audio_clone_voice (ElevenLabs IVC), audio_dub (Whisper+Claude+ElevenLabs),
  *   audio_duck (FFmpeg sidechain).
  */
 
@@ -72,10 +72,10 @@ export const audioIsolateTool = defineTool({
   },
 });
 
-// ── audio_voice_clone ───────────────────────────────────────────────────────
+// ── audio_clone_voice ───────────────────────────────────────────────────────
 
 export const audioVoiceCloneTool = defineTool({
-  name: "audio_voice_clone",
+  name: "audio_clone_voice",
   category: "audio",
   cost: "low",
   description:

@@ -6,7 +6,7 @@
  * `_shared/video-providers.js` helpers (consumed by `ai-video.ts` and
  * `generate/video.ts`).
  *
- * Powers the manifest tool `pipeline_regenerate_scene` and the user-facing
+ * Powers the manifest tool `remix_regenerate_scene` and the user-facing
  * `vibe pipeline regenerate-scene` CLI subcommand.
  *
  * Note: `executeScriptToVideo` and the `pipeline script-to-video` CLI / MCP

@@ -1,13 +1,13 @@
 /**
  * @module manifest/pipeline
  * @description Pipeline tools.
- *   pipeline_highlights, pipeline_auto_shorts (long-form → clips),
- *   pipeline_run (YAML pipeline executor — wraps top-level `vibe run`),
- *   pipeline_regenerate_scene (scene re-render against an existing
+ *   remix_highlights, remix_auto_shorts (long-form → clips),
+ *   run (YAML pipeline executor — wraps top-level `vibe run`),
+ *   remix_regenerate_scene (scene re-render against an existing
  *     storyboard.{yaml,json} on disk).
  *
  * `pipeline_script_to_video` was retired alongside the CLI subcommand —
- * the skill-driven `scene_build` flow replaces it (idempotent, cheaper,
+ * the skill-driven `build` flow replaces it (idempotent, cheaper,
  * per-beat editable).
  */
 
@@ -24,7 +24,7 @@ import {
 import { loadPipeline, executePipeline } from "../../pipeline/index.js";
 
 export const pipelineHighlightsTool = defineTool({
-  name: "pipeline_highlights",
+  name: "remix_highlights",
   category: "pipeline",
   cost: "low",
   description:
@@ -59,11 +59,11 @@ export const pipelineHighlightsTool = defineTool({
 });
 
 export const pipelineAutoShortsTool = defineTool({
-  name: "pipeline_auto_shorts",
+  name: "remix_auto_shorts",
   category: "pipeline",
   cost: "medium",
   description:
-    "Automatically generate short-form content (Reels/TikTok/Shorts) from a longer video. Same API key requirements as pipeline_highlights.",
+    "Automatically generate short-form content (Reels/TikTok/Shorts) from a longer video. Same API key requirements as remix_highlights.",
   schema: z.object({
     video: z.string().describe("Path to the input video file"),
     outputDir: z.string().optional().describe("Output directory for shorts"),
@@ -99,7 +99,7 @@ export const pipelineAutoShortsTool = defineTool({
 
 // MCP-only by design — wraps top-level `vibe run <pipeline>`. CLI is hand-written.
 export const pipelineRunTool = defineTool({
-  name: "pipeline_run",
+  name: "run",
   category: "pipeline",
   cost: "very-high",
   surfaces: ["mcp"],
@@ -186,7 +186,7 @@ export const pipelineRunTool = defineTool({
 });
 
 export const pipelineRegenerateSceneTool = defineTool({
-  name: "pipeline_regenerate_scene",
+  name: "remix_regenerate_scene",
   category: "pipeline",
   cost: "high",
   description:

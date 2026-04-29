@@ -8,7 +8,7 @@ Confirmed MCP hosts today: **Claude Desktop**, **Cursor**, **OpenCode**, and **C
 
 | Surface | Package | How you call it |
 |---------|---------|-----------------|
-| MCP host (Claude Desktop / Cursor / OpenCode / Claude Code) | `@vibeframe/mcp-server` *(this)* | host calls tool by name, for example `mcp__vibeframe__scene_build({...})` |
+| MCP host (Claude Desktop / Cursor / OpenCode / Claude Code) | `@vibeframe/mcp-server` *(this)* | host calls tool by name, for example `mcp__vibeframe__build({...})` |
 | Shell / scripts (any agent host: Codex / Aider / Gemini CLI / etc.) | `@vibeframe/cli` | `vibe init my-video && vibe build my-video && vibe render my-video` |
 | Standalone agent REPL | `@vibeframe/cli` (`vibe agent`) | natural language -> CLI calls |
 
@@ -74,7 +74,7 @@ claude mcp add vibeframe -- npx -y @vibeframe/mcp-server
 Once connected, your MCP host can resolve prompts like these into typed tool calls:
 
 > "Scaffold a 12-second Swiss-Pulse promo project, three beats, and render it"
-> *→ `scene_init` + 3× `scene_add` + `scene_render`*
+> *→ `init` + 3× `scene_add` + `render`*
 
 > "Generate a cinematic backdrop image, animate it for 5 seconds, add narration"
 > *→ `generate_image` + `generate_motion` + `generate_speech`*
@@ -84,20 +84,25 @@ Once connected, your MCP host can resolve prompts like these into typed tool cal
 
 ## Available Tools
 
-Tool names are MCP-side. Your host typically prefixes them (e.g. Claude shows them as `mcp__vibeframe__scene_init`). Each one wraps the same engine call as the matching `vibe` CLI subcommand.
+Tool names are MCP-side. Your host typically prefixes them (e.g. Claude shows them as `mcp__vibeframe__init`). Each one wraps the same engine call as the matching `vibe` CLI subcommand.
 
-### Scene authoring
+### Project flow (top-level)
 
 | Tool | Description |
 |------|-------------|
-| `scene_init` | Low-level scene project scaffold with `STORYBOARD.md` + `DESIGN.md` |
+| `init` | Scaffold a video project with `STORYBOARD.md` + `DESIGN.md` |
+| `build` | Build a storyboard project: narration TTS, image assets, scene HTML composition |
+| `render` | Deterministic Hyperframes render → MP4/WebM/MOV |
+
+### Scene authoring (lower-level)
+
+| Tool | Description |
+|------|-------------|
 | `scene_styles` | List the 8 vendored visual identities (Swiss Pulse, Data Drift, …) or fetch one |
 | `scene_add` | Append a beat (narration + backdrop + composed HTML) |
 | `scene_install_skill` | Install the Hyperframes skill bundle into a scene project |
 | `scene_lint` | Validate composition HTML against the visual identity |
-| `scene_render` | Deterministic Hyperframes render → MP4 |
 | `scene_compose_prompts` | Emit the per-beat compose plan without making an LLM call |
-| `scene_build` | Build a storyboard project from `STORYBOARD.md` cues with narration, image assets, composition, and render steps |
 
 ### Generation (13)
 
@@ -139,7 +144,7 @@ Tool names are MCP-side. Your host typically prefixes them (e.g. Claude shows th
 | Tool | Description |
 |------|-------------|
 | `audio_dub` | AI voice dubbing (ElevenLabs) |
-| `audio_voice_clone` | Voice clone from sample |
+| `audio_clone_voice` | Voice clone from sample |
 | `audio_isolate` | Vocal / background isolation |
 | `audio_duck` | Auto-duck BGM under speech |
 | `audio_transcribe` | Transcript with word-level timing (Whisper) |
@@ -152,14 +157,14 @@ Tool names are MCP-side. Your host typically prefixes them (e.g. Claude shows th
 | `detect_scenes` | Find shot boundaries |
 | `detect_beats` | Find music beats |
 
-### Analysis (4)
+### Inspection (4)
 
 | Tool | Description |
 |------|-------------|
-| `analyze_media` | Unified image / video / YouTube analysis (Gemini) |
-| `analyze_video` | Temporal video understanding (Gemini) |
-| `analyze_review` | AI video review + auto-fix suggestions |
-| `analyze_suggest` | Natural-language project edit suggestions (Gemini); optional auto-apply |
+| `inspect_media` | Unified image / video / YouTube analysis (Gemini) |
+| `inspect_video` | Temporal video understanding (Gemini) |
+| `inspect_review` | AI video review + auto-fix suggestions |
+| `inspect_suggest` | Natural-language project edit suggestions (Gemini); optional auto-apply |
 
 ### Timeline (10)
 
@@ -179,14 +184,14 @@ Tool names are MCP-side. Your host typically prefixes them (e.g. Claude shows th
 | `project_create` / `project_info` | `.vibe.json` lifecycle |
 | `export_video` | Export project to MP4/WebM/MOV via FFmpeg |
 
-### Pipelines (4)
+### Remix & pipelines (4)
 
 | Tool | Description |
 |------|-------------|
-| `pipeline_run` | Execute a multi-stage YAML pipeline |
-| `pipeline_highlights` | Long-form → highlight clips |
-| `pipeline_auto_shorts` | Long-form → vertical shorts |
-| `pipeline_regenerate_scene` | Re-render a single scene against an existing storyboard.{yaml,json} |
+| `run` | Execute a multi-stage YAML pipeline (`vibe run pipeline.yaml`) |
+| `remix_highlights` | Long-form → highlight clips |
+| `remix_auto_shorts` | Long-form → vertical shorts |
+| `remix_regenerate_scene` | Re-render a single scene against an existing storyboard.{yaml,json} |
 
 ### Walkthrough (1)
 
@@ -225,7 +230,7 @@ API keys are read from the host's environment (`~/.zshrc`, MCP config `env` bloc
 | Variable | Used by |
 |----------|---------|
 | `OPENAI_API_KEY` | gpt-image-2, Whisper, GPT |
-| `ANTHROPIC_API_KEY` | Claude (translate-srt, highlights, scene_build compose pipeline) |
+| `ANTHROPIC_API_KEY` | Claude (translate-srt, highlights, build compose pipeline) |
 | `GOOGLE_API_KEY` | Gemini (analyze, review, silence-cut, narrate) |
 | `ELEVENLABS_API_KEY` | TTS, voice-clone, dubbing, SFX |
 | `XAI_API_KEY` | Grok |
