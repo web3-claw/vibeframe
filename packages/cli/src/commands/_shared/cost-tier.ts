@@ -12,6 +12,7 @@
  */
 
 import type { Command } from "commander";
+import chalk from "chalk";
 
 export type CostTier = "free" | "low" | "high" | "very-high";
 
@@ -20,6 +21,17 @@ export const TIER_DESCRIPTION: Record<CostTier, string> = {
   "low": "$0.01–$0.10 per call",
   "high": "$1–$5 per call",
   "very-high": "$5–$50+ per call",
+};
+
+/**
+ * Tier → chalk colorizer. Cool colors for safe tiers, warm for paid ones.
+ * Used in `--help` footers (here) and in `vibe schema --list` human output.
+ */
+export const TIER_COLOR: Record<CostTier, (s: string) => string> = {
+  "free": chalk.green,
+  "low": chalk.cyan,
+  "high": chalk.yellow,
+  "very-high": chalk.red,
 };
 
 /**
@@ -42,8 +54,11 @@ interface CostTieredCommand {
 export function applyTier<T extends Command>(cmd: T, tier: CostTier): T {
   (cmd as unknown as CostTieredCommand)[COST_TIER_KEY] = tier;
   // Append (rather than replace) so existing addHelpText("after", …)
-  // examples blocks are preserved.
-  cmd.addHelpText("after", `\nCost: ${tier} (${TIER_DESCRIPTION[tier]})\n`);
+  // examples blocks are preserved. Color signals tier at a glance —
+  // green for free, red for very-high. Falls through chalk's NO_COLOR
+  // / non-TTY detection automatically.
+  const colored = TIER_COLOR[tier](`Cost: ${tier} (${TIER_DESCRIPTION[tier]})`);
+  cmd.addHelpText("after", `\n${colored}\n`);
   return cmd;
 }
 

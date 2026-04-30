@@ -77,8 +77,15 @@ export const schemaCommand = new Command("schema")
     console.log(JSON.stringify(schema, null, 2));
   });
 
+interface CommandListEntry {
+  path: string;
+  description: string;
+  /** Cost tier — present when the command opted in via `applyTier()`. */
+  cost?: string;
+}
+
 function listCommands(program: Command): void {
-  const commands: { path: string; description: string }[] = [];
+  const commands: CommandListEntry[] = [];
   const skipTopLevel = new Set(["help", "schema"]);
 
   for (const group of program.commands) {
@@ -90,16 +97,19 @@ function listCommands(program: Command): void {
       // Top-level command without subcommands (e.g., export, setup, doctor)
       const desc = (group as Command).description() || "";
       if (desc.toLowerCase().includes("deprecated")) continue;
-      commands.push({ path: name, description: desc });
+      const cost = getCostTier(group as Command);
+      commands.push({ path: name, description: desc, ...(cost ? { cost } : {}) });
       continue;
     }
 
     for (const sub of subCmds) {
       const desc = (sub as Command).description() || "";
       if (desc.toLowerCase().includes("deprecated")) continue;
+      const cost = getCostTier(sub as Command);
       commands.push({
         path: `${name}.${(sub as Command).name()}`,
         description: desc,
+        ...(cost ? { cost } : {}),
       });
     }
   }
