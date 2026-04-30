@@ -26,7 +26,10 @@ done
 LATEST_TAG=$(cd "$PROJECT_DIR" && git describe --tags --abbrev=0 2>/dev/null || echo "")
 if [ -n "$LATEST_TAG" ]; then
   TAG_VERSION="${LATEST_TAG#v}"
-  FEAT_FIX=$(cd "$PROJECT_DIR" && git log "$LATEST_TAG"..HEAD --oneline --grep="^feat:" --grep="^fix:" --format="%s" 2>/dev/null || true)
+  # -E enables extended regex so scoped commits (`feat(cli):`, `fix(hooks):`)
+  # match alongside the bare `feat:` / `fix:` form. Pre-fix this used two
+  # `--grep` flags without -E, which silently skipped every scoped commit.
+  FEAT_FIX=$(cd "$PROJECT_DIR" && git log "$LATEST_TAG"..HEAD --oneline -E --grep="^(feat|fix)(\(.+\))?:" --format="%s" 2>/dev/null || true)
   if [ -n "$FEAT_FIX" ] && [ "$ROOT_VERSION" = "$TAG_VERSION" ]; then
     ERRORS+=("feat:/fix: commits found since $LATEST_TAG but version is still $ROOT_VERSION. Fix: /release patch (for fix) or /release minor (for feat)")
   fi
