@@ -33,7 +33,9 @@
     "vibe": "tsx packages/cli/src/index.ts",
     "mcp": "tsx packages/mcp-server/src/index.ts",
     "scaffold:provider": "tsx scripts/scaffold-provider.mts",
-    "scaffold:command": "tsx scripts/scaffold-command.mts"
+    "scaffold:command": "tsx scripts/scaffold-command.mts",
+    "gen:reference": "tsx scripts/gen-cli-reference.mts",
+    "gen:reference:check": "tsx scripts/gen-cli-reference.mts --check"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

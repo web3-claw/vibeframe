@@ -252,11 +252,21 @@ docs/                    Design notes, cookbook, comparisons
 
 ## Useful Docs
 
+- [docs/cli-reference.md](docs/cli-reference.md): every command, flag, and JSON envelope (auto-generated from `vibe schema --list`)
 - [DEMO.md](DEMO.md): copy-paste demo flow
 - [docs/cookbook.md](docs/cookbook.md): practical recipes
 - [docs/video-project-concepts.md](docs/video-project-concepts.md): project model
 - [MODELS.md](MODELS.md): provider/model reference
 - [ROADMAP.md](ROADMAP.md): roadmap
+
+For machine-readable access (agents, scripts) use the live introspection
+hooks instead of this README:
+
+```bash
+vibe schema --list --json     # all 79 commands
+vibe schema <command> --json  # JSON Schema for one command
+vibe context                  # agent quickstart (rules, envelope shape, conventions)
+```
 
 ## Development
 

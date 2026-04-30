@@ -15,8 +15,11 @@ export const contextCommand = new Command("context")
   .description("Print CLI context/guidelines for AI agent integration")
   .action(async (_options, cmd) => {
     const options = { json: cmd.parent?.opts()?.json || cmd.opts()?.json };
-    // CONTEXT.md lives at packages/cli/CONTEXT.md
-    const contextPath = resolve(__dirname, "../../CONTEXT.md");
+    // CONTEXT.md lives at packages/cli/CONTEXT.md (one level up from dist/).
+    // Pre-v0.79.3 this resolved to `../../CONTEXT.md` which silently
+    // missed the file and fell through to the inline fallback every
+    // time — `vibe context` only ever printed 8 lines.
+    const contextPath = resolve(__dirname, "../CONTEXT.md");
 
     try {
       const content = await readFile(contextPath, "utf-8");
@@ -58,7 +61,11 @@ Use 'vibe schema <command> --json' to get parameter schemas.
 Use 'vibe doctor --json' to check configured API keys.
 Use '--dry-run --json' before any mutating/costly operation.
 
-Cost tiers: Free (detect/edit basics/project/timeline/export) | Low (analyze/transcribe/image) | High (video/caption) | Very High (pipeline)
+Cost tiers: Free (detect, edit silence-cut/fade/noise-reduce, project, timeline) | Low (inspect, audio transcribe, generate image) | High (generate video, edit image) | Very High (remix highlights/auto-shorts/regenerate-scene, vibe build)
+
+Group → MCP tool name: '<group>_<leaf>' (snake_case). Bare top-level (init/build/render/run) maps to bare MCP names.
+
+Full reference: docs/cli-reference.md
 `;
       if (options.json) {
         console.log(JSON.stringify({ tool: "vibeframe", fallback: true, context: fallback }));
