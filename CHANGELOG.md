@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.83.0] - 2026-04-30
+
+### Added
+
+- live-test Runway via /v1/organization *(cli)*
+- cost-tier annotations on every paid subcommand *(cli)*
+
+### Documentation
+
+- add architecture audit for agent / build / run *(cli)*
+- add mental-model boundary doc for 6 top-level verbs *(cli)*
+
+### Maintenance
+
+- soft-deprecate edit silence-cut --analyze-only *(cli)*
+
 ## [0.82.0] - 2026-04-30
 
 ### Added

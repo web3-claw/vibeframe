@@ -8,7 +8,7 @@ lists every command, its arguments, and its options. For agentic /
 machine-readable access use `vibe schema --list --json` and
 `vibe schema <command> --json` directly.
 
-> CLI version: `0.82.0`
+> CLI version: `0.83.0`
 
 ## Mental model
 
@@ -608,7 +608,7 @@ Remove silent segments from video (FFmpeg default, or Gemini for smart detection
 - `noise` *(number)* *(default: `-30`)* — Silence threshold in dB (default: -30)
 - `minDuration` *(number)* *(default: `0.5`)* — Minimum silence duration to cut (default: 0.5)
 - `padding` *(number)* *(default: `0.1`)* — Padding around non-silent segments (default: 0.1)
-- `analyzeOnly` *(boolean)* — Only detect silence, don't cut
+- `analyzeOnly` *(boolean)* — (deprecated — use `vibe detect silence`) Only detect silence, don't cut
 - `useGemini` *(boolean)* — Use Gemini Video Understanding for context-aware silence detection
 - `model` *(string)* — Gemini model (default: flash)
 - `lowRes` *(boolean)* — Low resolution mode for longer videos (Gemini only)
