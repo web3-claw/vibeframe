@@ -14,11 +14,12 @@ Steps:
 4. **Read new version**: `grep '"version"' package.json | head -1`
 5. **Verify sync**: `grep '"version"' package.json packages/*/package.json apps/*/package.json | cut -d: -f2 | sort -u` — must show exactly 1 version
 6. **Build**: `pnpm build` — must pass
-7. **Lint**: `pnpm lint` — must pass (0 errors)
-8. **Test**: `pnpm -F @vibeframe/cli exec vitest run` — must pass
-9. **Generate CHANGELOG**: `git-cliff --tag vX.Y.Z -o CHANGELOG.md` — auto-generate from conventional commits
-10. **Stage**: `git add package.json packages/*/package.json apps/*/package.json CHANGELOG.md`
-11. **Commit**: `git commit -m "chore: bump version to X.Y.Z"`
-12. **Tag**: `git tag vX.Y.Z`
+7. **Regenerate CLI reference**: `pnpm gen:reference` — auto-syncs `docs/cli-reference.md` to the built CLI surface so the published version always ships up-to-date docs. (Generator has no timestamp; only diffs when actual flags/commands changed.)
+8. **Lint**: `pnpm lint` — must pass (0 errors)
+9. **Test**: `pnpm -F @vibeframe/cli exec vitest run` — must pass
+10. **Generate CHANGELOG**: `git-cliff --tag vX.Y.Z -o CHANGELOG.md` — auto-generate from conventional commits
+11. **Stage**: `git add package.json packages/*/package.json apps/*/package.json CHANGELOG.md docs/cli-reference.md`
+12. **Commit**: `git commit -m "chore: bump version to X.Y.Z"`
+13. **Tag**: `git tag vX.Y.Z`
 
 Report the new version number. Do NOT push — the user will push when ready.

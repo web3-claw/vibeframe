@@ -282,7 +282,10 @@ function buildReference(): string {
 
   const sections: string[] = [
     HEADER,
-    `> CLI version: \`${version}\` · Generated: \`${new Date().toISOString().slice(0, 10)}\``,
+    // Version pins the CLI surface; no timestamp on purpose — a daily
+    // regeneration would otherwise diff on `Generated: <date>` alone
+    // and turn `gen:reference:check` into a false-positive.
+    `> CLI version: \`${version}\``,
     "",
     MENTAL_MODEL,
     GLOBAL_FLAGS,
