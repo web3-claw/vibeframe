@@ -92,6 +92,16 @@ describe("testKey — per-provider URL + auth", () => {
     const headers = calls[0].init?.headers as Record<string, string>;
     expect(headers.Authorization).toBe("Bearer sk-or-test");
   });
+
+  it("runway uses Bearer + X-Runway-Version on /v1/organization", async () => {
+    const { calls } = mockFetch(() => new Response("{}", { status: 200 }));
+    await testKey("runway", "key_runway-test");
+    expect(calls[0].url).toBe("https://api.dev.runwayml.com/v1/organization");
+    const headers = calls[0].init?.headers as Record<string, string>;
+    expect(headers.Authorization).toBe("Bearer key_runway-test");
+    // Without the version header Runway returns 401 — must always be sent.
+    expect(headers["X-Runway-Version"]).toBe("2024-11-06");
+  });
 });
 
 describe("testKey — response handling", () => {
@@ -127,10 +137,10 @@ describe("testKey — response handling", () => {
 });
 
 describe("testKey — providers without a cheap test", () => {
-  it("fal returns skipped: 'no list endpoint'", async () => {
+  it("fal returns skipped (no auth-only endpoint)", async () => {
     const r = await testKey("fal", "abc:xyz");
     expect(r.skipped).toBe(true);
-    expect(r.message).toBe("no list endpoint");
+    expect(r.message).toContain("no auth-only");
     expect(r.ok).toBe(false);
   });
 
@@ -140,13 +150,7 @@ describe("testKey — providers without a cheap test", () => {
     expect(r.message).toContain("HMAC");
   });
 
-  it("runway returns skipped (POST-only)", async () => {
-    const r = await testKey("runway", "key_test");
-    expect(r.skipped).toBe(true);
-    expect(r.message).toContain("POST-only");
-  });
-
-  it("imgbb returns skipped (would consume upload)", async () => {
+  it("imgbb returns skipped (only auth route is upload)", async () => {
     const r = await testKey("imgbb", "0123456789abcdef0123456789abcdef");
     expect(r.skipped).toBe(true);
     expect(r.message).toContain("upload");

@@ -107,25 +107,37 @@ const TESTERS: Record<string, Tester> = {
         signal,
       ),
   },
-  // The four below have no cheap authenticated GET — providing a tester
-  // would either consume a paid API call (fal, Runway), require HMAC
-  // signing per request (Kling), or burn an image upload (ImgBB). We
-  // surface them as `skipped` so the user knows we didn't blank-check.
+  // Runway: /v1/organization is a read-only GET that returns tier info
+  // (free, doesn't consume credits). Requires the X-Runway-Version
+  // header alongside the Bearer token — without it the request 401s.
+  runway: {
+    name: "Runway",
+    test: (key, signal) =>
+      getOk(
+        "https://api.dev.runwayml.com/v1/organization",
+        {
+          Authorization: `Bearer ${key}`,
+          "X-Runway-Version": "2024-11-06",
+        },
+        signal,
+      ),
+  },
+  // The three below still have no cheap authenticated GET as of v0.83:
+  // fal lacks a documented validation endpoint, Kling auth is per-
+  // request HMAC-signed, ImgBB's only authenticated route is image
+  // upload. Surface them as `skipped` so the user knows we didn't
+  // blank-check.
   fal: {
     name: "fal.ai",
-    test: async () => ({ ok: false, skipped: true, message: "no list endpoint" }),
+    test: async () => ({ ok: false, skipped: true, message: "no auth-only endpoint published" }),
   },
   kling: {
     name: "Kling",
-    test: async () => ({ ok: false, skipped: true, message: "HMAC-signed; can't test cheaply" }),
-  },
-  runway: {
-    name: "Runway",
-    test: async () => ({ ok: false, skipped: true, message: "POST-only API" }),
+    test: async () => ({ ok: false, skipped: true, message: "per-request HMAC; can't test cheaply" }),
   },
   imgbb: {
     name: "ImgBB",
-    test: async () => ({ ok: false, skipped: true, message: "would consume an upload" }),
+    test: async () => ({ ok: false, skipped: true, message: "only auth route is image upload" }),
   },
 };
 
