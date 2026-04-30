@@ -3086,6 +3086,10 @@ exports[`CLI --describe schemas (drift detection) > vibe setup --describe 1`] = 
         "description": "Show current configuration (for debugging)",
         "type": "boolean",
       },
+      "test": {
+        "description": "After save, live-test each configured key (exits 7 if any FAIL)",
+        "type": "boolean",
+      },
       "verbose": {
         "description": "With --show: include unset providers + Resolution order + Defaults block",
         "type": "boolean",

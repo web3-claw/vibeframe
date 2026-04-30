@@ -53,13 +53,18 @@ export const setupCommand = new Command("setup")
   .option("-y, --yes", "Non-interactive: write config without prompting (CI / devcontainer)")
   .option("--provider <id>", "Set the Agent LLM provider (claude | openai | gemini | xai | openrouter | ollama)")
   .option("--import-env", "Promote API keys from .env / shell env into config.yaml")
+  .option("--test", "After save, live-test each configured key (exits 7 if any FAIL)")
   .addHelpText(
     "after",
     `
 Non-interactive examples (no TTY required):
-  vibe setup --yes --provider claude --import-env    Bootstrap CI / devcontainer
-  vibe setup --yes --import-env                      Persist .env keys without changing provider
-  vibe setup --yes --provider openai                 Just switch the agent provider
+  vibe setup --yes --provider claude --import-env         Bootstrap CI / devcontainer
+  vibe setup --yes --import-env --test                    Persist .env keys + verify each one
+  vibe setup --yes --provider openai                      Just switch the agent provider
+
+Exit codes (non-interactive):
+  0  success                7  --test verification failed (one or more keys returned non-2xx)
+  2  usage error            (other codes match the rest of the CLI: 4/5/6 = auth/api/network)
 `,
   )
   .action(async (options) => {
@@ -89,6 +94,7 @@ Non-interactive examples (no TTY required):
       await runNonInteractiveSetup({
         provider: options.provider,
         importEnv: Boolean(options.importEnv),
+        test: Boolean(options.test),
       });
       return;
     }
@@ -180,6 +186,7 @@ const AI_FEATURES: AIFeature[] = [
 interface NonInteractiveOptions {
   provider?: string;
   importEnv?: boolean;
+  test?: boolean;
 }
 
 async function runNonInteractiveSetup(opts: NonInteractiveOptions): Promise<void> {
@@ -238,6 +245,42 @@ async function runNonInteractiveSetup(opts: NonInteractiveOptions): Promise<void
   }
   for (const w of warnings) {
     console.error(chalk.yellow(`⚠ ${w}`));
+  }
+
+  // --test: live-validate every configured key. Exits 7 (verification
+  // failed) if any provider returned a non-2xx response, so CI scripts
+  // can `vibe setup --yes --import-env --test || exit 1` and catch
+  // bad keys before the first paid call.
+  if (opts.test) {
+    const { testKey } = await import("../utils/key-live-test.js");
+    console.log();
+    console.log(chalk.bold("Live key tests"));
+    let failures = 0;
+    let tested = 0;
+    for (const meta of getAllApiKeys()) {
+      const value = config.providers[meta.configKey as keyof typeof config.providers];
+      if (!value) continue;
+      tested++;
+      const result = await testKey(meta.configKey, value);
+      const label = meta.label.padEnd(12);
+      if (result.skipped) {
+        console.log(chalk.dim(`  SKIP  ${label} ${result.message ?? "no test available"}`));
+      } else if (result.ok) {
+        console.log(chalk.green(`  ✓     ${label}`) + chalk.dim(` ${result.status}`));
+      } else {
+        failures++;
+        const detail = result.message ?? `status ${result.status ?? "?"}`;
+        console.log(chalk.red(`  ✗     ${label}`) + chalk.dim(` ${detail}`));
+      }
+    }
+    if (tested === 0) {
+      console.log(chalk.dim("  (no keys configured to test)"));
+    }
+    if (failures > 0) {
+      console.error();
+      console.error(chalk.red(`Verification failed: ${failures} key${failures === 1 ? "" : "s"} returned non-2xx.`));
+      process.exit(7);
+    }
   }
 }
 
@@ -591,6 +634,7 @@ async function showComplete(
     console.log(chalk.dim(`    ${cmd}${w.summary}${tag}`));
   }
 
+  console.log(chalk.dim("    vibe doctor --test-keys   Live-check each provider key against its API"));
   console.log(chalk.dim("    vibe doctor               Check system health + available commands"));
   console.log(chalk.dim("    vibe schema --list        Discover every command"));
   console.log(chalk.dim("    vibe setup                Re-run user-scope setup anytime"));

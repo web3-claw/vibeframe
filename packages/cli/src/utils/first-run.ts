@@ -70,9 +70,9 @@ export function showFirstRunBanner(): void {
   console.log(`  ${chalk.white("2.")} ${chalk.green("vibe doctor")}        Check system health`);
   console.log(`  ${chalk.white("3.")} ${chalk.green("vibe --help")}        See all commands`);
   console.log();
-  console.log(chalk.dim("  No API keys yet? Try these offline:"));
+  console.log(chalk.dim("  Try without keys:"));
+  console.log(`    ${chalk.green("vibe demo")}                          Run sample edits on a test video`);
   console.log(chalk.dim("    vibe edit silence-cut video.mp4 -o clean.mp4"));
   console.log(chalk.dim("    vibe detect scenes video.mp4"));
-  console.log(chalk.dim("    vibe edit fade video.mp4 -o faded.mp4 --fade-in 1 --fade-out 1"));
   console.log();
 }
