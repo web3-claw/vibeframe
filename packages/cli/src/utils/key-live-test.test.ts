@@ -140,23 +140,26 @@ describe("testKey — response handling", () => {
 });
 
 describe("testKey — providers without a cheap test", () => {
-  it("fal returns skipped (no auth-only endpoint)", async () => {
+  it("fal returns skipped (no auth-only endpoint, dated)", async () => {
     const r = await testKey("fal", "abc:xyz");
     expect(r.skipped).toBe(true);
     expect(r.message).toContain("no auth-only");
+    expect(r.message).toMatch(/checked \d{4}-\d{2}-\d{2}/);
     expect(r.ok).toBe(false);
   });
 
-  it("kling returns skipped (HMAC-signed)", async () => {
+  it("kling returns skipped (HMAC-signed, dated)", async () => {
     const r = await testKey("kling", "ACCESS:SECRET");
     expect(r.skipped).toBe(true);
     expect(r.message).toContain("HMAC");
+    expect(r.message).toMatch(/checked \d{4}-\d{2}-\d{2}/);
   });
 
-  it("imgbb returns skipped (only auth route is upload)", async () => {
+  it("imgbb returns skipped (upload-only, dated)", async () => {
     const r = await testKey("imgbb", "0123456789abcdef0123456789abcdef");
     expect(r.skipped).toBe(true);
     expect(r.message).toContain("upload");
+    expect(r.message).toMatch(/checked \d{4}-\d{2}-\d{2}/);
   });
 
   it("unknown provider returns skipped: 'no tester registered'", async () => {

@@ -122,22 +122,30 @@ const TESTERS: Record<string, Tester> = {
         signal,
       ),
   },
-  // The three below still have no cheap authenticated GET as of v0.83:
-  // fal lacks a documented validation endpoint, Kling auth is per-
-  // request HMAC-signed, ImgBB's only authenticated route is image
-  // upload. Surface them as `skipped` so the user knows we didn't
-  // blank-check.
+  // The three below still have no cheap authenticated GET as of
+  // 2026-04-30 (re-checked while shipping v0.85). Surface them as
+  // `skipped` so the user knows we didn't blank-check; revisit when a
+  // provider publishes an account/me endpoint.
   fal: {
+    // Probed: /api/account, /v1/account, /v1/me, /queue/health, /v1/users/me,
+    // /api/users/me, /v1/billing — all 404 with the standard `Authorization:
+    // Key <key>` header. The platform docs reference an "Accounts API" but
+    // its endpoint paths are unpublished as of this check.
     name: "fal.ai",
-    test: async () => ({ ok: false, skipped: true, message: "no auth-only endpoint published" }),
+    test: async () => ({ ok: false, skipped: true, message: "no auth-only endpoint (checked 2026-04-30)" }),
   },
   kling: {
+    // Per-request HMAC signing means we'd need to sign every probe with the
+    // key's secret half plus a timestamp — possible, but the cheapest
+    // signed endpoint is also a generation request. Not worth the code.
     name: "Kling",
-    test: async () => ({ ok: false, skipped: true, message: "per-request HMAC; can't test cheaply" }),
+    test: async () => ({ ok: false, skipped: true, message: "HMAC-signed per request (checked 2026-04-30)" }),
   },
   imgbb: {
+    // Only documented route is POST /1/upload. Probing it would consume an
+    // upload quota even if we send a 1×1 PNG, so SKIP is the right call.
     name: "ImgBB",
-    test: async () => ({ ok: false, skipped: true, message: "only auth route is image upload" }),
+    test: async () => ({ ok: false, skipped: true, message: "only route is upload (checked 2026-04-30)" }),
   },
 };
 
