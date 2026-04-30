@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.81.0] - 2026-04-30
+
+### Added
+
+- clipboard auto-copy + live key test + fal/imgbb formats *(cli)*
+- density cleanup — doctor / setup --show / --help *(cli)*
+
+### Changed
+
+- align source filenames with user-facing command names *(cli)*
+
+### Fixed
+
+- match `git -C <dir> push` and other arg variants *(hooks)*
+
 ## [0.80.1] - 2026-04-30
 
 ### Added

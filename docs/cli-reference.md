@@ -8,7 +8,7 @@ lists every command, its arguments, and its options. For agentic /
 machine-readable access use `vibe schema --list --json` and
 `vibe schema <command> --json` directly.
 
-> CLI version: `0.80.1`
+> CLI version: `0.81.0`
 
 ## Mental model
 
@@ -190,6 +190,8 @@ Check system health and available commands
 **Parameters:**
 
 - `json` *(boolean)* — Output in JSON format
+- `verbose` *(boolean)* — Show full report (every provider row, scene composer block, free-command list)
+- `testKeys` *(boolean)* — Make a lightweight authenticated request to each provider (validates configured keys; skips providers without a cheap test endpoint)
 
 #### `vibe init`
 
@@ -248,6 +250,7 @@ Configure VibeFrame (LLM provider, API keys)
 - `reset` *(boolean)* — Reset configuration to defaults
 - `full` *(boolean)* — Run full setup with all optional providers
 - `show` *(boolean)* — Show current configuration (for debugging)
+- `verbose` *(boolean)* — With --show: include unset providers + Resolution order + Defaults block
 - `claudeCode` *(boolean)* — Show Claude Code integration guide
 - `yes` *(boolean)* — Non-interactive: write config without prompting (CI / devcontainer)
 - `provider` *(string)* — Set the Agent LLM provider (claude | openai | gemini | xai | openrouter | ollama)
