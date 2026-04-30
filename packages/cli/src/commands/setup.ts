@@ -26,6 +26,7 @@ import {
 } from "../utils/tty.js";
 import { loadEnv } from "../utils/api-key.js";
 import { validateKeyFormat } from "../utils/key-format.js";
+import { copyToClipboard } from "../utils/clipboard.js";
 import {
   detectedAgentHosts,
   summariseAgentHosts,
@@ -285,7 +286,7 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
   // ── Edit videos (FREE) ─────────────────────────────────────────────
   if (topIndex === 0) {
     await saveConfig(config);
-    showComplete(config, 'vibe edit silence-cut video.mp4 -o clean.mp4');
+    await showComplete(config, 'vibe edit silence-cut video.mp4 -o clean.mp4');
     return;
   }
 
@@ -313,7 +314,7 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
     await collectKeys(config, pipelineKeys);
 
     await saveConfig(config);
-    showComplete(config, 'vibe build my-story/   # see CONTRIBUTING.md for STORYBOARD.md format');
+    await showComplete(config, 'vibe build my-story/   # see CONTRIBUTING.md for STORYBOARD.md format');
     return;
   }
 
@@ -339,7 +340,7 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
     console.log(chalk.dim("  No features selected. You can re-run setup anytime."));
     console.log();
     await saveConfig(config);
-    showComplete(config, 'vibe --help', []);
+    await showComplete(config, 'vibe --help', []);
     return;
   }
 
@@ -406,7 +407,7 @@ async function runSetupWizard(fullSetup = false): Promise<void> {
   }
 
   await saveConfig(config);
-  showComplete(config, selectedFeatures[0].tryCommand, selectedFeatures);
+  await showComplete(config, selectedFeatures[0].tryCommand, selectedFeatures);
 }
 
 /**
@@ -540,23 +541,27 @@ async function runCustomSetup(config: Awaited<ReturnType<typeof loadConfig>> & o
 
   // Save
   await saveConfig(config);
-  showComplete(config, "vibe doctor");
+  await showComplete(config, "vibe doctor");
 }
 
 /**
  * Show completion message with contextual "try it" commands
  */
-function showComplete(
+async function showComplete(
   config: NonNullable<Awaited<ReturnType<typeof loadConfig>>>,
   defaultTryCommand: string,
   features: AIFeature[] = []
-): void {
+): Promise<void> {
   console.log(chalk.dim("─".repeat(40)));
   console.log(chalk.green.bold("✓ Setup complete!"));
   console.log();
   console.log(chalk.dim(`  Config: ${CONFIG_PATH}`));
   console.log();
 
+  // The first try-this command is what most users will run next; copy it
+  // to the clipboard so they can paste straight into the next prompt.
+  // Best-effort — failures are silent (missing pbcopy/xclip, headless CI).
+  const primaryTry = features.length > 1 ? features[0].tryCommand : defaultTryCommand;
   if (features.length > 1) {
     console.log(chalk.bold("  Try these:"));
     for (const f of features) {
@@ -564,6 +569,12 @@ function showComplete(
     }
   } else {
     console.log(`  Try: ${chalk.cyan(defaultTryCommand)}`);
+  }
+  if (process.stdout.isTTY) {
+    const copied = await copyToClipboard(primaryTry);
+    if (copied) {
+      console.log(chalk.dim("    ✓ Copied to clipboard"));
+    }
   }
   console.log();
   console.log(chalk.bold("  Next steps:"));

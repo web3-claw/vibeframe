@@ -82,6 +82,10 @@ defineApiKey({
   envExampleComment:
     "fal.ai API Key (Seedance 2.0 video — default text/image-to-video since v0.57, Artificial Analysis ELO #2)",
   envExampleUrl: "https://fal.ai/dashboard/keys",
+  // fal keys are `<key-id>:<key-secret>` (both UUIDs). The colon is the
+  // structural marker — same approach as Kling. Don't pin the UUID shape
+  // since fal could rotate to a different secret format.
+  keyFormat: { prefix: /:/, example: "<key-id>:<key-secret>" },
 });
 
 defineApiKey({
@@ -154,6 +158,10 @@ defineApiKey({
   envExampleComment:
     "ImgBB API Key (image hosting — used by Kling and Seedance for image-to-video uploads)",
   envExampleUrl: "https://api.imgbb.com/",
+  // ImgBB issues 32-character lowercase hex keys. Soft-warn if a pasted
+  // key doesn't match — covers the common "I copied my Kling key by
+  // mistake" failure mode.
+  keyFormat: { prefix: /^[a-f0-9]{32}$/, example: "32-char hex" },
   // ImgBB has no provider class (envvar-only); doctor still shows what it
   // unlocks at the apiKey level.
   commandsUnlocked: [

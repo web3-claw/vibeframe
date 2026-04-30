@@ -82,10 +82,21 @@ describe("validateKeyFormat", () => {
     expect(r2.expected).toBe("AIza...");
   });
 
-  it("returns ok=true for providers without a documented format", () => {
-    // fal.ai and imgbb intentionally have no keyFormat declared
-    expect(validateKeyFormat("fal", "anything-goes").ok).toBe(true);
-    expect(validateKeyFormat("imgbb", "deadbeef0123").ok).toBe(true);
+  it("flags malformed fal and imgbb keys (added in v0.81)", () => {
+    // fal: requires `<id>:<secret>` shape — no colon → soft warn.
+    const fal = validateKeyFormat("fal", "no-colon-here");
+    expect(fal.ok).toBe(false);
+    expect(fal.expected).toBe("<key-id>:<key-secret>");
+
+    // imgbb: 32-char lowercase hex.
+    const imgbb = validateKeyFormat("imgbb", "deadbeef0123"); // too short
+    expect(imgbb.ok).toBe(false);
+    expect(imgbb.expected).toBe("32-char hex");
+  });
+
+  it("accepts well-formed fal and imgbb keys", () => {
+    expect(validateKeyFormat("fal", "abc-id:xyz-secret").ok).toBe(true);
+    expect(validateKeyFormat("imgbb", "0123456789abcdef0123456789abcdef").ok).toBe(true);
   });
 
   it("returns ok=true for unknown configKeys", () => {

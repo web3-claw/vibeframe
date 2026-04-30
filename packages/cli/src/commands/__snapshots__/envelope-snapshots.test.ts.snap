@@ -696,6 +696,14 @@ exports[`CLI --describe schemas (drift detection) > vibe doctor --describe 1`] =
         "description": "Output in JSON format",
         "type": "boolean",
       },
+      "testKeys": {
+        "description": "Make a lightweight authenticated request to each provider (validates configured keys; skips providers without a cheap test endpoint)",
+        "type": "boolean",
+      },
+      "verbose": {
+        "description": "Show full report (every provider row, scene composer block, free-command list)",
+        "type": "boolean",
+      },
     },
     "type": "object",
   },
@@ -3076,6 +3084,10 @@ exports[`CLI --describe schemas (drift detection) > vibe setup --describe 1`] = 
       },
       "show": {
         "description": "Show current configuration (for debugging)",
+        "type": "boolean",
+      },
+      "verbose": {
+        "description": "With --show: include unset providers + Resolution order + Defaults block",
         "type": "boolean",
       },
       "yes": {

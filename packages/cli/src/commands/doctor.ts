@@ -51,12 +51,14 @@ export const doctorCommand = new Command("doctor")
   .description("Check system health and available commands")
   .option("--json", "Output in JSON format")
   .option("-v, --verbose", "Show full report (every provider row, scene composer block, free-command list)")
+  .option("--test-keys", "Make a lightweight authenticated request to each provider (validates configured keys; skips providers without a cheap test endpoint)")
   .addHelpText(
     "after",
     `
 Examples:
   $ vibe doctor              Compact health summary (issues + Ready %)
   $ vibe doctor --verbose    Full report — all providers, composer, free commands
+  $ vibe doctor --test-keys  Validate each configured key against its provider
   $ vibe doctor --json       Machine-readable output
 `
   )
@@ -76,6 +78,10 @@ Examples:
     }
 
     printReport(results, { verbose: Boolean(options.verbose) });
+
+    if (options.testKeys) {
+      await runLiveKeyTests(results);
+    }
   });
 
 /** FFmpeg filters required by offline commands.
@@ -518,6 +524,42 @@ function printReport(results: DiagnosticResults, opts: { verbose: boolean } = { 
   const nextStep = pickNextStep(results, missing.length > 0);
   if (nextStep) {
     console.log(chalk.dim(`  ${nextStep}`));
+  }
+  console.log();
+}
+
+/**
+ * `--test-keys` driver. Runs sequentially — most providers rate-limit
+ * authenticated requests and parallelism would also clutter the
+ * progressive output.
+ */
+async function runLiveKeyTests(results: DiagnosticResults): Promise<void> {
+  console.log();
+  console.log(chalk.bold("  Live key tests"));
+  console.log(chalk.dim("    Hits each provider's cheapest authenticated endpoint with a 5s timeout."));
+
+  const configured = Object.entries(results.providers).filter(([, info]) => info.configured);
+  if (configured.length === 0) {
+    console.log(chalk.dim("    No keys configured — nothing to test."));
+    return;
+  }
+
+  // Lazy import keeps the module out of `vibe doctor` (no flag) cold-start.
+  const { testKey } = await import("../utils/key-live-test.js");
+
+  for (const [name, info] of configured) {
+    const value = process.env[info.envVar];
+    if (!value) continue; // shouldn't happen — info.configured already checked
+    process.stdout.write(`    ${name.padEnd(12)} `);
+    const result = await testKey(name, value);
+    if (result.skipped) {
+      console.log(chalk.dim(`SKIP  ${result.message ?? "no test available"}`));
+    } else if (result.ok) {
+      console.log(`${chalk.green("OK")}    ${chalk.dim(`${result.status}`)}`);
+    } else {
+      const detail = result.message ?? `status ${result.status ?? "?"}`;
+      console.log(`${chalk.red("FAIL")}  ${chalk.dim(detail)}`);
+    }
   }
   console.log();
 }
