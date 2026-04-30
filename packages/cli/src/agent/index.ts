@@ -8,6 +8,7 @@ import type {
   AgentContext,
   ToolCall,
   ToolResult,
+  ToolDefinition,
   LLMProvider,
 } from "./types.js";
 import type { LLMAdapter } from "./adapters/index.js";
@@ -26,8 +27,37 @@ export interface AgentExecutorOptions {
   /**
    * Callback to confirm before executing each tool.
    * Return true to execute, false to skip.
+   *
+   * The `cost` argument is the tool's declared cost tier (free / low /
+   * medium / high / very-high) so the prompt can warn about expensive
+   * calls. `undefined` for tools that didn't declare a tier.
    */
-  confirmCallback?: (toolName: string, args: Record<string, unknown>) => Promise<boolean>;
+  confirmCallback?: (
+    toolName: string,
+    args: Record<string, unknown>,
+    cost: ToolDefinition["cost"],
+  ) => Promise<boolean>;
+  /**
+   * When true, prompt before every tool call. When false (default), the
+   * cost gate in `executeTool` fires only for high/very-high tools.
+   * Set by `--confirm` CLI flag.
+   */
+  confirmAlways?: boolean;
+  /**
+   * Disable all confirm prompts, even for high/very-high cost tools.
+   * For automated agent sessions where every tool call must run
+   * unattended. Set by `--no-confirm` CLI flag.
+   */
+  noConfirm?: boolean;
+  /**
+   * Cumulative USD ceiling for the agent session. When set, each tool
+   * call's tier-derived estimate is added to a running total; if the
+   * next call would push the total over `budgetUsd`, the executor
+   * skips it and returns a "budget exceeded" tool result so the LLM
+   * can adapt or stop. Mirrors `vibe run --budget-usd`. `undefined`
+   * disables the cap.
+   */
+  budgetUsd?: number;
 }
 
 export interface ExecutionResult {
@@ -54,10 +84,28 @@ function maskSensitiveArgs(args: Record<string, unknown>): Record<string, unknow
   return masked;
 }
 
+/**
+ * Estimate the USD cost of a tool call from its declared tier. Conservative
+ * upper-third midpoints — see TIER_USD_ESTIMATE in commands/_shared/cost-tier.
+ * The agent registry uses a 5-tier vocabulary; `medium` falls between low
+ * and high so we use a hand-picked $0.50 midpoint here.
+ */
+function estimateToolCost(cost: ToolDefinition["cost"]): number {
+  if (!cost) return 0;
+  switch (cost) {
+    case "free": return 0;
+    case "low": return 0.05;
+    case "medium": return 0.5;
+    case "high": return 3;
+    case "very-high": return 25;
+  }
+}
+
 export class AgentExecutor {
   private adapter: LLMAdapter | null = null;
   private registry: ToolRegistry;
   private memory: ConversationMemory;
+  private cumulativeUsd = 0;
   private context: AgentContext;
   private config: AgentExecutorOptions;
   private initialized = false;
@@ -180,13 +228,48 @@ export class AgentExecutor {
 
   /**
    * Execute a single tool
+   *
+   * Confirm-prompt logic:
+   *   - `noConfirm: true`               → never prompt (automation / CI)
+   *   - `confirmAlways: true`           → prompt for every tool call
+   *   - default                         → prompt only when the tool's
+   *                                       cost is high/very-high (the
+   *                                       `costGate`)
+   *
+   * The two non-trivial cases require `confirmCallback` to be set; if
+   * it isn't, no prompt fires and the tool runs.
    */
   private async executeTool(toolCall: ToolCall): Promise<ToolResult> {
-    // Check confirmCallback if set
-    if (this.config.confirmCallback) {
+    const def = this.registry.getDefinition(toolCall.name);
+    const cost = def?.cost;
+    const isExpensive = cost === "high" || cost === "very-high";
+
+    // Budget gate runs *before* confirm — if we're over the cap there's
+    // no point asking the user to approve. The LLM gets a structured
+    // "budget exceeded" output and can decide to stop or pivot.
+    if (this.config.budgetUsd !== undefined) {
+      const estimate = estimateToolCost(cost);
+      if (this.cumulativeUsd + estimate > this.config.budgetUsd) {
+        const remaining = (this.config.budgetUsd - this.cumulativeUsd).toFixed(2);
+        return {
+          toolCallId: toolCall.id,
+          success: false,
+          output: "",
+          error: `Budget exceeded: ${toolCall.name} estimated at $${estimate.toFixed(2)} but only $${remaining} remains of $${this.config.budgetUsd.toFixed(2)} cap.`,
+        };
+      }
+    }
+
+    const shouldConfirm =
+      !this.config.noConfirm &&
+      this.config.confirmCallback &&
+      (this.config.confirmAlways || isExpensive);
+
+    if (shouldConfirm && this.config.confirmCallback) {
       const confirmed = await this.config.confirmCallback(
         toolCall.name,
-        toolCall.arguments
+        toolCall.arguments,
+        cost,
       );
       if (!confirmed) {
         return {
@@ -203,7 +286,21 @@ export class AgentExecutor {
       this.context
     );
     result.toolCallId = toolCall.id;
+    // Only count successful runs toward the budget — a failed call
+    // typically doesn't bill, and we'd rather under-count and let the
+    // user retry than block on a false positive.
+    if (result.success) {
+      this.cumulativeUsd += estimateToolCost(cost);
+    }
     return result;
+  }
+
+  /**
+   * Cumulative tier-estimated USD spent in this session. Updates after
+   * every successful tool call. Useful for status output / `tools` REPL.
+   */
+  getCumulativeUsd(): number {
+    return this.cumulativeUsd;
   }
 
   /**

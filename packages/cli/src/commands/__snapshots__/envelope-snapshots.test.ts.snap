@@ -6,8 +6,16 @@ exports[`CLI --describe schemas (drift detection) > vibe agent --describe 1`] = 
   "name": "agent",
   "parameters": {
     "properties": {
+      "budgetUsd": {
+        "description": "Reject tool calls past this cumulative USD ceiling (tier-estimated, conservative)",
+        "enum": [
+          "tier-estimated",
+          "conservative",
+        ],
+        "type": "string",
+      },
       "confirm": {
-        "description": "Confirm before each tool execution",
+        "description": "Confirm before EVERY tool execution (overrides cost gate)",
         "type": "boolean",
       },
       "input": {
@@ -22,6 +30,10 @@ exports[`CLI --describe schemas (drift detection) > vibe agent --describe 1`] = 
       "model": {
         "description": "Model to use (provider-specific)",
         "type": "string",
+      },
+      "noConfirm": {
+        "description": "Disable all confirm prompts including the high/very-high cost gate (CI / automation)",
+        "type": "boolean",
       },
       "project": {
         "description": "Timeline file or directory to load",

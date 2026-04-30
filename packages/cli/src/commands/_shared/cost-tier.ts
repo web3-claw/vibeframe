@@ -35,6 +35,25 @@ export const TIER_COLOR: Record<CostTier, (s: string) => string> = {
 };
 
 /**
+ * Conservative USD midpoint estimate per tier — used for budget caps
+ * where we'd rather over-count than under-count and blow past the
+ * ceiling. Pick the upper third of each tier's published range so a
+ * `--budget-usd 1` agent session denies a `very-high` tool before it
+ * fires (`$25 > $1`), but a string of `low` calls fits comfortably.
+ *
+ * Note: the agent's tool registry has a 5-tier vocabulary
+ * (`free|low|medium|high|very-high`); the CLI catalog uses 4 (no
+ * `medium`). When estimating from a tool's tier, fall back to `medium
+ * ≈ $0.50` for the in-between case.
+ */
+export const TIER_USD_ESTIMATE: Record<CostTier, number> = {
+  "free": 0,
+  "low": 0.05,
+  "high": 3,
+  "very-high": 25,
+};
+
+/**
  * Symbol used to stamp a Command with its cost tier. Hidden from
  * Commander's API surface; only `getCostTier` and `--describe` care.
  */

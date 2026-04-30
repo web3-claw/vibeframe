@@ -25,14 +25,23 @@ export interface StartAgentOptions {
   maxTurns?: string;
   input?: string;
   confirm?: boolean;
+  /** When true, suppress *all* confirm prompts including the cost gate. */
+  noConfirm?: boolean;
+  /** Cumulative USD ceiling — agent rejects further tool calls past this. */
+  budgetUsd?: string;
 }
 
 /**
- * Prompt user for confirmation before tool execution
+ * Prompt user for confirmation before tool execution.
+ *
+ * Shows the tool's cost tier inline so the user can decide whether to
+ * approve a high-spend call. Tier color matches the rest of the CLI
+ * (free=green, low=cyan, medium=yellow, high=yellow, very-high=red).
  */
 async function promptConfirm(
   toolName: string,
-  args: Record<string, unknown>
+  args: Record<string, unknown>,
+  cost: "free" | "low" | "medium" | "high" | "very-high" | undefined,
 ): Promise<boolean> {
   const { createInterface } = await import("node:readline");
   const rl = createInterface({
@@ -44,7 +53,15 @@ async function promptConfirm(
   return new Promise((resolve) => {
     const argsStr = JSON.stringify(args, null, 2);
     console.log();
-    console.log(chalk.yellow(`Execute ${chalk.bold(toolName)}?`));
+    const tierColor: Record<string, (s: string) => string> = {
+      "free": chalk.green,
+      "low": chalk.cyan,
+      "medium": chalk.yellow,
+      "high": chalk.yellow,
+      "very-high": chalk.red,
+    };
+    const costBadge = cost ? ` ${tierColor[cost](`[${cost.toUpperCase()}]`)}` : "";
+    console.log(chalk.yellow(`Execute ${chalk.bold(toolName)}?${costBadge}`));
     console.log(chalk.dim(argsStr));
     rl.question(chalk.cyan("(y/n): "), (answer) => {
       rl.close();
@@ -59,7 +76,12 @@ async function promptConfirm(
  */
 export async function startAgent(options: StartAgentOptions = {}): Promise<void> {
   const isNonInteractive = !!options.input;
-  const confirmMode = options.confirm || false;
+  const confirmAlways = options.confirm || false;
+  const noConfirm = options.noConfirm || false;
+  const budgetUsd = options.budgetUsd ? parseFloat(options.budgetUsd) : undefined;
+  if (budgetUsd !== undefined && (Number.isNaN(budgetUsd) || budgetUsd < 0)) {
+    exitWithError(generalError(`Invalid --budget-usd: ${options.budgetUsd}`, "Must be a non-negative number (e.g., --budget-usd 5)"));
+  }
 
   // Check if TTY is available (skip for non-interactive mode)
   if (!isNonInteractive && !hasTTY()) {
@@ -106,7 +128,13 @@ export async function startAgent(options: StartAgentOptions = {}): Promise<void>
       maxTurns,
       verbose,
       projectPath: options.project,
-      confirmCallback: confirmMode ? promptConfirm : undefined,
+      // Always supply the callback so the cost gate (high/very-high
+      // tools) can prompt even without `--confirm`. The executor
+      // decides whether to invoke based on `confirmAlways` / `noConfirm`.
+      confirmCallback: noConfirm ? undefined : promptConfirm,
+      confirmAlways,
+      noConfirm,
+      budgetUsd,
     });
 
     await agent.initialize();
@@ -155,9 +183,15 @@ export async function startAgent(options: StartAgentOptions = {}): Promise<void>
   console.log();
 
   // Show status line
+  const confirmStatus = noConfirm
+    ? chalk.dim("no-confirm")
+    : confirmAlways
+      ? chalk.yellow("confirm mode")
+      : chalk.dim("cost gate (high/very-high)");
   const statusParts = [
     chalk.green(`${toolCount} tools`),
-    confirmMode ? chalk.yellow("confirm mode") : null,
+    confirmStatus,
+    budgetUsd !== undefined ? chalk.magenta(`budget: $${budgetUsd.toFixed(2)}`) : null,
     options.project ? chalk.blue(`project: ${options.project}`) : null,
   ].filter(Boolean);
 
@@ -317,7 +351,9 @@ export const agentCommand = new Command("agent")
   .option("-v, --verbose", "Show verbose output including tool calls")
   .option("--max-turns <n>", "Maximum turns per request", "10")
   .option("-i, --input <query>", "Run a single query and exit (non-interactive)")
-  .option("-c, --confirm", "Confirm before each tool execution")
+  .option("-c, --confirm", "Confirm before EVERY tool execution (overrides cost gate)")
+  .option("--no-confirm", "Disable all confirm prompts including the high/very-high cost gate (CI / automation)")
+  .option("--budget-usd <usd>", "Reject tool calls past this cumulative USD ceiling (tier-estimated, conservative)")
   .action(async (options) => {
     await startAgent(options);
   });

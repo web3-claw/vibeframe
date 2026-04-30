@@ -38,6 +38,10 @@ function toAgentDefinition(t: ToolDefinition): AgentToolDefinition {
   return {
     name: t.name,
     description: t.description,
+    // Propagate the manifest's cost tier so the agent's executor can
+    // mandate a confirm prompt for high-spend tools without needing a
+    // parallel SSOT.
+    cost: t.cost,
     parameters: {
       type: "object",
       properties,

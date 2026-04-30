@@ -14,6 +14,12 @@ export interface ToolParameter {
 export interface ToolDefinition {
   name: string;
   description: string;
+  /**
+   * Cost tier propagated from the manifest's `defineTool` declaration.
+   * Five tiers (free / low / medium / high / very-high). Used by the
+   * agent executor to decide whether a confirm prompt is mandatory.
+   */
+  cost?: "free" | "low" | "medium" | "high" | "very-high";
   parameters: {
     type: "object";
     properties: Record<string, ToolParameter>;
