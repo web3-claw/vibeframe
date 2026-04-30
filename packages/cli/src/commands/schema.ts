@@ -16,14 +16,22 @@ export const schemaCommand = new Command("schema")
   .description("Show JSON schema for a CLI command")
   .argument("[command]", "Command path (e.g., generate.image, edit.silence-cut)")
   .option("--list", "List all available command paths")
-  .action((commandPath: string | undefined, options: { list?: boolean }) => {
+  .option("--filter <tier>", "With --list, only show commands at the given cost tier (free | low | high | very-high)")
+  .action((commandPath: string | undefined, options: { list?: boolean; filter?: string }) => {
     const program = schemaCommand.parent;
     if (!program) {
       exitWithError(generalError("Schema command must be registered on a program"));
     }
 
     if (options.list || !commandPath) {
-      listCommands(program);
+      const validTiers = new Set(["free", "low", "high", "very-high"]);
+      if (options.filter && !validTiers.has(options.filter)) {
+        exitWithError(usageError(
+          `Invalid --filter: ${options.filter}`,
+          `Must be one of: free, low, high, very-high (matches the cost field on each subcommand).`,
+        ));
+      }
+      listCommands(program, options.filter);
       return;
     }
 
@@ -84,7 +92,7 @@ interface CommandListEntry {
   cost?: string;
 }
 
-function listCommands(program: Command): void {
+function listCommands(program: Command, filter?: string): void {
   const commands: CommandListEntry[] = [];
   const skipTopLevel = new Set(["help", "schema"]);
 
@@ -98,6 +106,10 @@ function listCommands(program: Command): void {
       const desc = (group as Command).description() || "";
       if (desc.toLowerCase().includes("deprecated")) continue;
       const cost = getCostTier(group as Command);
+      // `--filter` excludes anything that doesn't match. Untiered
+      // commands (setup/doctor/init) drop out of *all* filtered
+      // results — they never had a `cost` claim to filter on.
+      if (filter && cost !== filter) continue;
       commands.push({ path: name, description: desc, ...(cost ? { cost } : {}) });
       continue;
     }
@@ -106,6 +118,7 @@ function listCommands(program: Command): void {
       const desc = (sub as Command).description() || "";
       if (desc.toLowerCase().includes("deprecated")) continue;
       const cost = getCostTier(sub as Command);
+      if (filter && cost !== filter) continue;
       commands.push({
         path: `${name}.${(sub as Command).name()}`,
         description: desc,

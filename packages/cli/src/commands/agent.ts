@@ -9,7 +9,7 @@ import chalk from "chalk";
 import ora from "ora";
 import { AgentExecutor } from "../agent/index.js";
 import { getApiKeyFromConfig, type LLMProvider } from "../config/index.js";
-import { hasTTY } from "../utils/tty.js";
+import { hasTTY, promptConfirm as promptYesNo } from "../utils/tty.js";
 import { loadEnv } from "../utils/api-key.js";
 import { exitWithError, authError, generalError } from "./output.js";
 // Bundled inline by esbuild (see packages/cli/build.js). The previous
@@ -37,37 +37,33 @@ export interface StartAgentOptions {
  * Shows the tool's cost tier inline so the user can decide whether to
  * approve a high-spend call. Tier color matches the rest of the CLI
  * (free=green, low=cyan, medium=yellow, high=yellow, very-high=red).
+ *
+ * Uses the shared `promptConfirm` (arrow ↑↓ Yes/No on TTY, `(Y/n)`
+ * fallback in pipes) so the agent matches `vibe setup`'s dialog style.
+ * Default selection is **No** for very-high tools — make the user
+ * deliberately pick Yes for the spendiest calls.
  */
 async function promptConfirm(
   toolName: string,
   args: Record<string, unknown>,
   cost: "free" | "low" | "medium" | "high" | "very-high" | undefined,
 ): Promise<boolean> {
-  const { createInterface } = await import("node:readline");
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-    terminal: process.stdin.isTTY ?? false,
-  });
-
-  return new Promise((resolve) => {
-    const argsStr = JSON.stringify(args, null, 2);
-    console.log();
-    const tierColor: Record<string, (s: string) => string> = {
-      "free": chalk.green,
-      "low": chalk.cyan,
-      "medium": chalk.yellow,
-      "high": chalk.yellow,
-      "very-high": chalk.red,
-    };
-    const costBadge = cost ? ` ${tierColor[cost](`[${cost.toUpperCase()}]`)}` : "";
-    console.log(chalk.yellow(`Execute ${chalk.bold(toolName)}?${costBadge}`));
-    console.log(chalk.dim(argsStr));
-    rl.question(chalk.cyan("(y/n): "), (answer) => {
-      rl.close();
-      resolve(answer.toLowerCase() === "y" || answer.toLowerCase() === "yes");
-    });
-  });
+  const argsStr = JSON.stringify(args, null, 2);
+  const tierColor: Record<string, (s: string) => string> = {
+    "free": chalk.green,
+    "low": chalk.cyan,
+    "medium": chalk.yellow,
+    "high": chalk.yellow,
+    "very-high": chalk.red,
+  };
+  const costBadge = cost ? ` ${tierColor[cost](`[${cost.toUpperCase()}]`)}` : "";
+  // Print the question + args block above the picker. promptYesNo
+  // renders the arrow selector below.
+  console.log();
+  console.log(chalk.yellow(`Execute ${chalk.bold(toolName)}?${costBadge}`));
+  console.log(chalk.dim(argsStr));
+  const defaultYes = cost !== "very-high";
+  return promptYesNo("", defaultYes);
 }
 
 /**

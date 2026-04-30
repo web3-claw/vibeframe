@@ -122,18 +122,33 @@ Run 'vibe schema run' for structured parameter info.
         } else {
           console.log(chalk.bold("  Execution Plan:"));
           console.log();
+          // Sum per-step estimates for the human-readable rollup. The
+          // strings come back as `≤$X.XX` from the executor; parse the
+          // numeric part to total. Steps with `UNKNOWN ACTION` or no
+          // estimate contribute 0 — the rollup undercounts when actions
+          // lack metadata, which is the safe direction.
+          let totalMax = 0;
           for (let i = 0; i < result.steps.length; i++) {
             const step = result.steps[i];
             const est = (step.data as Record<string, unknown>)?.estimatedCost;
+            if (typeof est === "string") {
+              const m = est.match(/\$([\d.]+)/);
+              if (m) totalMax += parseFloat(m[1]);
+            }
             const costTag = est ? chalk.dim(` ~${est}`) : "";
             console.log(`  ${chalk.dim(`${i + 1}.`)} ${chalk.bold(step.id)} ${chalk.dim(`→ ${step.action}`)}${costTag}`);
           }
-          if (result.budget) {
+          if (totalMax > 0) {
             console.log();
-            console.log(chalk.dim(`  Total upper-bound: $${result.budget.estimatedCostUsd.toFixed(2)}`));
+            console.log(chalk.dim(`  Total upper-bound: $${totalMax.toFixed(2)}`) + chalk.dim(`  (sum of per-step ceilings)`));
+          }
+          if (result.budget) {
+            // Budget came from manifest or --budget-usd; show ceiling + status.
             if (result.budget.abortedBy) {
               console.log(chalk.yellow(`  ⚠ Budget ceiling exceeded (${result.budget.abortedBy}) — execution will abort.`));
             }
+          } else if (totalMax > 0) {
+            console.log(chalk.dim(`  Tip: cap with --budget-usd ${Math.ceil(totalMax)} to abort if cost exceeds the estimate.`));
           }
           console.log();
           console.log(chalk.dim("  Run without --dry-run to execute."));
