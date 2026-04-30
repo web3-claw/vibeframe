@@ -28,7 +28,7 @@ import { registerHighlightsCommands } from "./ai-highlights.js";
 import { executeAnimatedCaption, type AnimatedCaptionStyle } from "./ai-animated-caption.js";
 import { isJsonMode, outputSuccess, exitWithError, notFoundError, usageError, apiError, generalError } from "./output.js";
 
-export const pipelineCommand = new Command("remix")
+export const remixCommand = new Command("remix")
   .description(
     "Transform existing media (highlights, auto-shorts, animated captions, regenerate-scene)"
   )
@@ -67,17 +67,17 @@ Run 'vibe schema remix.<command>' for structured parameter info.
 
 // ── pipeline regenerate-scene ──────────────────────────────────────────
 
-registerScriptPipelineCommands(pipelineCommand);
+registerScriptPipelineCommands(remixCommand);
 
 // ── pipeline highlights & auto-shorts ──────────────────────────────────
 
-registerHighlightsCommands(pipelineCommand);
+registerHighlightsCommands(remixCommand);
 
 // ── pipeline animated-caption ────────────────────────────────────────────
 
 const ANIMATED_CAPTION_STYLES = ["highlight", "bounce", "pop-in", "neon", "karaoke-sweep", "typewriter"];
 
-pipelineCommand
+remixCommand
   .command("animated-caption")
   .description("Add animated captions with word-by-word effects (Whisper + Remotion/ASS)")
   .argument("<video>", "Video file path")

@@ -148,7 +148,7 @@ export const analyzeSuggestTool = defineTool({
   },
 });
 
-export const analyzeTools: readonly AnyTool[] = [
+export const inspectTools: readonly AnyTool[] = [
   analyzeMediaTool as unknown as AnyTool,
   analyzeVideoTool as unknown as AnyTool,
   analyzeReviewTool as unknown as AnyTool,

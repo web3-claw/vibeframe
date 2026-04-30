@@ -214,7 +214,7 @@ export const pipelineRegenerateSceneTool = defineTool({
   },
 });
 
-export const pipelineTools: readonly AnyTool[] = [
+export const remixTools: readonly AnyTool[] = [
   pipelineHighlightsTool as unknown as AnyTool,
   pipelineAutoShortsTool as unknown as AnyTool,
   pipelineRunTool as unknown as AnyTool,

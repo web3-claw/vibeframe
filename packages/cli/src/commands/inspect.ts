@@ -30,7 +30,7 @@ import { isJsonMode, outputSuccess, exitWithError, apiError } from "./output.js"
 import { sanitizeLLMResponse } from "./sanitize.js";
 import { rejectControlChars } from "./validate.js";
 
-export const analyzeCommand = new Command("inspect")
+export const inspectCommand = new Command("inspect")
   .description("Inspect media using AI (images, videos, YouTube URLs)")
   .addHelpText(
     "after",
@@ -53,7 +53,7 @@ Run 'vibe schema inspect.<command>' for structured parameter info.
 
 // ── analyze media ──────────────────────────────────────────────────────
 
-analyzeCommand
+inspectCommand
   .command("media")
   .description("Analyze any media: images, videos, or YouTube URLs using Gemini")
   .argument("<source>", "Image/video file path, image URL, or YouTube URL")
@@ -156,7 +156,7 @@ analyzeCommand
 
 // ── analyze video ──────────────────────────────────────────────────────
 
-analyzeCommand
+inspectCommand
   .command("video")
   .description("Analyze video using Gemini (summarize, Q&A, extract info)")
   .argument("<source>", "Video file path or YouTube URL")
@@ -258,11 +258,11 @@ analyzeCommand
 
 // ── analyze review ─────────────────────────────────────────────────────
 
-registerReviewCommand(analyzeCommand);
+registerReviewCommand(inspectCommand);
 
 // ── analyze suggest ────────────────────────────────────────────────────
 
-analyzeCommand
+inspectCommand
   .command("suggest")
   .description("Get AI edit suggestions using Gemini")
   .argument("<project>", "Timeline file or directory")

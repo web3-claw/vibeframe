@@ -20,9 +20,9 @@ import { sceneCommand } from "./commands/scene.js";
 import { timelineCommand } from "./commands/timeline.js";
 import { generateCommand } from "./commands/generate.js";
 import { editCommand } from "./commands/edit-cmd.js";
-import { analyzeCommand } from "./commands/analyze.js";
+import { inspectCommand } from "./commands/inspect.js";
 import { audioCommand } from "./commands/audio.js";
-import { pipelineCommand } from "./commands/pipeline.js";
+import { remixCommand } from "./commands/remix.js";
 import { schemaCommand } from "./commands/schema.js";
 import { mediaCommand } from "./commands/media.js";
 import { batchCommand } from "./commands/batch.js";
@@ -212,9 +212,9 @@ program.hook("preAction", async (thisCommand, actionCommand) => {
 // Main commands (visible in --help)
 program.addCommand(generateCommand);
 program.addCommand(editCommand);
-program.addCommand(analyzeCommand);
+program.addCommand(inspectCommand);
 program.addCommand(audioCommand);
-program.addCommand(pipelineCommand);
+program.addCommand(remixCommand);
 program.addCommand(setupCommand);
 program.addCommand(initCommand);
 program.addCommand(buildCommand);
