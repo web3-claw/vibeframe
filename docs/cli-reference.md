@@ -8,7 +8,7 @@ lists every command, its arguments, and its options. For agentic /
 machine-readable access use `vibe schema --list --json` and
 `vibe schema <command> --json` directly.
 
-> CLI version: `0.84.0`
+> CLI version: `0.85.0`
 
 ## Mental model
 
@@ -145,7 +145,9 @@ Start the AI agent with natural language interface
 - `verbose` *(boolean)* — Show verbose output including tool calls
 - `maxTurns` *(number)* *(default: `10`)* — Maximum turns per request
 - `input` *(string)* — Run a single query and exit (non-interactive)
-- `confirm` *(boolean)* — Confirm before each tool execution
+- `confirm` *(boolean)* — Confirm before EVERY tool execution (overrides cost gate)
+- `noConfirm` *(boolean)* — Disable all confirm prompts including the high/very-high cost gate (CI / automation)
+- `budgetUsd` *(string)* *(tier-estimated \| conservative)* — Reject tool calls past this cumulative USD ceiling (tier-estimated, conservative)
 
 #### `vibe build`
 
