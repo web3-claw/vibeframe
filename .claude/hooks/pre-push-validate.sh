@@ -5,8 +5,16 @@ set -uo pipefail
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
 
-# Only intercept git push commands
-if ! echo "$COMMAND" | grep -qE "git\s+push"; then
+# Only intercept git push commands. The pattern accepts any args between
+# `git` and `push` (e.g. `git -C /path push`, `git --git-dir=… push`,
+# `git push --force`) — pre-fix this required a literal whitespace
+# between the two words and silently passed through `git -C <dir> push`.
+#
+# `\b` (word boundary) is intentionally avoided here: BSD grep's ERE on
+# macOS doesn't support it inside grouped alternations. Instead the
+# pattern requires `push` followed by EOL or whitespace, which gives the
+# same trailing-boundary effect on every platform.
+if ! echo "$COMMAND" | grep -qE "(^|[[:space:]|;&])git[[:space:]][^|;&]*(push\$|push[[:space:]])"; then
   exit 0
 fi
 
