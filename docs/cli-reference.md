@@ -8,7 +8,7 @@ lists every command, its arguments, and its options. For agentic /
 machine-readable access use `vibe schema --list --json` and
 `vibe schema <command> --json` directly.
 
-> CLI version: `0.88.0`
+> CLI version: `0.89.0`
 
 ## Mental model
 
@@ -169,6 +169,14 @@ Build a VibeFrame video project from STORYBOARD.md
 - `imageSize` *(string)* *(default: `"1536x1024"`)* — Image size: 1024x1024|1536x1024|1024x1536
 - `force` *(boolean)* — Re-dispatch primitives even when assets already exist
 - `dryRun` *(boolean)* — Preview parameters without dispatching
+
+#### `vibe completion`
+
+Print a shell completion script for `vibe`
+
+**Parameters:**
+
+- `shell` *(string)* **required** — Target shell: zsh | bash | fish
 
 #### `vibe context`
 
