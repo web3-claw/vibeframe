@@ -83,7 +83,13 @@ describe("openUrl", () => {
     await openUrl("https://example.com");
 
     expect(spawnMock).toHaveBeenCalledTimes(1);
-    const [cmd, args, opts] = spawnMock.mock.calls[0] as [string, string[], { detached?: boolean; stdio?: string; shell?: boolean }];
+    // `mock.calls[0]` is typed as `[]` for an untyped vi.fn(); cast through
+    // `unknown` to satisfy strict TS — the runtime values are what we wrote.
+    const [cmd, args, opts] = spawnMock.mock.calls[0] as unknown as [
+      string,
+      string[],
+      { detached?: boolean; stdio?: string; shell?: boolean },
+    ];
     expect(cmd).toBe("open");
     expect(args).toEqual(["https://example.com"]);
     expect(opts.detached).toBe(true);

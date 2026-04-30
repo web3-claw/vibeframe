@@ -14,7 +14,10 @@ interface FetchCall {
 
 function mockFetch(
   responder: (url: string, init?: RequestInit) => Response | Promise<Response>,
-): { fetchMock: ReturnType<typeof vi.fn>; calls: FetchCall[] } {
+): { calls: FetchCall[] } {
+  // We don't return the mock itself — tests only inspect `calls`. Returning
+  // the typed mock would force a `Mock<any[], unknown>` widening that
+  // strict TypeScript rejects (variance on mockImplementation).
   const calls: FetchCall[] = [];
   const fetchMock = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
     const u = typeof url === "string" ? url : url.toString();
@@ -22,7 +25,7 @@ function mockFetch(
     return responder(u, init);
   });
   vi.stubGlobal("fetch", fetchMock);
-  return { fetchMock, calls };
+  return { calls };
 }
 
 describe("testKey — per-provider URL + auth", () => {
