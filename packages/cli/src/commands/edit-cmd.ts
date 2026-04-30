@@ -42,6 +42,7 @@ import { registerEditCommands } from "./ai-edit-cli.js";
 import { registerFillGapsCommand } from "./ai-fill-gaps.js";
 import { isJsonMode, outputSuccess, exitWithError, usageError, notFoundError, apiError, generalError } from "./output.js";
 import { rejectControlChars, validateOutputPath } from "./validate.js";
+import { applyTiers } from "./_shared/cost-tier.js";
 
 export const editCommand = new Command("edit")
   .alias("ed")
@@ -1065,6 +1066,30 @@ editCommand
       exitWithError(generalError(`Video upscaling failed: ${msg}`));
     }
   });
+
+// ── Cost-tier annotations ──────────────────────────────────────────────────
+// Applied at module-bottom so tier metadata stays next to the catalog.
+// SSOT: docs/cli-mental-model.md.
+applyTiers(editCommand, {
+  // free — FFmpeg only
+  "noise-reduce": "free",
+  "fade": "free",
+  "text-overlay": "free",
+  "interpolate": "free",
+  // low — Whisper / single LLM call
+  "silence-cut": "low",
+  "caption": "low",
+  "translate-srt": "low",
+  "jump-cut": "low",
+  "grade": "low",
+  "speed-ramp": "low",
+  // high — vision LLM or image gen
+  "reframe": "high",
+  "image": "high",
+  "upscale": "high",
+  // very-high — video gen per gap
+  "fill-gaps": "very-high",
+});
 
 
 // ── Exported execute functions ─────────────────────────────────────────────

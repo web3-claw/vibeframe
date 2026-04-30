@@ -29,6 +29,7 @@ import { registerReviewCommand } from "./ai-review.js";
 import { isJsonMode, outputSuccess, exitWithError, apiError } from "./output.js";
 import { sanitizeLLMResponse } from "./sanitize.js";
 import { rejectControlChars } from "./validate.js";
+import { applyTier } from "./_shared/cost-tier.js";
 
 export const inspectCommand = new Command("inspect")
   .description("Inspect media using AI (images, videos, YouTube URLs)")
@@ -153,6 +154,7 @@ inspectCommand
       exitWithError(apiError(`Analysis failed: ${(error as Error).message}`));
     }
   });
+applyTier(inspectCommand.commands[inspectCommand.commands.length - 1], "low");
 
 // ── analyze video ──────────────────────────────────────────────────────
 
@@ -255,10 +257,12 @@ inspectCommand
       exitWithError(apiError(`Video analysis failed: ${(error as Error).message}`));
     }
   });
+applyTier(inspectCommand.commands[inspectCommand.commands.length - 1], "low");
 
 // ── analyze review ─────────────────────────────────────────────────────
 
 registerReviewCommand(inspectCommand);
+applyTier(inspectCommand.commands[inspectCommand.commands.length - 1], "low");
 
 // ── analyze suggest ────────────────────────────────────────────────────
 
@@ -354,3 +358,4 @@ inspectCommand
       exitWithError(apiError(`AI suggestion failed: ${(error as Error).message}`));
     }
   });
+applyTier(inspectCommand.commands[inspectCommand.commands.length - 1], "low");

@@ -10,6 +10,7 @@
 
 import { Command } from "commander";
 import { exitWithError, generalError, usageError } from "./output.js";
+import { getCostTier } from "./_shared/cost-tier.js";
 
 export const schemaCommand = new Command("schema")
   .description("Show JSON schema for a CLI command")
@@ -286,9 +287,14 @@ export function buildSchema(
     properties[name] = prop;
   }
 
+  // Cost tier is only stamped on subcommands that opt in via applyTier;
+  // utility commands (setup/doctor/init/...) intentionally omit it.
+  const cost = getCostTier(cmd);
+
   return {
     name: toolName,
     description: cmd.description(),
+    ...(cost ? { cost } : {}),
     parameters: {
       type: "object",
       properties,

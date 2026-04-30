@@ -28,6 +28,7 @@ import {
 import { getApiKey, requireApiKey } from "../utils/api-key.js";
 import { execSafe, commandExists, execSafeSync } from "../utils/exec-safe.js";
 import { detectFormat, formatTranscript } from "../utils/subtitle.js";
+import { applyTiers } from "./_shared/cost-tier.js";
 import { formatTime } from "./ai-helpers.js";
 import { isJsonMode, outputSuccess, exitWithError, notFoundError, usageError, apiError, generalError } from "./output.js";
 import { rejectControlChars, validateOutputPath } from "./validate.js";
@@ -713,3 +714,13 @@ audioCommand
       exitWithError(generalError(`Audio ducking failed: ${msg}`));
     }
   });
+
+// Cost-tier annotations — SSOT: docs/cli-mental-model.md
+applyTiers(audioCommand, {
+  "transcribe": "low",
+  "list-voices": "low",
+  "isolate": "low",
+  "clone-voice": "low",
+  "dub": "high",
+  "duck": "free",
+});

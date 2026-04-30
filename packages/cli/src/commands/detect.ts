@@ -6,6 +6,7 @@ import { Project, type ProjectFile } from "../engine/index.js";
 import { execSafe, commandExists, ffprobeDuration } from "../utils/exec-safe.js";
 import { exitWithError, generalError, outputSuccess, spinner as createSpinner } from "./output.js";
 import { validateOutputPath } from "./validate.js";
+import { applyTiers } from "./_shared/cost-tier.js";
 
 // ── Execute function interfaces ──────────────────────────────────────
 
@@ -589,6 +590,13 @@ detectCommand
       exitWithError(generalError(`Beat detection failed: ${msg}`));
     }
   });
+
+// Cost-tier annotations — every detect subcommand is FFmpeg-only.
+applyTiers(detectCommand, {
+  "scenes": "free",
+  "silence": "free",
+  "beats": "free",
+});
 
 function formatTimestamp(seconds: number): string {
   const mins = Math.floor(seconds / 60);

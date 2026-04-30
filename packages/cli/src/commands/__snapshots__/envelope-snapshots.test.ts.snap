@@ -52,6 +52,7 @@ exports[`CLI --describe schemas (drift detection) > vibe agent --describe 1`] = 
 
 exports[`CLI --describe schemas (drift detection) > vibe audio clone-voice --describe 1`] = `
 {
+  "cost": "low",
   "description": "Clone a voice from audio samples using ElevenLabs",
   "name": "audio.clone-voice",
   "parameters": {
@@ -99,6 +100,7 @@ exports[`CLI --describe schemas (drift detection) > vibe audio clone-voice --des
 
 exports[`CLI --describe schemas (drift detection) > vibe audio dub --describe 1`] = `
 {
+  "cost": "high",
   "description": "Dub audio/video to another language (transcribe, translate, TTS)",
   "name": "audio.dub",
   "parameters": {
@@ -142,6 +144,7 @@ exports[`CLI --describe schemas (drift detection) > vibe audio dub --describe 1`
 
 exports[`CLI --describe schemas (drift detection) > vibe audio duck --describe 1`] = `
 {
+  "cost": "free",
   "description": "Auto-duck background music when voice is present (FFmpeg)",
   "name": "audio.duck",
   "parameters": {
@@ -193,6 +196,7 @@ exports[`CLI --describe schemas (drift detection) > vibe audio duck --describe 1
 
 exports[`CLI --describe schemas (drift detection) > vibe audio isolate --describe 1`] = `
 {
+  "cost": "low",
   "description": "Isolate vocals from audio using ElevenLabs",
   "name": "audio.isolate",
   "parameters": {
@@ -225,6 +229,7 @@ exports[`CLI --describe schemas (drift detection) > vibe audio isolate --describ
 
 exports[`CLI --describe schemas (drift detection) > vibe audio list-voices --describe 1`] = `
 {
+  "cost": "low",
   "description": "List available ElevenLabs voices",
   "name": "audio.list-voices",
   "parameters": {
@@ -241,6 +246,7 @@ exports[`CLI --describe schemas (drift detection) > vibe audio list-voices --des
 
 exports[`CLI --describe schemas (drift detection) > vibe audio transcribe --describe 1`] = `
 {
+  "cost": "low",
   "description": "Transcribe audio using Whisper",
   "name": "audio.transcribe",
   "parameters": {
@@ -588,6 +594,7 @@ exports[`CLI --describe schemas (drift detection) > vibe demo --describe 1`] = `
 
 exports[`CLI --describe schemas (drift detection) > vibe detect beats --describe 1`] = `
 {
+  "cost": "free",
   "description": "Detect beats in audio (for music sync)",
   "name": "detect.beats",
   "parameters": {
@@ -615,6 +622,7 @@ exports[`CLI --describe schemas (drift detection) > vibe detect beats --describe
 
 exports[`CLI --describe schemas (drift detection) > vibe detect scenes --describe 1`] = `
 {
+  "cost": "free",
   "description": "Detect scene changes in video",
   "name": "detect.scenes",
   "parameters": {
@@ -651,6 +659,7 @@ exports[`CLI --describe schemas (drift detection) > vibe detect scenes --describ
 
 exports[`CLI --describe schemas (drift detection) > vibe detect silence --describe 1`] = `
 {
+  "cost": "free",
   "description": "Detect silence in audio/video",
   "name": "detect.silence",
   "parameters": {
@@ -712,6 +721,7 @@ exports[`CLI --describe schemas (drift detection) > vibe doctor --describe 1`] =
 
 exports[`CLI --describe schemas (drift detection) > vibe edit caption --describe 1`] = `
 {
+  "cost": "low",
   "description": "Transcribe and burn styled captions onto video (Whisper + FFmpeg)",
   "name": "edit.caption",
   "parameters": {
@@ -777,6 +787,7 @@ exports[`CLI --describe schemas (drift detection) > vibe edit caption --describe
 
 exports[`CLI --describe schemas (drift detection) > vibe edit fade --describe 1`] = `
 {
+  "cost": "free",
   "description": "Apply fade in/out effects to video (FFmpeg only, no API key needed)",
   "name": "edit.fade",
   "parameters": {
@@ -822,6 +833,7 @@ exports[`CLI --describe schemas (drift detection) > vibe edit fade --describe 1`
 
 exports[`CLI --describe schemas (drift detection) > vibe edit fill-gaps --describe 1`] = `
 {
+  "cost": "very-high",
   "description": "Fill timeline gaps with AI-generated video (Kling image-to-video)",
   "name": "edit.fill-gaps",
   "parameters": {
@@ -877,6 +889,7 @@ exports[`CLI --describe schemas (drift detection) > vibe edit fill-gaps --descri
 
 exports[`CLI --describe schemas (drift detection) > vibe edit grade --describe 1`] = `
 {
+  "cost": "low",
   "description": "Apply AI-generated color grading (Claude + FFmpeg)",
   "name": "edit.grade",
   "parameters": {
@@ -920,6 +933,7 @@ exports[`CLI --describe schemas (drift detection) > vibe edit grade --describe 1
 
 exports[`CLI --describe schemas (drift detection) > vibe edit image --describe 1`] = `
 {
+  "cost": "high",
   "description": "Edit image(s) using AI (Gemini, OpenAI, or Grok)",
   "name": "edit.image",
   "parameters": {
@@ -978,6 +992,7 @@ exports[`CLI --describe schemas (drift detection) > vibe edit image --describe 1
 
 exports[`CLI --describe schemas (drift detection) > vibe edit interpolate --describe 1`] = `
 {
+  "cost": "free",
   "description": "Create slow motion with frame interpolation (FFmpeg)",
   "name": "edit.interpolate",
   "parameters": {
@@ -1024,6 +1039,7 @@ exports[`CLI --describe schemas (drift detection) > vibe edit interpolate --desc
 
 exports[`CLI --describe schemas (drift detection) > vibe edit jump-cut --describe 1`] = `
 {
+  "cost": "low",
   "description": "Remove filler words (um, uh, like, etc.) from video using Whisper word-level timestamps",
   "name": "edit.jump-cut",
   "parameters": {
@@ -1072,6 +1088,7 @@ exports[`CLI --describe schemas (drift detection) > vibe edit jump-cut --describ
 
 exports[`CLI --describe schemas (drift detection) > vibe edit noise-reduce --describe 1`] = `
 {
+  "cost": "free",
   "description": "Remove background noise from audio/video using FFmpeg (no API key needed)",
   "name": "edit.noise-reduce",
   "parameters": {
@@ -1113,6 +1130,7 @@ exports[`CLI --describe schemas (drift detection) > vibe edit noise-reduce --des
 
 exports[`CLI --describe schemas (drift detection) > vibe edit reframe --describe 1`] = `
 {
+  "cost": "high",
   "description": "Auto-reframe video to different aspect ratio (Claude Vision + FFmpeg)",
   "name": "edit.reframe",
   "parameters": {
@@ -1173,12 +1191,13 @@ exports[`CLI --describe schemas (drift detection) > vibe edit reframe --describe
 
 exports[`CLI --describe schemas (drift detection) > vibe edit silence-cut --describe 1`] = `
 {
+  "cost": "low",
   "description": "Remove silent segments from video (FFmpeg default, or Gemini for smart detection)",
   "name": "edit.silence-cut",
   "parameters": {
     "properties": {
       "analyzeOnly": {
-        "description": "Only detect silence, don't cut",
+        "description": "(deprecated — use \`vibe detect silence\`) Only detect silence, don't cut",
         "type": "boolean",
       },
       "apiKey": {
@@ -1235,6 +1254,7 @@ exports[`CLI --describe schemas (drift detection) > vibe edit silence-cut --desc
 
 exports[`CLI --describe schemas (drift detection) > vibe edit speed-ramp --describe 1`] = `
 {
+  "cost": "low",
   "description": "Apply content-aware speed ramping (Whisper + Claude + FFmpeg)",
   "name": "edit.speed-ramp",
   "parameters": {
@@ -1294,6 +1314,7 @@ exports[`CLI --describe schemas (drift detection) > vibe edit speed-ramp --descr
 
 exports[`CLI --describe schemas (drift detection) > vibe edit text-overlay --describe 1`] = `
 {
+  "cost": "free",
   "description": "Apply text overlays to video (FFmpeg drawtext)",
   "name": "edit.text-overlay",
   "parameters": {
@@ -1359,6 +1380,7 @@ exports[`CLI --describe schemas (drift detection) > vibe edit text-overlay --des
 
 exports[`CLI --describe schemas (drift detection) > vibe edit translate-srt --describe 1`] = `
 {
+  "cost": "low",
   "description": "Translate SRT subtitle file to another language (Claude or OpenAI)",
   "name": "edit.translate-srt",
   "parameters": {
@@ -1407,6 +1429,7 @@ exports[`CLI --describe schemas (drift detection) > vibe edit translate-srt --de
 
 exports[`CLI --describe schemas (drift detection) > vibe edit upscale --describe 1`] = `
 {
+  "cost": "high",
   "description": "Upscale video resolution using AI or FFmpeg",
   "name": "edit.upscale",
   "parameters": {
@@ -1460,6 +1483,7 @@ exports[`CLI --describe schemas (drift detection) > vibe edit upscale --describe
 
 exports[`CLI --describe schemas (drift detection) > vibe generate background --describe 1`] = `
 {
+  "cost": "high",
   "description": "Generate video background using DALL-E",
   "name": "generate.background",
   "parameters": {
@@ -1501,6 +1525,7 @@ exports[`CLI --describe schemas (drift detection) > vibe generate background --d
 
 exports[`CLI --describe schemas (drift detection) > vibe generate image --describe 1`] = `
 {
+  "cost": "high",
   "description": "Generate image using AI (Gemini, OpenAI gpt-image, Grok, or Runway)",
   "name": "generate.image",
   "parameters": {
@@ -1576,6 +1601,7 @@ exports[`CLI --describe schemas (drift detection) > vibe generate image --descri
 
 exports[`CLI --describe schemas (drift detection) > vibe generate motion --describe 1`] = `
 {
+  "cost": "high",
   "description": "Generate motion graphics using Claude + Remotion (render & composite)",
   "name": "generate.motion",
   "parameters": {
@@ -1659,6 +1685,7 @@ exports[`CLI --describe schemas (drift detection) > vibe generate motion --descr
 
 exports[`CLI --describe schemas (drift detection) > vibe generate music --describe 1`] = `
 {
+  "cost": "low",
   "description": "Generate background music from a text prompt (ElevenLabs or Replicate MusicGen)",
   "name": "generate.music",
   "parameters": {
@@ -1728,6 +1755,7 @@ exports[`CLI --describe schemas (drift detection) > vibe generate music --descri
 
 exports[`CLI --describe schemas (drift detection) > vibe generate music-status --describe 1`] = `
 {
+  "cost": "free",
   "description": "Check music generation status",
   "name": "generate.music-status",
   "parameters": {
@@ -1751,6 +1779,7 @@ exports[`CLI --describe schemas (drift detection) > vibe generate music-status -
 
 exports[`CLI --describe schemas (drift detection) > vibe generate sound-effect --describe 1`] = `
 {
+  "cost": "low",
   "description": "Generate sound effect using ElevenLabs",
   "name": "generate.sound-effect",
   "parameters": {
@@ -1791,6 +1820,7 @@ exports[`CLI --describe schemas (drift detection) > vibe generate sound-effect -
 
 exports[`CLI --describe schemas (drift detection) > vibe generate speech --describe 1`] = `
 {
+  "cost": "low",
   "description": "Generate speech from text using ElevenLabs",
   "name": "generate.speech",
   "parameters": {
@@ -1833,6 +1863,7 @@ exports[`CLI --describe schemas (drift detection) > vibe generate speech --descr
 
 exports[`CLI --describe schemas (drift detection) > vibe generate storyboard --describe 1`] = `
 {
+  "cost": "high",
   "description": "Generate video storyboard from content using Claude",
   "name": "generate.storyboard",
   "parameters": {
@@ -1877,6 +1908,7 @@ exports[`CLI --describe schemas (drift detection) > vibe generate storyboard --d
 
 exports[`CLI --describe schemas (drift detection) > vibe generate thumbnail --describe 1`] = `
 {
+  "cost": "free",
   "description": "Generate video thumbnail (DALL-E) or extract best frame from video (Gemini)",
   "name": "generate.thumbnail",
   "parameters": {
@@ -1929,6 +1961,7 @@ exports[`CLI --describe schemas (drift detection) > vibe generate thumbnail --de
 
 exports[`CLI --describe schemas (drift detection) > vibe generate video --describe 1`] = `
 {
+  "cost": "very-high",
   "description": "Generate video using AI (Seedance, Grok, Kling, Runway, or Veo)",
   "name": "generate.video",
   "parameters": {
@@ -2032,6 +2065,7 @@ exports[`CLI --describe schemas (drift detection) > vibe generate video --descri
 
 exports[`CLI --describe schemas (drift detection) > vibe generate video-cancel --describe 1`] = `
 {
+  "cost": "free",
   "description": "Cancel video generation (Grok or Runway)",
   "name": "generate.video-cancel",
   "parameters": {
@@ -2064,6 +2098,7 @@ exports[`CLI --describe schemas (drift detection) > vibe generate video-cancel -
 
 exports[`CLI --describe schemas (drift detection) > vibe generate video-extend --describe 1`] = `
 {
+  "cost": "very-high",
   "description": "Extend video duration (Kling by video ID, Veo by operation name)",
   "name": "generate.video-extend",
   "parameters": {
@@ -2126,6 +2161,7 @@ exports[`CLI --describe schemas (drift detection) > vibe generate video-extend -
 
 exports[`CLI --describe schemas (drift detection) > vibe generate video-status --describe 1`] = `
 {
+  "cost": "free",
   "description": "Check video generation status (Grok, Runway, or Kling)",
   "name": "generate.video-status",
   "parameters": {
@@ -2236,6 +2272,7 @@ exports[`CLI --describe schemas (drift detection) > vibe init --describe 1`] = `
 
 exports[`CLI --describe schemas (drift detection) > vibe inspect media --describe 1`] = `
 {
+  "cost": "low",
   "description": "Analyze any media: images, videos, or YouTube URLs using Gemini",
   "name": "inspect.media",
   "parameters": {
@@ -2297,6 +2334,7 @@ exports[`CLI --describe schemas (drift detection) > vibe inspect media --describ
 
 exports[`CLI --describe schemas (drift detection) > vibe inspect review --describe 1`] = `
 {
+  "cost": "low",
   "description": "Review video quality using Gemini AI and optionally auto-fix issues",
   "name": "inspect.review",
   "parameters": {
@@ -2341,6 +2379,7 @@ exports[`CLI --describe schemas (drift detection) > vibe inspect review --descri
 
 exports[`CLI --describe schemas (drift detection) > vibe inspect suggest --describe 1`] = `
 {
+  "cost": "low",
   "description": "Get AI edit suggestions using Gemini",
   "name": "inspect.suggest",
   "parameters": {
@@ -2377,6 +2416,7 @@ exports[`CLI --describe schemas (drift detection) > vibe inspect suggest --descr
 
 exports[`CLI --describe schemas (drift detection) > vibe inspect video --describe 1`] = `
 {
+  "cost": "low",
   "description": "Analyze video using Gemini (summarize, Q&A, extract info)",
   "name": "inspect.video",
   "parameters": {
@@ -2476,6 +2516,7 @@ exports[`CLI --describe schemas (drift detection) > vibe media info --describe 1
 
 exports[`CLI --describe schemas (drift detection) > vibe remix animated-caption --describe 1`] = `
 {
+  "cost": "low",
   "description": "Add animated captions with word-by-word effects (Whisper + Remotion/ASS)",
   "name": "remix.animated-caption",
   "parameters": {
@@ -2543,6 +2584,7 @@ exports[`CLI --describe schemas (drift detection) > vibe remix animated-caption 
 
 exports[`CLI --describe schemas (drift detection) > vibe remix auto-shorts --describe 1`] = `
 {
+  "cost": "high",
   "description": "Auto-generate shorts from long-form video",
   "name": "remix.auto-shorts",
   "parameters": {
@@ -2623,6 +2665,7 @@ exports[`CLI --describe schemas (drift detection) > vibe remix auto-shorts --des
 
 exports[`CLI --describe schemas (drift detection) > vibe remix highlights --describe 1`] = `
 {
+  "cost": "high",
   "description": "Extract highlights from long-form video/audio content",
   "name": "remix.highlights",
   "parameters": {
@@ -2685,6 +2728,7 @@ exports[`CLI --describe schemas (drift detection) > vibe remix highlights --desc
 
 exports[`CLI --describe schemas (drift detection) > vibe remix regenerate-scene --describe 1`] = `
 {
+  "cost": "very-high",
   "description": "Regenerate a specific scene in a script-to-video output directory",
   "name": "remix.regenerate-scene",
   "parameters": {

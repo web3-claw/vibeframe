@@ -35,6 +35,18 @@ import { registerVideoStatusCommand } from "./generate/video-status.js";
 import { registerVideoExtendCommand } from "./generate/video-extend.js";
 import { registerImageCommand } from "./generate/image.js";
 import { registerVideoCommand } from "./generate/video.js";
+import { applyTier, type CostTier } from "./_shared/cost-tier.js";
+
+/**
+ * Apply a cost tier to the most recently registered subcommand on `parent`.
+ * Used after each `register*Command(parent)` call so the tier annotation
+ * lives next to the registration order — single source of truth for what
+ * each command costs to run.
+ */
+function tierLast(parent: Command, tier: CostTier): void {
+  const newest = parent.commands[parent.commands.length - 1];
+  if (newest) applyTier(newest, tier);
+}
 // Re-export for backward compat (pipeline/executor.ts and other consumers
 // import these from `./generate.js`).
 export { executeSoundEffect } from "./generate/sound-effect.js";
@@ -91,30 +103,35 @@ Run 'vibe schema generate.<command>' for structured parameter info.
 // ============================================================================
 
 registerImageCommand(generateCommand);
+tierLast(generateCommand, "high");
 
 // ============================================================================
 // 2. Video → moved to commands/generate/video.ts (v0.69 Phase 2)
 // ============================================================================
 
 registerVideoCommand(generateCommand);
+tierLast(generateCommand, "very-high");
 
 // ============================================================================
 // 3. Speech → moved to commands/generate/speech.ts (v0.69 Phase 2)
 // ============================================================================
 
 registerSpeechCommand(generateCommand);
+tierLast(generateCommand, "low");
 
 // ============================================================================
 // 4. Sound Effect → moved to commands/generate/sound-effect.ts (v0.69 Phase 2)
 // ============================================================================
 
 registerSoundEffectCommand(generateCommand);
+tierLast(generateCommand, "low");
 
 // ============================================================================
 // 5. Music → moved to commands/generate/music.ts (v0.69 Phase 2)
 // ============================================================================
 
 registerMusicCommand(generateCommand);
+tierLast(generateCommand, "low");
 
 
 // ============================================================================
@@ -122,45 +139,53 @@ registerMusicCommand(generateCommand);
 // ============================================================================
 
 registerMusicStatusCommand(generateCommand);
+tierLast(generateCommand, "free");
 
 // ============================================================================
 // 7. Storyboard → moved to commands/generate/storyboard.ts (v0.69 Phase 2)
 // ============================================================================
 
 registerStoryboardCommand(generateCommand);
+tierLast(generateCommand, "high");
 
 // ============================================================================
 // 8. Motion (delegated to registerMotionCommand)
 // ============================================================================
 
 registerMotionCommand(generateCommand);
+tierLast(generateCommand, "high");
 
 // ============================================================================
 // 9. Thumbnail → moved to commands/generate/thumbnail.ts (v0.69 Phase 2)
 // ============================================================================
 
 registerThumbnailCommand(generateCommand);
+tierLast(generateCommand, "free");
 
 // ============================================================================
 // 10. Background → moved to commands/generate/background.ts (v0.69 Phase 2)
 // ============================================================================
 
 registerBackgroundCommand(generateCommand);
+tierLast(generateCommand, "high");
 
 // ============================================================================
 // 11. Video Status → moved to commands/generate/video-status.ts (v0.69 Phase 2)
 // ============================================================================
 
 registerVideoStatusCommand(generateCommand);
+tierLast(generateCommand, "free");
 
 // ============================================================================
 // 12. Video Cancel → moved to commands/generate/video-cancel.ts (v0.69 Phase 2)
 // ============================================================================
 
 registerVideoCancelCommand(generateCommand);
+tierLast(generateCommand, "free");
 
 // ============================================================================
 // 13. Video Extend → moved to commands/generate/video-extend.ts (v0.69 Phase 2)
 // ============================================================================
 
 registerVideoExtendCommand(generateCommand);
+tierLast(generateCommand, "very-high");

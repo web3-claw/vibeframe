@@ -27,6 +27,7 @@ import { registerScriptPipelineCommands } from "./ai-script-pipeline-cli.js";
 import { registerHighlightsCommands } from "./ai-highlights.js";
 import { executeAnimatedCaption, type AnimatedCaptionStyle } from "./ai-animated-caption.js";
 import { isJsonMode, outputSuccess, exitWithError, notFoundError, usageError, apiError, generalError } from "./output.js";
+import { applyTiers } from "./_shared/cost-tier.js";
 
 export const remixCommand = new Command("remix")
   .description(
@@ -207,3 +208,11 @@ Required API Key: OPENAI_API_KEY (Whisper transcription)
       exitWithError(generalError(`Animated caption failed: ${msg}`));
     }
   });
+
+// Cost-tier annotations — SSOT: docs/cli-mental-model.md
+applyTiers(remixCommand, {
+  "regenerate-scene": "very-high",
+  "highlights": "high",
+  "auto-shorts": "high",
+  "animated-caption": "low",
+});
