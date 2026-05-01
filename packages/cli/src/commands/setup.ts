@@ -306,6 +306,23 @@ function applyProviderDefault(
   }
 }
 
+function isProviderChoiceConfigured(
+  config: NonNullable<Awaited<ReturnType<typeof loadConfig>>>,
+  choice: AIFeatureProviderChoice,
+): boolean {
+  if (choice.key) {
+    const value = config.providers[choice.key.configKey as keyof typeof config.providers];
+    if (value) return true;
+  }
+  if (choice.defaultFor?.kind === "image") {
+    return config.defaults.imageProvider === choice.defaultFor.value;
+  }
+  if (choice.defaultFor?.kind === "video") {
+    return config.defaults.videoProvider === choice.defaultFor.value;
+  }
+  return false;
+}
+
 function mergeSelectedFeatures(
   current: AIFeature[],
   next: AIFeature[],
@@ -617,7 +634,9 @@ async function runAIFeaturesSetup(
       }
       console.log();
 
-      const defaultSelected = feature.providerChoices.map(() => false);
+      const defaultSelected = feature.providerChoices.map((choice) =>
+        isProviderChoiceConfigured(config, choice),
+      );
       const providerLabels = feature.providerChoices.map((choice) => {
         const keyHint = choice.keyless
           ? chalk.dim("no key")
@@ -638,7 +657,7 @@ async function runAIFeaturesSetup(
         chalk.cyan("  Providers (arrow + enter picks one, space adds more): "),
         providerLabels,
         defaultSelected,
-        { pickFocusedOnEnter: true },
+        { pickFocusedOnEnter: true, preserveDefaultSelectionOnEnter: true },
       );
 
       const selectedChoices = pickedProviders.map((i) => feature.providerChoices![i]);

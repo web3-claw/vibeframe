@@ -395,6 +395,9 @@ export async function promptConfirm(
  * the current selection as-is. This lets a pre-checked default be overridden
  * by a single arrow + Enter while still allowing additive multi-pick via
  * space + Enter.
+ * `preserveDefaultSelectionOnEnter` changes the no-toggle Enter shortcut from
+ * replace to add when there are already checked rows. This is useful for setup
+ * screens where previously configured choices should remain visible and sticky.
  * In non-TTY environments accepts comma-separated 1-based indices, the literal
  * "all", or empty/"none" for no selection.
  */
@@ -404,6 +407,7 @@ export async function promptMultiSelect(
   defaultSelected: boolean[] = [],
   opts: {
     pickFocusedOnEnter?: boolean;
+    preserveDefaultSelectionOnEnter?: boolean;
     /** @deprecated Use pickFocusedOnEnter — same flag, broader semantics. */
     enterSelectsFocusedWhenEmpty?: boolean;
   } = {},
@@ -453,7 +457,10 @@ export async function promptMultiSelect(
         if (finished) return;
         if (char === "\r" || char === "\n") {
           if (pickFocused && !userToggled) {
-            for (let i = 0; i < selected.length; i++) selected[i] = false;
+            const hasDefaultSelection = selected.some(Boolean);
+            if (!opts.preserveDefaultSelectionOnEnter || !hasDefaultSelection) {
+              for (let i = 0; i < selected.length; i++) selected[i] = false;
+            }
             selected[cursor] = true;
             render();
           }
