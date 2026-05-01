@@ -356,8 +356,12 @@ export async function promptConfirm(
  * Prompt for multi-select (checkbox) from a list.
  *
  * Returns the indexes selected (sorted ascending). ↑↓ navigates, space toggles,
- * enter confirms. `enterSelectsFocusedWhenEmpty` makes Enter on the focused
- * row behave like a single-choice select when nothing is checked yet.
+ * enter confirms. `pickFocusedOnEnter` (formerly `enterSelectsFocusedWhenEmpty`)
+ * makes Enter behave like a single-choice select **as long as the user has
+ * not pressed space yet** — once any explicit toggle happens, Enter confirms
+ * the current selection as-is. This lets a pre-checked default be overridden
+ * by a single arrow + Enter while still allowing additive multi-pick via
+ * space + Enter.
  * In non-TTY environments accepts comma-separated 1-based indices, the literal
  * "all", or empty/"none" for no selection.
  */
@@ -365,8 +369,13 @@ export async function promptMultiSelect(
   _question: string,
   options: string[],
   defaultSelected: boolean[] = [],
-  opts: { enterSelectsFocusedWhenEmpty?: boolean } = {},
+  opts: {
+    pickFocusedOnEnter?: boolean;
+    /** @deprecated Use pickFocusedOnEnter — same flag, broader semantics. */
+    enterSelectsFocusedWhenEmpty?: boolean;
+  } = {},
 ): Promise<number[]> {
+  const pickFocused = opts.pickFocusedOnEnter ?? opts.enterSelectsFocusedWhenEmpty ?? false;
   const input = getTTYInputStream() as ReadStream;
   const selected = options.map((_, i) => Boolean(defaultSelected[i]));
 
@@ -374,6 +383,7 @@ export async function promptMultiSelect(
     return new Promise((resolve) => {
       let cursor = 0;
       let renderCount = 0;
+      let userToggled = false;
 
       const render = () => {
         if (renderCount > 0) {
@@ -407,8 +417,10 @@ export async function promptMultiSelect(
 
       const onData = (char: string) => {
         if (char === "\r" || char === "\n") {
-          if (opts.enterSelectsFocusedWhenEmpty && selected.every((v) => !v)) {
+          if (pickFocused && !userToggled) {
+            for (let i = 0; i < selected.length; i++) selected[i] = false;
             selected[cursor] = true;
+            render();
           }
           finish();
         } else if (char === "\u0003") {
@@ -417,6 +429,7 @@ export async function promptMultiSelect(
           process.exit(1);
         } else if (char === " ") {
           selected[cursor] = !selected[cursor];
+          userToggled = true;
           render();
         } else if (char === "\x1b[A" || char === "k") {
           cursor = (cursor - 1 + options.length) % options.length;
@@ -428,11 +441,13 @@ export async function promptMultiSelect(
           // Convenience: 'a' selects all
           const allOn = selected.every(Boolean);
           for (let i = 0; i < selected.length; i++) selected[i] = !allOn;
+          userToggled = true;
           render();
         } else if (char >= "1" && char <= String(Math.min(options.length, 9))) {
           // Number key — toggle item directly
           const i = parseInt(char, 10) - 1;
           selected[i] = !selected[i];
+          userToggled = true;
           render();
         }
       };

@@ -511,8 +511,8 @@ async function runSetupWizard(fullSetup = false, scope: Scope = "user"): Promise
   // ── AI generation (mix and match) ──────────────────────────────────
   console.log(chalk.dim("2. Features"));
   console.log(chalk.bold("Which AI features do you need?"));
-  console.log(chalk.dim("  ↑↓ navigate · space to toggle · enter to confirm"));
-  console.log(chalk.dim("  Tip: pressing enter on the highlighted item selects it if nothing is checked yet."));
+  console.log(chalk.dim(`  ${chalk.bold("Most users pick more than one.")} Press ${chalk.bold("space")} on each feature you want, then ${chalk.bold("enter")} to confirm.`));
+  console.log(chalk.dim("  Shortcut: enter alone picks only the highlighted feature."));
   console.log();
 
   const featureLabels = AI_FEATURES.map((f) => {
@@ -524,7 +524,7 @@ async function runSetupWizard(fullSetup = false, scope: Scope = "user"): Promise
     chalk.cyan("  Pick (e.g. 1,3 or 'all'): "),
     featureLabels,
     [],
-    { enterSelectsFocusedWhenEmpty: true },
+    { pickFocusedOnEnter: true },
   );
   const selectedFeatures: AIFeature[] = picked.map((i) => AI_FEATURES[i]);
   console.log();
@@ -541,7 +541,7 @@ async function runSetupWizard(fullSetup = false, scope: Scope = "user"): Promise
 
   console.log(chalk.dim("3. Providers"));
   console.log(chalk.bold("Choose providers for each selected feature"));
-  console.log(chalk.dim("  Recommended defaults are pre-selected. You can toggle more than one."));
+  console.log(chalk.dim(`  Recommended default is highlighted. Press ${chalk.bold("enter")} to pick it, or use ${chalk.bold("space")} to add multiple.`));
   console.log();
 
   for (const feature of selectedFeatures) {
@@ -565,9 +565,10 @@ async function runSetupWizard(fullSetup = false, scope: Scope = "user"): Promise
         return `${choice.label} ${chalk.dim(`- ${choice.desc}`)} ${keyHint}`;
       });
       const pickedProviders = await promptMultiSelect(
-        chalk.cyan("  Providers (space toggles, enter confirms): "),
+        chalk.cyan("  Providers (arrow + enter picks one, space adds more): "),
         providerLabels,
         defaultSelected,
+        { pickFocusedOnEnter: true },
       );
 
       const selectedChoices = pickedProviders.map((i) => feature.providerChoices![i]);
