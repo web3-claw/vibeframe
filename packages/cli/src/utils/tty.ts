@@ -76,10 +76,7 @@ export function closeTTYStream(): void {
 /**
  * Create a readline interface with TTY support
  */
-export function createTTYInterface(options?: {
-  prompt?: string;
-  historySize?: number;
-}): Interface {
+export function createTTYInterface(options?: { prompt?: string; historySize?: number }): Interface {
   const input = getTTYInputStream();
   return createInterface({
     input,
@@ -161,11 +158,7 @@ export async function promptHidden(
           input.setRawMode(false);
           process.stdout.write("\n");
           process.exit(1);
-        } else if (
-          opts.openHotkeyUrl &&
-          value.length === 0 &&
-          (char === "o" || char === "O")
-        ) {
+        } else if (opts.openHotkeyUrl && value.length === 0 && (char === "o" || char === "O")) {
           // Browser-open hotkey: only triggers as the very first key.
           // Fire-and-forget — we keep accepting input while the OS opens
           // the URL.
@@ -301,10 +294,7 @@ export async function promptSelect(
  * legacy `(Y/n)` text prompt for piped/CI input so scripts continue to work
  * unchanged.
  */
-export async function promptConfirm(
-  question: string,
-  defaultYes = true
-): Promise<boolean> {
+export async function promptConfirm(question: string, defaultYes = true): Promise<boolean> {
   const input = getTTYInputStream() as ReadStream;
 
   if (typeof input.setRawMode === "function") {
@@ -410,7 +400,7 @@ export async function promptMultiSelect(
     preserveDefaultSelectionOnEnter?: boolean;
     /** @deprecated Use pickFocusedOnEnter — same flag, broader semantics. */
     enterSelectsFocusedWhenEmpty?: boolean;
-  } = {},
+  } = {}
 ): Promise<number[]> {
   const pickFocused = opts.pickFocusedOnEnter ?? opts.enterSelectsFocusedWhenEmpty ?? false;
   const input = getTTYInputStream() as ReadStream;
