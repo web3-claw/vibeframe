@@ -6,6 +6,7 @@ import { Command } from "commander";
 import chalk from "chalk";
 import { resolve } from "node:path";
 import { access, readFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { parse as parseDotenv } from "dotenv";
 import {
   loadConfig,
@@ -420,11 +421,22 @@ async function runNonInteractiveSetup(opts: NonInteractiveOptions): Promise<void
  */
 async function runSetupWizard(fullSetup = false, scope: Scope = "user"): Promise<void> {
   console.log();
-  const scopeLabel =
+  const cfgPath = getConfigPath(scope).replace(homedir(), "~");
+  const scopeNote =
     scope === "project"
-      ? chalk.dim(` — project scope (${getConfigPath("project")})`)
-      : chalk.dim(" — user scope");
-  console.log(chalk.bold.magenta("VibeFrame Setup") + scopeLabel);
+      ? "applies to this project only · add .vibeframe/ to .gitignore"
+      : "applies to every project for this user";
+  console.log(
+    chalk.bold.magenta("VibeFrame Setup") + chalk.bold(` — ${scope} scope`),
+  );
+  console.log(chalk.dim(`${cfgPath} · ${scopeNote}`));
+  if (scope === "user") {
+    console.log(
+      chalk.dim(
+        "Tip: for per-project keys, cd into a project and run: vibe setup --scope project",
+      ),
+    );
+  }
   console.log(chalk.dim("─".repeat(40)));
   console.log();
 
