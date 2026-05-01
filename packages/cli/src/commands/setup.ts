@@ -306,6 +306,19 @@ function applyProviderDefault(
   }
 }
 
+function mergeSelectedFeatures(
+  current: AIFeature[],
+  next: AIFeature[],
+): AIFeature[] {
+  const merged = [...current];
+  for (const feature of next) {
+    if (!merged.some((f) => f.label === feature.label)) {
+      merged.push(feature);
+    }
+  }
+  return merged;
+}
+
 /**
  * Non-interactive setup for CI / devcontainer / scripted bootstrap.
  *
@@ -476,13 +489,15 @@ async function runSetupWizard(fullSetup = false, scope: Scope = "user"): Promise
   // ── Edit videos (FREE) ─────────────────────────────────────────────
   if (topIndex === 0) {
     await saveConfig(config, { scope });
-    await showComplete(config, 'vibe edit silence-cut video.mp4 -o clean.mp4', [], scope);
+    await completeOrContinue(config, 'vibe edit silence-cut video.mp4 -o clean.mp4', [], scope);
     return;
   }
 
   // ── Custom setup ───────────────────────────────────────────────────
   if (topIndex === 3) {
-    await runCustomSetup(config, scope);
+    await runCustomSetup(config, scope, { showComplete: false });
+    await saveConfig(config, { scope });
+    await completeOrContinue(config, 'vibe doctor --test-keys', [], scope);
     return;
   }
 
@@ -504,10 +519,59 @@ async function runSetupWizard(fullSetup = false, scope: Scope = "user"): Promise
     await collectKeys(config, pipelineKeys);
 
     await saveConfig(config, { scope });
-    await showComplete(config, 'vibe build my-story/   # see CONTRIBUTING.md for STORYBOARD.md format', [], scope);
+    await completeOrContinue(config, 'vibe build my-story/   # see CONTRIBUTING.md for STORYBOARD.md format', [], scope);
     return;
   }
 
+  const result = await runAIFeaturesSetup(config, scope);
+  await saveConfig(config, { scope });
+  await completeOrContinue(config, result.tryCommand, result.selectedFeatures, scope);
+}
+
+async function completeOrContinue(
+  config: NonNullable<Awaited<ReturnType<typeof loadConfig>>>,
+  tryCommand: string,
+  selectedFeatures: AIFeature[],
+  scope: Scope,
+): Promise<void> {
+  console.log(chalk.dim("Setup checkpoint"));
+  console.log(chalk.bold("Anything else to configure?"));
+  console.log();
+
+  const action = await promptSelect(
+    chalk.cyan("  Next: "),
+    [
+      `Add or update AI features ${chalk.dim("(images, videos, audio, editing)")}`,
+      `Open full provider list ${chalk.dim("(every supported provider)")}`,
+      "Finish setup",
+    ],
+    2,
+  );
+  console.log();
+
+  if (action === 0) {
+    const result = await runAIFeaturesSetup(config, scope);
+    const mergedFeatures = mergeSelectedFeatures(selectedFeatures, result.selectedFeatures);
+    const mergedTryCommand = selectedFeatures.length > 0 ? tryCommand : result.tryCommand;
+    await saveConfig(config, { scope });
+    await completeOrContinue(config, mergedTryCommand, mergedFeatures, scope);
+    return;
+  }
+
+  if (action === 1) {
+    await runCustomSetup(config, scope, { showComplete: false });
+    await saveConfig(config, { scope });
+    await completeOrContinue(config, tryCommand, selectedFeatures, scope);
+    return;
+  }
+
+  await showComplete(config, tryCommand, selectedFeatures, scope);
+}
+
+async function runAIFeaturesSetup(
+  config: NonNullable<Awaited<ReturnType<typeof loadConfig>>>,
+  _scope: Scope,
+): Promise<{ tryCommand: string; selectedFeatures: AIFeature[] }> {
   // ── AI generation (mix and match) ──────────────────────────────────
   console.log(chalk.dim("2. Features"));
   console.log(chalk.bold("Which AI features do you need?"));
@@ -532,16 +596,14 @@ async function runSetupWizard(fullSetup = false, scope: Scope = "user"): Promise
   if (selectedFeatures.length === 0) {
     console.log(chalk.dim("  No features selected. You can re-run setup anytime."));
     console.log();
-    await saveConfig(config, { scope });
-    await showComplete(config, 'vibe --help', [], scope);
-    return;
+    return { tryCommand: "vibe --help", selectedFeatures: [] };
   }
 
   const plannedKeys = new Map<string, AIFeatureKey[]>();
 
   console.log(chalk.dim("3. Providers"));
   console.log(chalk.bold("Choose providers for each selected feature"));
-  console.log(chalk.dim(`  Recommended default is highlighted. Press ${chalk.bold("enter")} to pick it, or use ${chalk.bold("space")} to add multiple.`));
+  console.log(chalk.dim(`  Recommended default is highlighted. Press ${chalk.bold("enter")} to pick the highlighted provider, or ${chalk.bold("space")} to choose multiple.`));
   console.log();
 
   for (const feature of selectedFeatures) {
@@ -555,14 +617,22 @@ async function runSetupWizard(fullSetup = false, scope: Scope = "user"): Promise
       }
       console.log();
 
-      const defaultSelected = feature.providerChoices.map((_, i) => i === 0);
+      const defaultSelected = feature.providerChoices.map(() => false);
       const providerLabels = feature.providerChoices.map((choice) => {
         const keyHint = choice.keyless
           ? chalk.dim("no key")
           : choice.key
             ? chalk.dim(choice.key.envVar)
             : chalk.dim("no key");
-        return `${choice.label} ${chalk.dim(`- ${choice.desc}`)} ${keyHint}`;
+        const defaultHint = choice === feature.providerChoices?.[0]
+          ? chalk.dim("recommended default")
+          : "";
+        return [
+          choice.label,
+          defaultHint,
+          chalk.dim(`- ${choice.desc}`),
+          keyHint,
+        ].filter(Boolean).join(" ");
       });
       const pickedProviders = await promptMultiSelect(
         chalk.cyan("  Providers (arrow + enter picks one, space adds more): "),
@@ -667,8 +737,7 @@ async function runSetupWizard(fullSetup = false, scope: Scope = "user"): Promise
     console.log();
   }
 
-  await saveConfig(config, { scope });
-  await showComplete(config, selectedFeatures[0].tryCommand, selectedFeatures, scope);
+  return { tryCommand: selectedFeatures[0].tryCommand, selectedFeatures };
 }
 
 /**
@@ -721,6 +790,7 @@ async function collectKeys(
 async function runCustomSetup(
   config: Awaited<ReturnType<typeof loadConfig>> & object,
   scope: Scope = "user",
+  opts: { showComplete?: boolean } = {},
 ): Promise<void> {
   // LLM Provider selection (for Agent mode only)
   console.log(chalk.bold("1. Agent LLM Provider") + chalk.dim(" (for vibe agent)"));
@@ -805,7 +875,9 @@ async function runCustomSetup(
 
   // Save
   await saveConfig(config, { scope });
-  await showComplete(config, "vibe doctor", [], scope);
+  if (opts.showComplete !== false) {
+    await showComplete(config, "vibe doctor", [], scope);
+  }
 }
 
 /**

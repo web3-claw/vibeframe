@@ -32,6 +32,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "clean": "turbo clean && rm -rf node_modules",
     "vibe": "tsx packages/cli/src/index.ts",
+    "dev:setup": "tsx scripts/dev-setup-wizard.mts",
     "mcp": "tsx packages/mcp-server/src/index.ts",
     "scaffold:provider": "tsx scripts/scaffold-provider.mts",
     "scaffold:command": "tsx scripts/scaffold-command.mts",

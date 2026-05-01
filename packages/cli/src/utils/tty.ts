@@ -9,6 +9,19 @@ import { openUrl } from "./open-url.js";
 
 let ttyStream: ReadStream | null = null;
 
+function splitTTYInput(chunk: string): string[] {
+  const tokens: string[] = [];
+  for (let i = 0; i < chunk.length; i++) {
+    if (chunk[i] === "\x1b" && chunk[i + 1] === "[" && i + 2 < chunk.length) {
+      tokens.push(chunk.slice(i, i + 3));
+      i += 2;
+    } else {
+      tokens.push(chunk[i]);
+    }
+  }
+  return tokens;
+}
+
 /**
  * Get a TTY-capable input stream
  * Falls back to /dev/tty when stdin is piped (e.g., from curl)
@@ -125,8 +138,6 @@ export async function promptHidden(
   const input = getTTYInputStream() as ReadStream;
 
   return new Promise((resolve) => {
-    process.stdout.write(question);
-
     let value = "";
 
     // Check if we can use raw mode
@@ -135,9 +146,12 @@ export async function promptHidden(
       input.resume();
       input.setEncoding("utf8");
 
-      const onData = (char: string) => {
+      let finished = false;
+      const handleChar = (char: string) => {
+        if (finished) return;
         if (char === "\n" || char === "\r" || char === "\u0004") {
           // Enter or EOF
+          finished = true;
           input.setRawMode(false);
           input.removeListener("data", onData);
           process.stdout.write("\n");
@@ -169,12 +183,16 @@ export async function promptHidden(
           process.stdout.write("*".repeat(char.length)); // Show asterisk for each char
         }
       };
+      const onData = (chunk: string) => {
+        for (const char of splitTTYInput(chunk)) handleChar(char);
+      };
 
       input.on("data", onData);
+      process.stdout.write(question);
     } else {
       // Fallback: no raw mode available, input will be visible
       const rl = createInterface({ input, output: process.stdout });
-      rl.question("", (answer) => {
+      rl.question(question, (answer) => {
         rl.close();
         resolve(answer);
       });
@@ -217,9 +235,12 @@ export async function promptSelect(
       input.resume();
       input.setEncoding("utf8");
 
-      const onData = (char: string) => {
+      let finished = false;
+      const handleChar = (char: string) => {
+        if (finished) return;
         if (char === "\r" || char === "\n") {
           // Enter — confirm selection
+          finished = true;
           input.setRawMode(false);
           input.removeListener("data", onData);
           process.stdout.write("\n");
@@ -240,12 +261,16 @@ export async function promptSelect(
         } else if (char >= "1" && char <= String(options.length)) {
           // Number key — direct select
           selected = parseInt(char, 10) - 1;
+          finished = true;
           input.setRawMode(false);
           input.removeListener("data", onData);
           render();
           process.stdout.write("\n");
           resolve(selected);
         }
+      };
+      const onData = (chunk: string) => {
+        for (const char of splitTTYInput(chunk)) handleChar(char);
       };
 
       input.on("data", onData);
@@ -310,8 +335,11 @@ export async function promptConfirm(
       input.resume();
       input.setEncoding("utf8");
 
-      const onData = (char: string) => {
+      let finished = false;
+      const handleChar = (char: string) => {
+        if (finished) return;
         if (char === "\r" || char === "\n") {
+          finished = true;
           input.setRawMode(false);
           input.removeListener("data", onData);
           resolve(selected === 0);
@@ -326,17 +354,22 @@ export async function promptConfirm(
           render();
         } else if (char === "y" || char === "Y") {
           selected = 0;
+          finished = true;
           input.setRawMode(false);
           input.removeListener("data", onData);
           render();
           resolve(true);
         } else if (char === "n" || char === "N") {
           selected = 1;
+          finished = true;
           input.setRawMode(false);
           input.removeListener("data", onData);
           render();
           resolve(false);
         }
+      };
+      const onData = (chunk: string) => {
+        for (const char of splitTTYInput(chunk)) handleChar(char);
       };
 
       input.on("data", onData);
@@ -415,13 +448,16 @@ export async function promptMultiSelect(
         resolve(result);
       };
 
-      const onData = (char: string) => {
+      let finished = false;
+      const handleChar = (char: string) => {
+        if (finished) return;
         if (char === "\r" || char === "\n") {
           if (pickFocused && !userToggled) {
             for (let i = 0; i < selected.length; i++) selected[i] = false;
             selected[cursor] = true;
             render();
           }
+          finished = true;
           finish();
         } else if (char === "\u0003") {
           input.setRawMode(false);
@@ -450,6 +486,9 @@ export async function promptMultiSelect(
           userToggled = true;
           render();
         }
+      };
+      const onData = (chunk: string) => {
+        for (const char of splitTTYInput(chunk)) handleChar(char);
       };
 
       input.on("data", onData);
