@@ -11,7 +11,7 @@
  *   generate music          - Music generation (ElevenLabs default, Replicate MusicGen)
  *   generate music-status   - Check music generation status
  *   generate storyboard     - Script-to-storyboard (Claude)
- *   generate motion         - Motion graphics (Claude/Gemini + Remotion)
+ *   generate motion         - Standalone motion assets (Claude/Gemini + Remotion)
  *   generate thumbnail      - Thumbnail generation/extraction
  *   generate background     - AI background generation (OpenAI)
  *   generate video-status   - Check video generation status (Grok/Runway/Kling)
@@ -81,7 +81,7 @@ Examples:
   $ vibe generate video "epic scene" -i frame.png -o out.mp4 -p runway  # Image-to-video
   $ vibe generate speech "Hello world" -o hello.mp3
   $ vibe generate music "upbeat jazz" -o jazz.mp3 -d 30
-  $ vibe generate motion "animated logo intro" -o intro.mp4 --render
+  $ vibe generate motion "animated product logo reveal" --render -o logo-reveal.mp4
 
 API Keys (per provider):
   GOOGLE_API_KEY     Image (default), Veo video

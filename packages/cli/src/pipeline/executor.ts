@@ -36,6 +36,7 @@ const ACTION_METADATA: Partial<Record<PipelineAction, PipelineActionMetadata>> =
   "edit-fade": { id: "edit-fade", title: "Add fade", category: "edit", command: "edit fade", outputs: ["video"] },
   "edit-translate-srt": { id: "edit-translate-srt", title: "Translate subtitles", category: "edit", command: "edit translate-srt", outputs: ["srt"] },
   "edit-text-overlay": { id: "edit-text-overlay", title: "Add text overlay", category: "edit", command: "edit text-overlay", outputs: ["video"] },
+  "edit-motion-overlay": { id: "edit-motion-overlay", title: "Add motion overlay", category: "edit", command: "edit motion-overlay", outputs: ["video"] },
   "edit-grade": { id: "edit-grade", title: "Color grade", category: "edit", command: "edit grade", outputs: ["video"] },
   "edit-speed-ramp": { id: "edit-speed-ramp", title: "Speed ramp", category: "edit", command: "edit speed-ramp", outputs: ["video"] },
   "edit-reframe": { id: "edit-reframe", title: "Reframe video", category: "edit", command: "edit reframe", outputs: ["video"] },
@@ -146,8 +147,8 @@ async function ensureActionsRegistered(): Promise<void> {
   registerAction("generate-motion", async (params, outputDir) => {
     const { executeMotion } = await import("../commands/ai-motion.js");
     const output = getOutput(params, outputDir, "motion.tsx");
-    const r = await executeMotion({ description: params.description as string || params.prompt as string, duration: params.duration as number | undefined, render: params.render as boolean | undefined, video: params.video as string | undefined, output });
-    return { id: "", action: "generate-motion", success: r.success, output: r.renderedPath || r.codePath, data: { codePath: r.codePath, renderedPath: r.renderedPath }, error: r.error };
+    const r = await executeMotion({ description: params.description as string || params.prompt as string, duration: params.duration as number | undefined, render: params.render as boolean | undefined, video: params.video as string | undefined, output, understand: params.understand as "auto" | "off" | "required" | undefined, understandingPrompt: params.understandingPrompt as string | undefined });
+    return { id: "", action: "generate-motion", success: r.success, output: r.compositedPath || r.renderedPath || r.codePath, data: { codePath: r.codePath, renderedPath: r.renderedPath, compositedPath: r.compositedPath }, error: r.error };
   });
 
   // Edit
@@ -184,6 +185,28 @@ async function ensureActionsRegistered(): Promise<void> {
     const output = getOutput(params, outputDir, "graded.mp4");
     const r = await executeGrade({ videoPath: params.input as string, style: params.style as string | undefined, preset: params.preset as string | undefined, output });
     return { id: "", action: "edit-grade", success: r.success, output: r.outputPath, data: { description: r.description }, error: r.error };
+  });
+
+  registerAction("edit-motion-overlay", async (params, outputDir) => {
+    const { executeMotionOverlay } = await import("../commands/edit/motion-overlay.js");
+    const output = getOutput(params, outputDir, "motion-overlay.mp4");
+    const r = await executeMotionOverlay({
+      videoPath: (params.input as string | undefined) || (params.video as string),
+      description: (params.description as string | undefined) || (params.prompt as string | undefined),
+      asset: params.asset as string | undefined,
+      output,
+      duration: params.duration as number | undefined,
+      start: params.start as number | undefined,
+      style: params.style as string | undefined,
+      model: params.model as "sonnet" | "opus" | "gemini" | "gemini-3.1-pro" | undefined,
+      understand: params.understand as "auto" | "off" | "required" | undefined,
+      understandingPrompt: params.understandingPrompt as string | undefined,
+      position: params.position as "full" | "center" | "top-left" | "top-right" | "bottom-left" | "bottom-right" | undefined,
+      scale: params.scale as number | undefined,
+      opacity: params.opacity as number | undefined,
+      loop: params.loop as boolean | undefined,
+    });
+    return { id: "", action: "edit-motion-overlay", success: r.success, output: r.outputPath, data: { codePath: r.codePath, renderedPath: r.renderedPath, provider: r.provider }, error: r.error };
   });
 
   registerAction("edit-reframe", async (params, outputDir) => {

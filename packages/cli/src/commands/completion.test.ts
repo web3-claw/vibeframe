@@ -41,7 +41,7 @@ describe("vibe completion zsh", () => {
       "generate", "edit", "inspect", "audio", "remix",
       "setup", "init", "build", "render", "doctor", "demo",
       "run", "agent", "detect", "batch",
-      "schema", "context", "walkthrough", "completion",
+      "schema", "context", "guide", "completion",
     ]) {
       expect(out).toContain(`'${cmd}:`);
     }

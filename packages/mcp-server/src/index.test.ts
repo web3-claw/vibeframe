@@ -16,8 +16,8 @@ describe("@vibeframe/mcp-server", () => {
       expect(tools.length).toBeGreaterThan(0);
     });
 
-    it("should have 68 tools total", () => {
-      expect(tools.length).toBe(68);
+    it("should have 69 tools total", () => {
+      expect(tools.length).toBe(69);
     });
 
     it("should have correct tool structure", () => {
@@ -56,6 +56,7 @@ describe("@vibeframe/mcp-server", () => {
       expect(toolNames).toContain("edit_noise_reduce");
       expect(toolNames).toContain("edit_jump_cut");
       expect(toolNames).toContain("edit_text_overlay");
+      expect(toolNames).toContain("edit_motion_overlay");
       expect(toolNames).toContain("edit_translate_srt");
     });
 

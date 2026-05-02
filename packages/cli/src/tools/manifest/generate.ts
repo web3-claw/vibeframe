@@ -33,7 +33,7 @@ export const generateMotionTool = defineTool({
   category: "generate",
   cost: "low",
   description:
-    "Generate motion graphics using Claude or Gemini + Remotion. Requires ANTHROPIC_API_KEY (Claude) or GOOGLE_API_KEY (Gemini).",
+    "Generate standalone motion graphics using Claude or Gemini + Remotion. For overlays on an existing video, prefer edit_motion_overlay. Requires ANTHROPIC_API_KEY (Claude) or GOOGLE_API_KEY (Gemini).",
   schema: z.object({
     description: z.string().describe("Description of the motion graphic to generate"),
     duration: z.number().optional().describe("Duration in seconds (default: 5)"),
@@ -47,6 +47,16 @@ export const generateMotionTool = defineTool({
       .describe("Render with Remotion (default: false, returns TSX only)"),
     video: z.string().optional().describe("Base video path to composite motion graphic onto"),
     image: z.string().optional().describe("Reference image for color/mood analysis"),
+    understand: z
+      .enum(["auto", "off", "required"])
+      .optional()
+      .describe(
+        "Analyze the base video with Gemini before generating motion graphics: auto, off, or required (default: auto)"
+      ),
+    understandingPrompt: z
+      .string()
+      .optional()
+      .describe("Custom prompt for video understanding when --video is provided"),
     model: z
       .enum(["sonnet", "opus", "gemini", "gemini-3.1-pro"])
       .optional()
@@ -318,21 +328,30 @@ export const generateVideoTool = defineTool({
   category: "generate",
   cost: "high",
   description:
-    "Generate video using AI. Supports Grok (default, free with audio), Kling, Runway, and Veo. Requires provider-specific API key.",
+    "Generate video using AI. Supports Seedance 2.0 via fal.ai, Grok, Kling, Runway, and Veo. Requires FAL_API_KEY, XAI_API_KEY, KLING_API_KEY, RUNWAY_API_SECRET, or GOOGLE_API_KEY.",
   schema: z.object({
     prompt: z.string().describe("Text prompt describing the video"),
     provider: z
-      .enum(["grok", "kling", "runway", "veo"])
+      .enum(["seedance", "grok", "kling", "runway", "veo"])
       .optional()
-      .describe("Video provider (default: kling)"),
+      .describe(
+        "Video provider (default: seedance when FAL_API_KEY is configured, otherwise first configured provider)"
+      ),
     image: z.string().optional().describe("Reference image path for image-to-video"),
-    duration: z.number().optional().describe("Duration in seconds (default: 5)"),
+    duration: z
+      .number()
+      .optional()
+      .describe("Duration in seconds (default: 5; Seedance accepts 4-15)"),
     ratio: z.string().optional().describe("Aspect ratio: 16:9, 9:16, 1:1 (default: 16:9)"),
     mode: z.string().optional().describe("Kling mode: std or pro"),
-    negative: z.string().optional().describe("Negative prompt (Kling/Veo)"),
+    negative: z.string().optional().describe("Negative prompt (Seedance/Kling/Veo)"),
     resolution: z.string().optional().describe("Resolution: 720p, 1080p, 4k (Veo only)"),
     veoModel: z.string().optional().describe("Veo model: 3.0, 3.1, 3.1-fast"),
     runwayModel: z.string().optional().describe("Runway model: gen4.5, gen4_turbo"),
+    seedanceModel: z
+      .string()
+      .optional()
+      .describe("Seedance variant: quality or fast (fal.ai only)"),
     output: z.string().optional().describe("Output file path (downloads video)"),
     wait: z.boolean().optional().describe("Wait for completion (default: true)"),
   }),

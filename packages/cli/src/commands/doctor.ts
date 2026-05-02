@@ -122,11 +122,11 @@ const REQUIRED_FFMPEG_FILTERS: Record<string, { commands: string[]; fix: Record<
 /** Optional external tools for advanced commands */
 const OPTIONAL_TOOLS: Record<string, { commands: string[]; install: string }> = {
   remotion: {
-    commands: ["generate motion", "edit caption (fallback)"],
+    commands: ["generate motion", "edit motion-overlay", "edit caption (fallback)"],
     install: "npm install -g @remotion/cli",
   },
   chrome: {
-    commands: ["export --backend hyperframes", "run with render.backend=hyperframes"],
+    commands: ["render", "export --backend hyperframes", "run with render.backend=hyperframes"],
     install: "macOS: brew install --cask google-chrome · Linux: apt install chromium",
   },
 };

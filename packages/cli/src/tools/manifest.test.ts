@@ -65,6 +65,26 @@ describe("tool manifest invariants", () => {
     }
   });
 
+  it("MCP generate_video schema stays aligned with the CLI provider surface", () => {
+    const [tool] = manifestToMcpTools(manifest).filter((entry) => entry.name === "generate_video");
+    expect(tool).toBeDefined();
+    expect(tool.description).toContain("Seedance");
+    expect(tool.description).toContain("FAL_API_KEY");
+
+    const provider = tool.inputSchema.properties?.provider as { enum?: string[] } | undefined;
+    expect(provider?.enum).toEqual(["seedance", "grok", "kling", "runway", "veo"]);
+    expect(tool.inputSchema.properties).toHaveProperty("seedanceModel");
+  });
+
+  it("MCP generate_motion exposes video understanding controls", () => {
+    const [tool] = manifestToMcpTools(manifest).filter((entry) => entry.name === "generate_motion");
+    expect(tool).toBeDefined();
+
+    const understand = tool.inputSchema.properties?.understand as { enum?: string[] } | undefined;
+    expect(understand?.enum).toEqual(["auto", "off", "required"]);
+    expect(tool.inputSchema.properties).toHaveProperty("understandingPrompt");
+  });
+
   it("Agent adapter registers every agent-surfaced entry", () => {
     const registry = new ToolRegistry();
     registerManifestIntoAgent(registry, manifest);

@@ -181,12 +181,12 @@ export async function startAgent(options: StartAgentOptions = {}): Promise<void>
   const cwd = process.cwd().replace(process.env.HOME || "", "~");
 
   console.log();
-  console.log(chalk.cyan("██╗   ██╗██╗██████╗ ███████╗███████╗██████╗  █████╗ ███╗   ███╗███████╗"));
-  console.log(chalk.cyan("██║   ██║██║██╔══██╗██╔════╝██╔════╝██╔══██╗██╔══██╗████╗ ████║██╔════╝"));
-  console.log(chalk.cyan("██║   ██║██║██████╔╝█████╗  █████╗  ██████╔╝███████║██╔████╔██║█████╗"));
-  console.log(chalk.cyan("╚██╗ ██╔╝██║██╔══██╗██╔══╝  ██╔══╝  ██╔══██╗██╔══██║██║╚██╔╝██║██╔══╝"));
-  console.log(chalk.cyan(" ╚████╔╝ ██║██████╔╝███████╗██║     ██║  ██║██║  ██║██║ ╚═╝ ██║███████╗"));
-  console.log(chalk.cyan("  ╚═══╝  ╚═╝╚═════╝ ╚══════╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝"));
+  console.log(chalk.cyan("██╗   ██╗██╗██████╗ ███████╗  ███████╗██████╗  █████╗ ███╗   ███╗███████╗"));
+  console.log(chalk.cyan("██║   ██║██║██╔══██╗██╔════╝  ██╔════╝██╔══██╗██╔══██╗████╗ ████║██╔════╝"));
+  console.log(chalk.cyan("██║   ██║██║██████╔╝█████╗    █████╗  ██████╔╝███████║██╔████╔██║█████╗  "));
+  console.log(chalk.cyan("╚██╗ ██╔╝██║██╔══██╗██╔══╝    ██╔══╝  ██╔══██╗██╔══██║██║╚██╔╝██║██╔══╝  "));
+  console.log(chalk.cyan(" ╚████╔╝ ██║██████╔╝███████╗  ██║     ██║  ██║██║  ██║██║ ╚═╝ ██║███████╗"));
+  console.log(chalk.cyan("  ╚═══╝  ╚═╝╚═════╝ ╚══════╝  ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝"));
   console.log();
   console.log(chalk.dim(`  v${version} · ${provider}${options.model ? ` · ${options.model}` : ""} · ${cwd}`));
   console.log();
@@ -361,7 +361,7 @@ export async function startAgent(options: StartAgentOptions = {}): Promise<void>
 }
 
 export const agentCommand = new Command("agent")
-  .description("Start the AI agent with natural language interface")
+  .description("Optional built-in natural-language agent (fallback when no external coding agent is driving vibe)")
   .option("-p, --provider <provider>", "LLM provider (openai, claude, gemini, ollama, xai, openrouter)", "openai")
   .option("-m, --model <model>", "Model to use (provider-specific)")
   .option("--project <path>", "Timeline file or directory to load")

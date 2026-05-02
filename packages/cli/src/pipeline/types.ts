@@ -23,6 +23,7 @@ export type PipelineAction =
   | "edit-fade"
   | "edit-translate-srt"
   | "edit-text-overlay"
+  | "edit-motion-overlay"
   | "edit-grade"
   | "edit-speed-ramp"
   | "edit-reframe"

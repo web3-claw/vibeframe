@@ -168,4 +168,4 @@ console.log(`     packages/ai-providers/src/api-keys.ts.`);
 console.log(`  4. Run \`pnpm -F @vibeframe/ai-providers build\` to compile.`);
 console.log(`  5. Run \`pnpm -r exec tsc --noEmit && pnpm -F @vibeframe/cli test\` to verify.`);
 console.log("");
-console.log("See docs/CONTRIBUTOR_GUIDE.md for a full walkthrough.");
+console.log("See docs/CONTRIBUTOR_GUIDE.md for the full guide.");

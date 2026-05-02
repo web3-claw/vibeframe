@@ -67,6 +67,11 @@ export interface VibeProjectConfig {
   };
   /** Cost ceiling for `vibe remix` runs in this project. 0 disables. */
   budget: { maxUsd: number };
+  /** Scene composition renderer boundary. Hyperframes is the only supported engine today. */
+  composition: {
+    engine: "hyperframes";
+    entry: string;
+  };
 }
 
 /** Defaults for a fresh scene project. */
@@ -77,6 +82,7 @@ export function defaultVibeProjectConfig(name: string): VibeProjectConfig {
     defaultSceneDuration: 5,
     providers: { image: null, tts: null, transcribe: null },
     budget: { maxUsd: 0 },
+    composition: { engine: "hyperframes", entry: "index.html" },
   };
 }
 

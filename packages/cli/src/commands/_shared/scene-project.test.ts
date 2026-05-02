@@ -62,6 +62,15 @@ describe("buildHyperframesMeta", () => {
   });
 });
 
+describe("defaultVibeProjectConfig", () => {
+  it("declares Hyperframes as the default composition engine", () => {
+    expect(defaultVibeProjectConfig("my-video").composition).toEqual({
+      engine: "hyperframes",
+      entry: "index.html",
+    });
+  });
+});
+
 describe("mergeHyperframesConfig", () => {
   it("preserves existing top-level keys", () => {
     const existing: HyperframesConfig = {

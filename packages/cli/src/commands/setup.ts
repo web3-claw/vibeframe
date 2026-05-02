@@ -1179,9 +1179,9 @@ async function runCustomSetup(
   scope: Scope = "user",
   opts: { showComplete?: boolean } = {}
 ): Promise<void> {
-  // LLM Provider selection (for Agent mode only)
-  console.log(chalk.bold("1. Agent LLM Provider") + chalk.dim(" (for vibe agent)"));
-  console.log(chalk.dim("   Only needed if you use the interactive Agent mode."));
+  // LLM Provider selection (for optional built-in agent mode)
+  console.log(chalk.bold("1. LLM Provider") + chalk.dim(" (optional built-in vibe agent / fallback)"));
+  console.log(chalk.dim("   Most Claude Code/Codex/Cursor users can skip this and let the host agent drive vibe directly."));
   console.log();
 
   const providers: LLMProvider[] = ["claude", "openai", "gemini", "xai", "openrouter", "ollama"];
@@ -1314,13 +1314,13 @@ async function showComplete(
     )
   );
 
-  // Surface every registered walkthrough — the topic table is the single
+  // Surface every registered guide — the topic table is the single
   // source of truth (`walkthroughs.ts`), so adding a topic there shows up
   // here automatically. When an agent host is detected, the `scene` flow
   // is the canonical entry point so we tag it (recommended).
   const hostDetected = detectedAgentHosts().length > 0;
   for (const w of listWalkthroughs()) {
-    const cmd = `vibe walkthrough ${w.topic}`.padEnd(26);
+    const cmd = `vibe guide ${w.topic}`.padEnd(26);
     const tag = hostDetected && w.topic === "scene" ? chalk.cyan(" (recommended)") : "";
     console.log(chalk.dim(`    ${cmd}${w.summary}${tag}`));
   }

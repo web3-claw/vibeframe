@@ -8,7 +8,7 @@
  * directly — but discoverability of the *workflow* itself was still
  * Claude-Code-only via the slash menu.
  *
- * `vibe walkthrough <topic>` closes that gap: any host (or a human at
+ * `vibe guide <topic>` closes that gap: any host (or a human at
  * a terminal) gets the same step-by-step authoring guide that the
  * slash commands deliver in Claude Code. The content is vendored as
  * TS template-literal strings so the CLI binary ships with zero
@@ -20,7 +20,7 @@
  * add a one-line frontmatter for the slash menu.
  */
 
-export type WalkthroughTopic = "scene" | "pipeline" | "architecture";
+export type WalkthroughTopic = "motion" | "scene" | "pipeline" | "architecture";
 
 export interface WalkthroughResult {
   topic: WalkthroughTopic;
@@ -211,7 +211,7 @@ steps:
   \`generate-sound-effect\`, \`generate-storyboard\`, \`generate-motion\`
 - \`edit-silence-cut\`, \`edit-jump-cut\`, \`edit-caption\`, \`edit-grade\`,
   \`edit-reframe\`, \`edit-speed-ramp\`, \`edit-fade\`, \`edit-noise-reduce\`,
-  \`edit-text-overlay\`, \`edit-fill-gaps\`
+  \`edit-text-overlay\`, \`edit-motion-overlay\`, \`edit-fill-gaps\`
 - \`analyze-media\`, \`analyze-video\`, \`analyze-review\`, \`analyze-suggest\`
 - \`audio-transcribe\`, \`audio-isolate\`, \`audio-voice-clone\`, \`audio-dub\`,
   \`audio-duck\`
@@ -281,7 +281,12 @@ The CLI has three orchestrating commands that coordinate other primitives:
 \`vibe agent\`, \`vibe build\`, \`vibe run\`. New users routinely ask which one
 they want for a given task. The full audit lives in
 [\`docs/cli-architecture.md\`](../../../docs/cli-architecture.md); this
-walkthrough is the operator-facing summary.
+guide is the operator-facing summary.
+
+If you already use Claude Code, Codex, Cursor, Aider, Gemini CLI, OpenCode,
+or another coding agent, let that host drive \`vibe\` directly through shell
+commands plus \`AGENTS.md\` / \`CLAUDE.md\`. \`vibe agent\` is the optional
+built-in fallback when you do not already have an agent host.
 
 ## TL;DR
 
@@ -292,11 +297,12 @@ walkthrough is the operator-facing summary.
 | **Reproducibility** | none | high (idempotent) | highest (checkpointed) |
 | **Budget caps** | per-session max-turns | none | \`--budget-usd\`, \`--budget-tokens\`, \`--max-errors\` |
 | **Resume after crash** | no | re-invoke | \`--resume\` |
-| **Best for** | exploration | finished script | repeatable workflows |
+| **Best for** | optional built-in exploration | finished script | repeatable workflows |
 
 ## Decision tree
 
-- "I want to play, I'll know it when I see it" → \`vibe agent\`
+- "I am already in Claude Code/Codex/Cursor/etc." → regular \`vibe\` shell commands + \`vibe guide\` / \`vibe schema\`
+- "I want to play and do not have an external coding agent" → \`vibe agent\`
 - "I have a finished script + visual identity" → \`vibe build\`
 - "I want this to run again next month" → \`vibe run\`
 
@@ -329,7 +335,70 @@ agent calls them through a tool manifest; \`build\` calls a curated subset
   re-invoke covers the common case.
 `;
 
+const MOTION_WALKTHROUGH = `# Motion graphics with vibe
+
+Use this guide when the user asks for titles, lower-thirds, animated
+typography, grain, vignettes, logo bugs, or other designed overlays.
+
+## Decision tree
+
+| User intent | Command |
+|---|---|
+| Simple static text burn-in | \`vibe edit text-overlay\` |
+| Designed/animated overlay on an existing clip | \`vibe edit motion-overlay\` |
+| Standalone motion graphic asset | \`vibe generate motion\` |
+| Overlay must fit the actual clip | \`vibe edit motion-overlay --understand auto\` |
+| User already has a Lottie file | \`vibe edit motion-overlay --asset logo.lottie\` |
+
+## Recommended path
+
+1. Inspect or understand the base clip only when placement matters.
+2. Use \`vibe edit motion-overlay <video> "description" --understand auto -o out.mp4\`
+   for animated title/lower-third/brand overlays.
+3. Use \`vibe edit text-overlay\` only for simple static text.
+4. Use \`vibe generate motion\` when the desired output is the motion asset
+   itself, not an edited input video.
+5. For Lottie, bring a user-provided \`.json\` or \`.lottie\` file and overlay it
+   with \`--asset\`; prompt-to-Lottie generation is intentionally out of scope.
+
+## Examples
+
+\`\`\`bash
+vibe edit motion-overlay clip.mp4 \\
+  "minimal lower-third title 'Day One', bottom-left, fade in at 1s, hold 3s, fade out" \\
+  --understand auto \\
+  -o clip-titled.mp4
+
+vibe edit motion-overlay clip.mp4 \\
+  --asset assets/logo.lottie \\
+  --position bottom-right \\
+  --scale 0.18 \\
+  --start 1 \\
+  --duration 4 \\
+  -o clip-logo.mp4
+
+vibe generate motion "animated product logo reveal" --render -o logo-reveal.mp4
+\`\`\`
+`;
+
 const META: Record<WalkthroughTopic, Pick<WalkthroughResult, "title" | "summary" | "steps" | "relatedCommands">> = {
+  motion: {
+    title: "Motion graphics with vibe",
+    summary: "Choose between static text, designed overlays, standalone motion, and Lottie overlays",
+    steps: [
+      "Use `vibe edit text-overlay` only for simple static FFmpeg text burn-in.",
+      "Use `vibe edit motion-overlay <video> \"...\" --understand auto` for designed animated overlays on an existing clip.",
+      "Use `vibe generate motion` only when the motion graphic itself is the output asset.",
+      "Use `vibe edit motion-overlay --asset <file.json|file.lottie>` for user-provided Lottie overlays.",
+      "Run with `--dry-run --json` first when an agent needs to confirm parameters.",
+    ],
+    relatedCommands: [
+      "vibe edit motion-overlay",
+      "vibe edit text-overlay",
+      "vibe generate motion",
+      "vibe inspect video",
+    ],
+  },
   scene: {
     title: "Scene authoring with vibe",
     summary: "Author per-scene HTML compositions and render to MP4 (BUILD flow)",
@@ -368,10 +437,11 @@ const META: Record<WalkthroughTopic, Pick<WalkthroughResult, "title" | "summary"
     ],
   },
   architecture: {
-    title: "vibe agent / build / run — when to pick which",
-    summary: "Compare the three orchestrating commands on the dimensions that actually decide the choice",
+    title: "external agents / vibe agent / build / run",
+    summary: "Choose between host-agent shell use, optional built-in agent mode, storyboard builds, and YAML pipelines",
     steps: [
-      "Pick agent for exploration (NL prompt, REPL, no checkpoints).",
+      "If you are already in Claude Code/Codex/Cursor/etc., let that host drive normal `vibe` shell commands using `AGENTS.md`, `vibe guide`, and `vibe schema`.",
+      "Pick `vibe agent` only for optional built-in exploration when no external agent host is driving the CLI.",
       "Pick build for STORYBOARD.md → MP4 with opinionated defaults.",
       "Pick run for repeatable, budget-capped, checkpointed YAML pipelines.",
       "Run `vibe doctor --test-keys` before any high-cost orchestrator to validate keys upfront.",
@@ -388,13 +458,14 @@ const META: Record<WalkthroughTopic, Pick<WalkthroughResult, "title" | "summary"
 };
 
 const CONTENT: Record<WalkthroughTopic, string> = {
+  motion: MOTION_WALKTHROUGH,
   scene: SCENE_WALKTHROUGH,
   pipeline: PIPELINE_WALKTHROUGH,
   architecture: ARCHITECTURE_WALKTHROUGH,
 };
 
 /** All walkthrough topics this CLI knows. */
-export const WALKTHROUGH_TOPICS: readonly WalkthroughTopic[] = ["scene", "pipeline", "architecture"] as const;
+export const WALKTHROUGH_TOPICS: readonly WalkthroughTopic[] = ["motion", "scene", "pipeline", "architecture"] as const;
 
 /** Pure data accessor — no I/O. Throws on unknown topic. */
 export function loadWalkthrough(topic: WalkthroughTopic): WalkthroughResult {
@@ -413,7 +484,7 @@ export function loadWalkthrough(topic: WalkthroughTopic): WalkthroughResult {
   };
 }
 
-/** List all walkthroughs (for `vibe walkthrough --list` / no-arg invocation). */
+/** List all walkthroughs (for `vibe guide --list` / no-arg invocation). */
 export function listWalkthroughs(): Array<{ topic: WalkthroughTopic; title: string; summary: string }> {
   return WALKTHROUGH_TOPICS.map((topic) => ({
     topic,

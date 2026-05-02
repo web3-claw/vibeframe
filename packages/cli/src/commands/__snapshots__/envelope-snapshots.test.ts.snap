@@ -2,7 +2,7 @@
 
 exports[`CLI --describe schemas (drift detection) > vibe agent --describe 1`] = `
 {
-  "description": "Start the AI agent with natural language interface",
+  "description": "Optional built-in natural-language agent (fallback when no external coding agent is driving vibe)",
   "name": "agent",
   "parameters": {
     "properties": {
@@ -1122,6 +1122,100 @@ exports[`CLI --describe schemas (drift detection) > vibe edit jump-cut --describ
 }
 `;
 
+exports[`CLI --describe schemas (drift detection) > vibe edit motion-overlay --describe 1`] = `
+{
+  "cost": "low",
+  "description": "Apply designed motion graphics overlays to an existing video",
+  "name": "edit.motion-overlay",
+  "parameters": {
+    "properties": {
+      "asset": {
+        "description": "User-provided .json/.lottie animation to overlay",
+        "type": "string",
+      },
+      "description": {
+        "description": "Motion overlay description (omit when using --asset)",
+        "type": "string",
+      },
+      "dryRun": {
+        "description": "Preview parameters without executing",
+        "type": "boolean",
+      },
+      "duration": {
+        "description": "Overlay/render duration in seconds",
+        "type": "number",
+      },
+      "loop": {
+        "default": true,
+        "description": "Loop Lottie overlay",
+        "type": "boolean",
+      },
+      "model": {
+        "default": "sonnet",
+        "description": "LLM model for generated overlays: sonnet, opus, gemini, gemini-3.1-pro",
+        "type": "string",
+      },
+      "noLoop": {
+        "description": "Do not loop Lottie overlay",
+        "type": "boolean",
+      },
+      "opacity": {
+        "default": 1,
+        "description": "Lottie overlay opacity (0-1)",
+        "type": "number",
+      },
+      "output": {
+        "description": "Output video file path",
+        "type": "string",
+      },
+      "position": {
+        "default": "full",
+        "description": "Lottie position: full, center, top-left, top-right, bottom-left, bottom-right",
+        "enum": [
+          "full",
+          "center",
+          "top-left",
+          "top-right",
+          "bottom-left",
+          "bottom-right",
+        ],
+        "type": "string",
+      },
+      "scale": {
+        "description": "Lottie overlay scale (0.01-2)",
+        "type": "number",
+      },
+      "start": {
+        "default": 0,
+        "description": "Overlay start time in seconds",
+        "type": "number",
+      },
+      "style": {
+        "description": "Style preset for generated overlays: minimal, corporate, playful, cinematic",
+        "type": "string",
+      },
+      "understand": {
+        "default": "auto",
+        "description": "Analyze video before generated overlay: auto, off, required",
+        "type": "string",
+      },
+      "understandingPrompt": {
+        "description": "Custom prompt for video understanding",
+        "type": "string",
+      },
+      "video": {
+        "description": "Video file path",
+        "type": "string",
+      },
+    },
+    "required": [
+      "video",
+    ],
+    "type": "object",
+  },
+}
+`;
+
 exports[`CLI --describe schemas (drift detection) > vibe edit noise-reduce --describe 1`] = `
 {
   "cost": "free",
@@ -1351,7 +1445,7 @@ exports[`CLI --describe schemas (drift detection) > vibe edit speed-ramp --descr
 exports[`CLI --describe schemas (drift detection) > vibe edit text-overlay --describe 1`] = `
 {
   "cost": "free",
-  "description": "Apply text overlays to video (FFmpeg drawtext)",
+  "description": "Apply simple static text burn-in to video (FFmpeg drawtext)",
   "name": "edit.text-overlay",
   "parameters": {
     "properties": {
@@ -1699,6 +1793,15 @@ exports[`CLI --describe schemas (drift detection) > vibe generate motion --descr
           "playful",
           "cinematic",
         ],
+        "type": "string",
+      },
+      "understand": {
+        "default": "auto",
+        "description": "Analyze --video with Gemini before generating motion: auto, off, required",
+        "type": "string",
+      },
+      "understandingPrompt": {
+        "description": "Custom prompt for --video understanding",
         "type": "string",
       },
       "video": {
@@ -2237,6 +2340,26 @@ exports[`CLI --describe schemas (drift detection) > vibe generate video-status -
     "required": [
       "task-id",
     ],
+    "type": "object",
+  },
+}
+`;
+
+exports[`CLI --describe schemas (drift detection) > vibe guide --describe 1`] = `
+{
+  "description": "Step-by-step guide for a vibe workflow (universal /vibe-* slash-command equivalent)",
+  "name": "guide",
+  "parameters": {
+    "properties": {
+      "list": {
+        "description": "List available guides and exit",
+        "type": "boolean",
+      },
+      "topic": {
+        "description": "Guide topic: motion | scene | pipeline | architecture. Omit to list all.",
+        "type": "string",
+      },
+    },
     "type": "object",
   },
 }
@@ -3674,26 +3797,6 @@ exports[`CLI --describe schemas (drift detection) > vibe timeline trim-clip --de
       "project",
       "clip-id",
     ],
-    "type": "object",
-  },
-}
-`;
-
-exports[`CLI --describe schemas (drift detection) > vibe walkthrough --describe 1`] = `
-{
-  "description": "Step-by-step authoring guide for a vibe workflow (universal /vibe-* slash-command equivalent)",
-  "name": "walkthrough",
-  "parameters": {
-    "properties": {
-      "list": {
-        "description": "List available walkthroughs and exit",
-        "type": "boolean",
-      },
-      "topic": {
-        "description": "Walkthrough topic: scene | pipeline | architecture. Omit to list all.",
-        "type": "string",
-      },
-    },
     "type": "object",
   },
 }

@@ -16,7 +16,7 @@ import { timelineTools } from "./timeline.js";
 import { projectTools } from "./project.js";
 import { exportTools } from "./export.js";
 import { agentOnlyTools } from "./agent-only.js";
-import { walkthroughTools } from "./walkthrough.js";
+import { guideTools } from "./walkthrough.js";
 
 export const manifest: readonly AnyTool[] = [
   ...sceneTools,
@@ -30,7 +30,7 @@ export const manifest: readonly AnyTool[] = [
   ...projectTools,
   ...exportTools,
   ...agentOnlyTools,
-  ...walkthroughTools,
+  ...guideTools,
 ];
 
 export {
@@ -45,5 +45,5 @@ export {
   projectTools,
   exportTools,
   agentOnlyTools,
-  walkthroughTools,
+  guideTools,
 };

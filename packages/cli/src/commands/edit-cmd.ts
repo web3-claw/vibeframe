@@ -11,7 +11,8 @@
  *   edit fade           - Fade in/out effects (FFmpeg)
  *   edit translate-srt  - Translate SRT subtitles (Claude or OpenAI)
  *   edit grade          - Color grading (Claude + FFmpeg)
- *   edit text-overlay   - Text overlays (FFmpeg drawtext)
+ *   edit text-overlay   - Simple static text overlays (FFmpeg drawtext)
+ *   edit motion-overlay - Designed motion graphics overlays (Remotion/Lottie)
  *   edit speed-ramp     - Speed ramping (Whisper + Claude + FFmpeg)
  *   edit reframe        - Reframe aspect ratio (Claude Vision + FFmpeg)
  *   edit image          - Image editing (Gemini, OpenAI, or Grok)
@@ -40,6 +41,7 @@ import { formatTime } from "./ai-helpers.js";
 import { applyTextOverlays, type TextOverlayStyle } from "./ai-edit.js";
 import { registerEditCommands } from "./ai-edit-cli.js";
 import { registerFillGapsCommand } from "./ai-fill-gaps.js";
+import { registerMotionOverlayCommand } from "./edit/motion-overlay.js";
 import { isJsonMode, outputSuccess, exitWithError, usageError, notFoundError, apiError, generalError } from "./output.js";
 import { rejectControlChars, validateOutputPath } from "./validate.js";
 import { applyTiers } from "./_shared/cost-tier.js";
@@ -58,7 +60,8 @@ Examples:
   $ vibe edit grade video.mp4 -o graded.mp4 --preset cinematic-warm
   $ vibe edit reframe landscape.mp4 -o vertical.mp4 -a 9:16
   $ vibe edit image photo.png "add sunset background" -o edited.png
-  $ vibe edit text-overlay video.mp4 --text "Title" --style center-bold -o out.mp4
+  $ vibe edit text-overlay video.mp4 --text "Title" --style center-bold -o out.mp4  # static
+  $ vibe edit motion-overlay video.mp4 "animated lower-third title" -o out.mp4
   $ vibe edit noise-reduce noisy.mp4 -o clean.mp4 --strength high
   $ vibe edit fade video.mp4 -o faded.mp4 --fade-in 1 --fade-out 1
 
@@ -79,6 +82,10 @@ registerEditCommands(editCommand);
 // ── edit fill-gaps ──────────────────────────────────────────────────────
 
 registerFillGapsCommand(editCommand);
+
+// ── edit motion-overlay ─────────────────────────────────────────────────
+
+registerMotionOverlayCommand(editCommand);
 
 // ── edit grade ──────────────────────────────────────────────────────────
 
@@ -205,7 +212,7 @@ editCommand
 
 editCommand
   .command("text-overlay")
-  .description("Apply text overlays to video (FFmpeg drawtext)")
+  .description("Apply simple static text burn-in to video (FFmpeg drawtext)")
   .argument("<video>", "Video file path")
   .option("--text <texts...>", "Text lines to overlay (repeat for multiple)")
   .option("--style <style>", "Overlay style: lower-third, center-bold, subtitle, minimal", "lower-third")
@@ -1083,6 +1090,7 @@ applyTiers(editCommand, {
   "jump-cut": "low",
   "grade": "low",
   "speed-ramp": "low",
+  "motion-overlay": "low",
   // high — vision LLM or image gen
   "reframe": "high",
   "image": "high",

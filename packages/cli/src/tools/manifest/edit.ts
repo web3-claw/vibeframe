@@ -30,6 +30,7 @@ import {
 import { executeAnimatedCaption } from "../../commands/ai-animated-caption.js";
 import { executeGeminiEdit } from "../../commands/ai-image.js";
 import { executeFillGaps } from "../../commands/_shared/execute-fill-gaps.js";
+import { executeMotionOverlay } from "../../commands/edit/motion-overlay.js";
 
 // ── edit_silence_cut ────────────────────────────────────────────────────────
 
@@ -176,7 +177,8 @@ export const editTextOverlayTool = defineTool({
   name: "edit_text_overlay",
   category: "edit",
   cost: "free",
-  description: "Apply text overlays on video using FFmpeg drawtext. No API key needed.",
+  description:
+    "Apply simple static text burn-in on video using FFmpeg drawtext. No API key needed. For designed or animated overlays, use edit_motion_overlay.",
   schema: z.object({
     videoPath: z.string().describe("Path to the input video file"),
     outputPath: z.string().describe("Path for the output video"),
@@ -195,6 +197,46 @@ export const editTextOverlayTool = defineTool({
       success: true,
       data: { outputPath: result.outputPath },
       humanLines: [`✅ Text overlaid → ${result.outputPath}`],
+    };
+  },
+});
+
+// ── edit_motion_overlay ────────────────────────────────────────────────────
+
+export const editMotionOverlayTool = defineTool({
+  name: "edit_motion_overlay",
+  category: "edit",
+  cost: "low",
+  description:
+    "Apply designed motion graphics overlays to an existing video. Generates Remotion overlays from a prompt, or overlays a user-provided .json/.lottie animation via the Hyperframes renderer.",
+  schema: z.object({
+    videoPath: z.string().describe("Path to the input video file"),
+    description: z.string().optional().describe("Motion overlay description (omit when using asset)"),
+    asset: z.string().optional().describe("User-provided .json/.lottie animation to overlay"),
+    output: z.string().optional().describe("Output video file path"),
+    duration: z.number().optional().describe("Overlay/render duration in seconds"),
+    start: z.number().optional().describe("Overlay start time in seconds"),
+    style: z.string().optional().describe("Style preset for generated overlays"),
+    model: z.enum(["sonnet", "opus", "gemini", "gemini-3.1-pro"]).optional().describe("LLM model for generated overlays"),
+    understand: z.enum(["auto", "off", "required"]).optional().describe("Analyze video before generated overlay (default: auto)"),
+    understandingPrompt: z.string().optional().describe("Custom prompt for video understanding"),
+    position: z.enum(["full", "center", "top-left", "top-right", "bottom-left", "bottom-right"]).optional().describe("Lottie overlay position"),
+    scale: z.number().optional().describe("Lottie overlay scale (0.01-2)"),
+    opacity: z.number().optional().describe("Lottie overlay opacity (0-1)"),
+    loop: z.boolean().optional().describe("Loop Lottie overlay"),
+  }),
+  async execute(args) {
+    const result = await executeMotionOverlay(args);
+    if (!result.success) return { success: false, error: result.error ?? "Motion overlay failed" };
+    return {
+      success: true,
+      data: {
+        outputPath: result.outputPath,
+        codePath: result.codePath,
+        renderedPath: result.renderedPath,
+        provider: result.provider,
+      },
+      humanLines: [`✅ Motion overlay${result.provider ? ` (${result.provider})` : ""} → ${result.outputPath}`],
     };
   },
 });
@@ -470,6 +512,7 @@ export const editTools: readonly AnyTool[] = [
   editNoiseReduceTool as unknown as AnyTool,
   editJumpCutTool as unknown as AnyTool,
   editTextOverlayTool as unknown as AnyTool,
+  editMotionOverlayTool as unknown as AnyTool,
   editTranslateSrtTool as unknown as AnyTool,
   editGradeTool as unknown as AnyTool,
   editSpeedRampTool as unknown as AnyTool,

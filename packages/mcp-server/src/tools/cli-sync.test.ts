@@ -39,7 +39,7 @@ const CLI_TREE: Record<string, string[]> = {
   // v0.77: `styles` → `list-styles` (verb-first leaf consistency).
   scene:    ["list-styles", "add", "lint", "install-skill", "compose-prompts"],
   generate: ["image", "video", "video-status", "video-cancel", "video-extend", "speech", "sound-effect", "music", "music-status", "storyboard", "motion", "thumbnail", "background"],
-  edit:     ["silence-cut", "caption", "noise-reduce", "fade", "translate-srt", "jump-cut", "fill-gaps", "grade", "text-overlay", "speed-ramp", "reframe", "image", "interpolate", "upscale"],
+  edit:     ["silence-cut", "caption", "noise-reduce", "fade", "translate-srt", "jump-cut", "fill-gaps", "grade", "text-overlay", "motion-overlay", "speed-ramp", "reframe", "image", "interpolate", "upscale"],
   // v0.74: `voices` → `list-voices`, `voice-clone` → `clone-voice`
   // (verb-first leaf consistency). Old names remain as Commander aliases.
   audio:    ["transcribe", "list-voices", "isolate", "clone-voice", "dub", "duck"],
@@ -56,11 +56,11 @@ const CLI_TREE: Record<string, string[]> = {
   // `analyze` was renamed to `inspect` in v0.74 (see remix note above).
   // `analyze` and `az` remain as deprecated Commander aliases.
   inspect:  ["media", "video", "review", "suggest"],
-  // `vibe walkthrough <topic>` is a top-level command with a positional
+  // `vibe guide <topic>` is a top-level command with a positional
   // arg, not a real subcommand group. We model the topics as "subs" here
   // so each one ↔ manifest mapping is verifiable; the single backing
-  // manifest tool (`walkthrough`) handles them all by routing on `topic`.
-  walkthrough: ["scene", "pipeline"],
+  // manifest tool (`guide`) handles them all by routing on `topic`.
+  guide: ["motion", "scene", "pipeline", "architecture"],
 };
 
 // Top-level CLI commands with no manifest equivalent — pure ergonomics
@@ -106,6 +106,7 @@ const CLI_TO_MANIFEST: Record<string, string | null> = {
   "edit fill-gaps":     "edit_fill_gaps",
   "edit grade":         "edit_grade",
   "edit text-overlay":  "edit_text_overlay",
+  "edit motion-overlay": "edit_motion_overlay",
   "edit speed-ramp":    "edit_speed_ramp",
   "edit reframe":       "edit_reframe",
   "edit image":         "edit_image",
@@ -151,10 +152,12 @@ const CLI_TO_MANIFEST: Record<string, string | null> = {
   "inspect video":   "inspect_video",
   "inspect review":  "inspect_review",
   "inspect suggest": "inspect_suggest",
-  // walkthrough — both topics route through the single `walkthrough`
+  // guide — all topics route through the single `guide`
   // manifest tool (the topic is a tool arg, not a separate tool)
-  "walkthrough scene":    "walkthrough",
-  "walkthrough pipeline": "walkthrough",
+  "guide motion":   "guide",
+  "guide scene":    "guide",
+  "guide pipeline": "guide",
+  "guide architecture": "guide",
 };
 
 describe("CLI ↔ manifest sync", () => {

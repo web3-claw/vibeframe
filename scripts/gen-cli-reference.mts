@@ -200,7 +200,7 @@ Rule 2.  vibe <bare-name>      →  <bare-name>
          e.g. vibe init / build / render / run → init / build / render / run
 
 Rule 3.  CLI-only (not exposed via MCP):
-         setup, doctor, demo, agent, schema, context, walkthrough
+         setup, doctor, demo, agent, schema, context
 
 Rule 4.  MCP-only agent tools (engine direct access):
          fs_*, media_*, project_open / project_save

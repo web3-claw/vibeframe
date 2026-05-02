@@ -165,6 +165,48 @@ describe("buildClipElements", () => {
     expect(markup).toContain("autoplay");
     expect(markup).toContain("loop");
   });
+
+  it("emits positioned lottie overlays from motion-overlay effect params", () => {
+    const state: TimelineState = {
+      ...loadFixture("simple-2clip.vibe.json"),
+      sources: [
+        { id: "source-l", name: "anim.lottie", type: "lottie", url: "/abs/anim.lottie", duration: 3 },
+      ],
+      clips: [
+        {
+          id: "clip-l",
+          sourceId: "source-l",
+          trackId: "track-1",
+          startTime: 0,
+          duration: 3,
+          sourceStartOffset: 0,
+          sourceEndOffset: 3,
+          effects: [
+            {
+              id: "effect-motion-overlay",
+              type: "custom",
+              startTime: 0,
+              duration: 3,
+              params: {
+                kind: "motion-overlay",
+                position: "bottom-right",
+                scale: 0.2,
+                opacity: 0.75,
+                loop: false,
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const markup = buildClipElements(state);
+    expect(markup).toContain("<dotlottie-wc");
+    expect(markup).toContain("right:4%");
+    expect(markup).toContain("bottom:4%");
+    expect(markup).toContain("width:20%");
+    expect(markup).toContain("opacity:0.75");
+    expect(markup).not.toContain(" loop ");
+  });
 });
 
 describe("generateCompositionHtml with lottie source", () => {

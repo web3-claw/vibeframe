@@ -1,7 +1,7 @@
 /**
  * @module commands/walkthrough
  *
- * `vibe walkthrough [topic]` — universal CLI equivalent of Claude Code's
+ * `vibe guide [topic]` — universal CLI equivalent of Claude Code's
  * `/vibe-scene` and `/vibe-pipeline` slash commands. Any host agent
  * (Claude Code, Codex, Cursor, Aider, Gemini CLI, OpenCode) can invoke
  * this to load the same step-by-step authoring guide the slash commands
@@ -11,6 +11,10 @@
  * Without arguments, lists available topics. With a topic, emits the
  * full markdown body + structured metadata. `--json` returns the
  * structured shape from `loadWalkthrough()` directly.
+ *
+ * The old `vibe walkthrough` spelling is registered as a hidden deprecated
+ * compatibility command from `index.ts`, but all public help/docs should point
+ * users at `vibe guide`.
  */
 
 import { Command } from "commander";
@@ -25,18 +29,14 @@ import {
 } from "./_shared/walkthroughs/walkthroughs.js";
 import { exitWithError, isJsonMode, outputSuccess, usageError } from "./output.js";
 
-export const walkthroughCommand = new Command("walkthrough")
-  .description("Step-by-step authoring guide for a vibe workflow (universal /vibe-* slash-command equivalent)")
-  .argument("[topic]", `Walkthrough topic: ${WALKTHROUGH_TOPICS.join(" | ")}. Omit to list all.`)
-  .option("--list", "List available walkthroughs and exit")
-  .action(async (topicArg: string | undefined, options) => {
+async function runGuide(commandName: string, topicArg: string | undefined, options: { list?: boolean }): Promise<void> {
     const startedAt = Date.now();
     if (!topicArg || options.list) {
       const topics = listWalkthroughs();
 
       if (isJsonMode()) {
         outputSuccess({
-          command: "walkthrough",
+          command: commandName,
           startedAt,
           data: {
             action: "list",
@@ -47,13 +47,13 @@ export const walkthroughCommand = new Command("walkthrough")
       }
 
       console.log();
-      console.log(chalk.bold.cyan("Available walkthroughs"));
+      console.log(chalk.bold.cyan("Available guides"));
       console.log(chalk.dim("─".repeat(60)));
       for (const t of topics) {
         console.log(`  ${chalk.bold(t.topic.padEnd(10))} ${chalk.dim(t.summary)}`);
       }
       console.log();
-      console.log(chalk.dim("Run `vibe walkthrough <topic>` for the full guide."));
+      console.log(chalk.dim("Run `vibe guide <topic>` for the full guide."));
       console.log(chalk.dim("Add `--json` to get structured output for an agent host."));
       console.log();
       return;
@@ -61,7 +61,7 @@ export const walkthroughCommand = new Command("walkthrough")
 
     if (!isWalkthroughTopic(topicArg)) {
       exitWithError(usageError(
-        `Unknown walkthrough topic: ${topicArg}`,
+        `Unknown guide topic: ${topicArg}`,
         `Valid topics: ${WALKTHROUGH_TOPICS.join(", ")}`,
       ));
     }
@@ -71,7 +71,7 @@ export const walkthroughCommand = new Command("walkthrough")
 
     if (isJsonMode()) {
       outputSuccess({
-        command: "walkthrough",
+        command: commandName,
         startedAt,
         data: {
           action: "show",
@@ -107,4 +107,28 @@ export const walkthroughCommand = new Command("walkthrough")
     console.log();
     console.log(result.content);
     console.log();
-  });
+}
+
+function makeGuideCommand(name: "guide" | "walkthrough"): Command {
+  const isLegacy = name === "walkthrough";
+  const command = new Command(name)
+    .description(
+      isLegacy
+        ? "Deprecated hidden alias for `vibe guide`"
+        : "Step-by-step guide for a vibe workflow (universal /vibe-* slash-command equivalent)",
+    )
+    .argument("[topic]", `Guide topic: ${WALKTHROUGH_TOPICS.join(" | ")}. Omit to list all.`)
+    .option("--list", "List available guides and exit")
+    .action(async (topicArg: string | undefined, options: { list?: boolean }) => {
+      await runGuide(name, topicArg, options);
+    });
+
+  if (isLegacy) {
+    command.addHelpText("after", "\nDeprecated alias. Use `vibe guide` instead.\n");
+  }
+
+  return command;
+}
+
+export const guideCommand = makeGuideCommand("guide");
+export const legacyGuideAliasCommand = makeGuideCommand("walkthrough");

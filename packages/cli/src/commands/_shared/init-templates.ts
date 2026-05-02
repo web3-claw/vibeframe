@@ -57,8 +57,9 @@ vibe --help                    # command groups overview
 vibe schema --list             # full machine-readable catalog (80+)
 vibe schema generate.video     # JSON Schema for any single command
 vibe doctor                    # available providers + system health
-vibe walkthrough scene         # step-by-step authoring guide (scene)
-vibe walkthrough pipeline      # step-by-step authoring guide (pipeline)
+vibe guide motion              # choose text-overlay vs motion-overlay vs generate motion
+vibe guide scene               # step-by-step authoring guide (scene)
+vibe guide pipeline            # step-by-step authoring guide (pipeline)
 \`\`\`
 
 ## Route by the user's actual request
@@ -78,7 +79,7 @@ applies to BUILD only.
 Examples:
 - "make this image" → \`vibe generate image "..." -o assets/name.png\`
 - "use this image to make a video" → \`vibe generate video "..." -i image.png -o renders/name.mp4\`
-- "add a lower-third/title/animated overlay/grain/vignette to this clip" → prefer \`vibe generate motion "..." --video clip.mp4 --render -o out.mp4\` when the request asks for designed or animated motion graphics.
+- "add a lower-third/title/animated overlay/grain/vignette to this clip" → prefer \`vibe edit motion-overlay clip.mp4 "..." --understand auto -o out.mp4\` when the request asks for designed or animated motion graphics.
 - "please add visuals using OpenAI image gen" → \`vibe generate image "..." -p openai ...\`
 - *(verb-less paste)* "aerial view of a misty mountain peak at sunrise..." → \`vibe generate image "<paste>" -o assets/mountain-peak.png\`. **Don't** read it as a brief for DESIGN.md.
 
@@ -98,7 +99,7 @@ batch-oriented operations on a file the user already has on disk.
 \`vibe edit text-overlay\` is the free deterministic path for simple static
 text burn-in. If the user asks for motion design, animated lower-thirds,
 designed titles, grain/vignette as part of a graphic treatment, or says
-"motion graphics", use \`vibe generate motion --video ... --render\` instead.
+"motion graphics", use \`vibe edit motion-overlay ... --understand auto\` instead.
 
 Decision rule: if the user asks for one asset, it's ASSET. If the user asks
 for a multi-scene/storyboard/composed video, it's BUILD. If the user is
@@ -124,7 +125,7 @@ starting from a media file and wants it transformed, it's REMIX.
 | Extract highlights from a long video | \`vibe remix highlights file.mp4 -d 60\` |
 | Long video → vertical shorts | \`vibe remix auto-shorts file.mp4 -n 3 --add-captions\` |
 | Add animated word-by-word captions | \`vibe remix animated-caption file.mp4 -s karaoke-sweep\` |
-| Add designed motion graphics overlay | \`vibe generate motion "lower-third..." --video file.mp4 --render -o out.mp4\` |
+| Add designed motion graphics overlay | \`vibe edit motion-overlay file.mp4 "lower-third..." --understand auto -o out.mp4\` |
 | Remove silence | \`vibe edit silence-cut in.mp4 -o out.mp4\` |
 | Add static captions | \`vibe edit caption in.mp4 -o out.mp4\` |
 | Translate audio (transcribe → TTS) | \`vibe audio dub file.mp4 -t ko\` |
@@ -234,7 +235,7 @@ Claude-specific routing note: follow the ASSET / BUILD / REMIX decision
 rules in \`AGENTS.md\`. In particular, a request for one generated image or
 one generated video clip is an ASSET request: use \`vibe generate image\` or
 \`vibe generate video\` directly. A request for designed/animated overlays
-on an existing clip is usually \`vibe generate motion --video ... --render\`,
+on an existing clip is usually \`vibe edit motion-overlay ... --understand auto\`,
 not \`vibe edit text-overlay\`, unless the user explicitly asks for a simple
 static text burn-in. Do not invoke \`/vibe-scene\`, edit
 \`DESIGN.md\`, or edit \`STORYBOARD.md\` unless the user explicitly asks for a
@@ -301,7 +302,7 @@ export function renderEnvExample(opts: EnvExampleOptions = {}): string {
   return `# VibeFrame API keys — copy this file to \`.env\` and fill in what you need.
 # Free local fallbacks work without any keys. See README for the full list.
 
-${fallback}# ── LLM provider for \`vibe agent\` (pick one) ────────────────────────────
+${fallback}# ── LLM provider / optional \`vibe agent\` fallback (pick one) ───────────
 ANTHROPIC_API_KEY=                    # Claude — recommended default
 OPENAI_API_KEY=                       # GPT-5-mini · Whisper · gpt-image-2
 GOOGLE_API_KEY=                       # Gemini · Veo

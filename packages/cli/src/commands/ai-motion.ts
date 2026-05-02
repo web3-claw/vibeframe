@@ -2,7 +2,7 @@
  * @module ai-motion
  * @description Motion graphics render and composite command.
  *
- * ## Commands: vibe ai motion
+ * ## Commands: vibe generate motion
  * ## Dependencies: Claude, Gemini, Remotion
  *
  * Extracted from ai.ts as part of modularisation.
@@ -17,7 +17,8 @@ import { readFile, writeFile } from 'node:fs/promises';
 import chalk from 'chalk';
 import ora from 'ora';
 import { ClaudeProvider, GeminiProvider } from '@vibeframe/ai-providers';
-import { getApiKey } from '../utils/api-key.js';
+import { getApiKey, loadEnv } from '../utils/api-key.js';
+import { getApiKeyFromConfig } from "../config/index.js";
 import { exitWithError, outputSuccess, apiError, generalError, usageError } from './output.js';
 import { validateOutputPath } from "./validate.js";
 
@@ -36,6 +37,10 @@ export interface MotionCommandOptions {
   video?: string;
   /** Image to analyze with Gemini — color/mood/composition fed into Claude prompt */
   image?: string;
+  /** Analyze base video before generating motion: auto | off | required */
+  understand?: "auto" | "off" | "required";
+  /** Override the default video understanding prompt */
+  understandingPrompt?: string;
   /** Path to existing TSX file to refine instead of generating from scratch */
   fromTsx?: string;
   /**
@@ -65,6 +70,20 @@ const MODEL_MAP: Record<string, { provider: "claude" | "gemini"; modelId: string
   "gemini-3.1-pro": { provider: "gemini", modelId: "gemini-3.1-pro-preview" },
 };
 
+async function getOptionalGoogleApiKey(): Promise<string | null> {
+  const configKey = await getApiKeyFromConfig("google");
+  if (configKey) return configKey;
+  loadEnv();
+  return process.env.GOOGLE_API_KEY || null;
+}
+
+function normalizeUnderstand(value: unknown): "auto" | "off" | "required" {
+  if (value === "off" || value === "required" || value === "auto" || value === undefined) {
+    return (value ?? "auto") as "auto" | "off" | "required";
+  }
+  return "auto";
+}
+
 export async function executeMotion(options: MotionCommandOptions): Promise<MotionCommandResult> {
   const modelAlias = options.model || "sonnet";
   const modelConfig = MODEL_MAP[modelAlias] ?? MODEL_MAP["sonnet"];
@@ -85,7 +104,10 @@ export async function executeMotion(options: MotionCommandOptions): Promise<Moti
     if (!apiKey) return { success: false, error: "ANTHROPIC_API_KEY required for Claude motion generation. Run 'vibe setup' or set ANTHROPIC_API_KEY in .env" };
   }
 
-  // Step 0 (optional): Analyze image with Gemini, inject into description
+  // Step 0 (optional): Analyze reference media with Gemini, inject into description.
+  // Image analysis is explicit and required when --image is passed. Video
+  // understanding is best-effort by default so motion composition still works
+  // for Anthropic-only users; use --understand required to make it mandatory.
   let enrichedDescription = options.description;
   if (options.image) {
     const geminiApiKey = await getApiKey("GOOGLE_API_KEY", "Google");
@@ -115,6 +137,52 @@ Be specific and concise — this analysis will guide a Remotion animation genera
 ${analysisResult.response}
 
 Use this image analysis to inform the color palette, typography placement, and overall aesthetic of the motion graphic.`;
+    }
+  }
+
+  const understand = normalizeUnderstand(options.understand);
+  if (options.video && understand !== "off") {
+    let geminiApiKey = await getOptionalGoogleApiKey();
+    if (!geminiApiKey && understand === "required") {
+      geminiApiKey = await getApiKey("GOOGLE_API_KEY", "Google");
+    }
+
+    if (!geminiApiKey && understand === "required") {
+      return { success: false, error: "GOOGLE_API_KEY required for video understanding (--understand required). Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
+    }
+
+    if (geminiApiKey) {
+      const videoPath = resolve(process.cwd(), options.video);
+      const videoBuffer = await readFile(videoPath);
+
+      const gemini = new GeminiProvider();
+      await gemini.initialize({ apiKey: geminiApiKey });
+
+      const analysisPrompt = options.understandingPrompt || `Analyze this video for motion graphics composition. Return concise production guidance:
+1. Visual summary and primary subject
+2. Dominant color palette and lighting
+3. Camera motion / scene motion that overlays should respect
+4. Safe zones for titles, lower-thirds, labels, or graphic elements
+5. Important areas to avoid covering
+6. Recommended animation timing and entrance/exit style
+7. Any moments where overlays should pause, fade, or stay minimal`;
+
+      const analysisResult = await gemini.analyzeVideo(videoBuffer, analysisPrompt, {
+        model: "gemini-2.5-flash",
+        fps: 1,
+        lowResolution: true,
+      });
+
+      if (analysisResult.success && analysisResult.response) {
+        enrichedDescription = `${enrichedDescription}
+
+[Video Understanding Context]
+${analysisResult.response}
+
+Use this video understanding to place motion graphics in safe zones, match the clip's palette and camera movement, and avoid covering important subjects.`;
+      } else if (understand === "required") {
+        return { success: false, error: analysisResult.error || "Video understanding failed" };
+      }
     }
   }
 
@@ -283,6 +351,12 @@ export function registerMotionCommand(aiCommand: Command): void {
     .option("--render", "Render the generated code with Remotion (output .webm)")
     .option("--video <path>", "Base video to composite the motion graphic onto")
     .option("--image <path>", "Image to analyze with Gemini — color/mood fed into Claude prompt")
+    .option(
+      "--understand <mode>",
+      "Analyze --video with Gemini before generating motion: auto, off, required",
+      "auto"
+    )
+    .option("--understanding-prompt <text>", "Custom prompt for --video understanding")
     .option("--from-tsx <path>", "Refine an existing TSX file instead of generating from scratch")
     .option("-m, --model <alias>", "LLM model: sonnet (default), opus, gemini, gemini-3.1-pro", "sonnet")
     .option("--dry-run", "Preview parameters without executing")
@@ -339,6 +413,8 @@ export function registerMotionCommand(aiCommand: Command): void {
                 render: options.render ?? false,
                 video: options.video,
                 image: options.image,
+                understand: options.understand,
+                understandingPrompt: options.understandingPrompt,
                 fromTsx: options.fromTsx,
                 model: options.model,
                 output: options.output,
@@ -353,6 +429,8 @@ export function registerMotionCommand(aiCommand: Command): void {
         const spinner = ora("Generating motion graphic...").start();
         if (options.image) {
           spinner.text = "Analyzing image with Gemini...";
+        } else if (options.video && options.understand !== "off") {
+          spinner.text = "Understanding video, then generating motion graphic...";
         }
 
         const result = await executeMotion({
@@ -365,6 +443,8 @@ export function registerMotionCommand(aiCommand: Command): void {
           render: options.render,
           video: options.video,
           image: options.image,
+          understand: normalizeUnderstand(options.understand),
+          understandingPrompt: options.understandingPrompt,
           fromTsx: options.fromTsx,
           model: options.model,
           output: options.output !== "motion.tsx" ? options.output : undefined,
@@ -396,9 +476,10 @@ export function registerMotionCommand(aiCommand: Command): void {
 
         if (!shouldRender) {
           console.log();
-          console.log(chalk.dim("To render, add --render flag or --video <path>:"));
-          console.log(chalk.dim(`  vibe ai motion "${description}" --render -o motion.webm`));
-          console.log(chalk.dim(`  vibe ai motion "${description}" --video input.mp4 -o output.mp4`));
+          console.log(chalk.dim("To render this standalone motion asset, add --render:"));
+          console.log(chalk.dim(`  vibe generate motion "${description}" --render -o motion.webm`));
+          console.log(chalk.dim("For overlays on an existing video, use:"));
+          console.log(chalk.dim(`  vibe edit motion-overlay input.mp4 "${description}" --understand auto -o output.mp4`));
         }
 
         console.log();

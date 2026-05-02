@@ -162,7 +162,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
     it("should register the full manifest", () => {
       // Manifest is the single source of truth post-v0.67 PR2.
       const tools = registry.getAll();
-      expect(tools.length).toBe(84);
+      expect(tools.length).toBe(85);
     });
 
     it("should register all project tools (5)", () => {
@@ -231,7 +231,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       }
     });
 
-    it("should register all AI tools (23)", () => {
+    it("should register all AI tools (24)", () => {
       const aiTools = [
         // Generation tools (8)
         "generate_image",
@@ -242,8 +242,9 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
         "generate_storyboard",
         "generate_motion",
         "generate_thumbnail",
-        // Edit tools (8)
+        // Edit tools (9)
         "edit_text_overlay",
+        "edit_motion_overlay",
         "edit_silence_cut",
         "edit_jump_cut",
         "edit_caption",
@@ -569,7 +570,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       const projectFlowTools = allTools.filter((t) =>
         ["init", "build", "render"].includes(t.name),
       );
-      const walkthroughTools = allTools.filter((t) => t.name === "walkthrough");
+      const guideTools = allTools.filter((t) => t.name === "guide");
       const runTools = allTools.filter((t) => t.name === "run");
 
       expect(projectTools.length).toBe(5);
@@ -577,7 +578,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       expect(fsTools.length).toBe(4);
       expect(mediaTools.length).toBe(12);  // +audio_isolate/voice_clone/dub/duck (Phase B v0.64)
       expect(generateTools.length).toBe(13);  // +background, video_status/cancel/extend, music_status (Phase B v0.64)
-      expect(editTools.length).toBe(15);  // +grade, speed_ramp, reframe, interpolate, upscale, animated_caption (Phase B+D v0.64), edit_fill_gaps (Plan G Phase 4)
+      expect(editTools.length).toBe(16);  // +grade, speed_ramp, reframe, interpolate, upscale, animated_caption, edit_fill_gaps, edit_motion_overlay
       expect(inspectTools.length).toBe(4);  // v0.75: video, media, review, suggest (was analyze_*)
       expect(remixTools.length).toBe(3);    // v0.75: highlights, auto_shorts, regenerate_scene (was pipeline_*)
       expect(runTools.length).toBe(0);      // v0.75: bare `run` is MCP-only (`surfaces: ["mcp"]`); not registered into the agent surface
@@ -585,9 +586,9 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       expect(batchTools.length).toBe(3);
       expect(sceneTools.length).toBe(5);    // v0.75: init/build/render moved out (now project-flow); scene_* keeps add/lint/styles/install-skill/compose-prompts
       expect(projectFlowTools.length).toBe(3);  // v0.75: init/build/render top-level
-      expect(walkthroughTools.length).toBe(1);  // v0.71: universal slash-command equivalent
+      expect(guideTools.length).toBe(1);  // v0.91: universal guide equivalent
 
-      // 5+13+4+12+13+15+4+3+0+3+3+5+3+1 = 84.
+      // 5+13+4+12+13+16+4+3+0+3+3+5+3+1 = 85.
       // timeline_create/info are canonical; project_create/info remain
       // compatibility aliases until v1.0.
       const totalTools = projectTools.length +
@@ -603,8 +604,8 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
           batchTools.length +
           sceneTools.length +
           projectFlowTools.length +
-          walkthroughTools.length;
-      expect(totalTools).toBe(84);
+          guideTools.length;
+      expect(totalTools).toBe(85);
     });
   });
 });
@@ -656,7 +657,7 @@ describe("Tool Name Consistency", () => {
     // Top-level utility tools that don't fit a category prefix. Keep this
     // list small — every entry is a deliberate naming exception.
     const exactMatches = new Set([
-      "walkthrough", // v0.71: universal slash-command equivalent (one tool, multi-topic)
+      "guide",       // v0.91: universal guide equivalent (one tool, multi-topic)
       "init",        // v0.75: top-level project-flow tool (was scene_init)
       "build",       // v0.75: top-level project-flow tool (was scene_build)
       "render",      // v0.75: top-level project-flow tool (was scene_render)

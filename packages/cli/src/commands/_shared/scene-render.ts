@@ -97,15 +97,19 @@ export function defaultOutputPath(opts: {
 /** Minimal subset of `vibe.project.yaml` we care about for render. */
 interface VibeProjectShape {
   name?: string;
+  composition?: {
+    engine?: string;
+    entry?: string;
+  };
 }
 
-async function readProjectName(projectDir: string): Promise<string | undefined> {
+async function readVibeProjectConfig(projectDir: string): Promise<VibeProjectShape | undefined> {
   const cfgPath = resolve(projectDir, "vibe.project.yaml");
   if (!existsSync(cfgPath)) return undefined;
   try {
     const raw = await (await import("node:fs/promises")).readFile(cfgPath, "utf-8");
     const parsed = yamlParse(raw) as VibeProjectShape | null;
-    return parsed?.name ?? undefined;
+    return parsed ?? undefined;
   } catch {
     return undefined;
   }
@@ -141,7 +145,15 @@ export function buildRenderConfig(opts: {
  */
 export async function executeSceneRender(opts: SceneRenderOptions = {}): Promise<SceneRenderResult> {
   const projectDir = resolve(opts.projectDir ?? ".");
-  const root = opts.root ?? "index.html";
+  const projectConfig = await readVibeProjectConfig(projectDir);
+  const engine = projectConfig?.composition?.engine ?? "hyperframes";
+  if (engine !== "hyperframes") {
+    return {
+      success: false,
+      error: `Unsupported composition engine: ${engine}. Supported engine: hyperframes.`,
+    };
+  }
+  const root = opts.root ?? projectConfig?.composition?.entry ?? "index.html";
 
   // -- Preflight: project + Chrome ---------------------------------------
   const projectStat = await safeStat(projectDir);
@@ -160,7 +172,7 @@ export async function executeSceneRender(opts: SceneRenderOptions = {}): Promise
   }
 
   // -- Resolve output path -----------------------------------------------
-  const projectName = await readProjectName(projectDir);
+  const projectName = projectConfig?.name;
   const outputPath = opts.output
     ? resolve(projectDir, opts.output)
     : defaultOutputPath({ projectDir, projectName, format: opts.format });

@@ -9,11 +9,12 @@ import {
 
 describe("walkthroughs", () => {
   describe("WALKTHROUGH_TOPICS", () => {
-    it("includes both scene and pipeline", () => {
+    it("includes motion, scene, pipeline, and architecture", () => {
+      expect(WALKTHROUGH_TOPICS).toContain("motion");
       expect(WALKTHROUGH_TOPICS).toContain("scene");
       expect(WALKTHROUGH_TOPICS).toContain("pipeline");
       expect(WALKTHROUGH_TOPICS).toContain("architecture");
-      expect(WALKTHROUGH_TOPICS).toHaveLength(3);
+      expect(WALKTHROUGH_TOPICS).toHaveLength(4);
     });
   });
 
@@ -21,6 +22,7 @@ describe("walkthroughs", () => {
     it("accepts known topics", () => {
       expect(isWalkthroughTopic("scene")).toBe(true);
       expect(isWalkthroughTopic("pipeline")).toBe(true);
+      expect(isWalkthroughTopic("motion")).toBe(true);
     });
     it("rejects unknown values", () => {
       expect(isWalkthroughTopic("agent")).toBe(false);
@@ -54,6 +56,15 @@ describe("walkthroughs", () => {
       expect(r.content).toContain("$<step-id>");
     });
 
+    it("returns the motion walkthrough with overlay routing guidance", () => {
+      const r = loadWalkthrough("motion");
+      expect(r.topic).toBe("motion");
+      expect(r.relatedCommands).toContain("vibe edit motion-overlay");
+      expect(r.content).toContain("edit motion-overlay");
+      expect(r.content).toContain("edit text-overlay");
+      expect(r.content).toContain("--asset");
+    });
+
     it("scene walkthrough mentions Plan H mode dispatch (--mode agent)", () => {
       const r = loadWalkthrough("scene");
       expect(r.content).toMatch(/--mode agent/);
@@ -85,18 +96,18 @@ describe("walkthroughs", () => {
   describe("listWalkthroughs", () => {
     it("returns a catalog with topic + title + summary for each entry", () => {
       const list = listWalkthroughs();
-      expect(list).toHaveLength(3);
+      expect(list).toHaveLength(4);
       for (const entry of list) {
-        expect(entry.topic).toMatch(/^scene$|^pipeline$|^architecture$/);
+        expect(entry.topic).toMatch(/^motion$|^scene$|^pipeline$|^architecture$/);
         expect(entry.title.length).toBeGreaterThan(5);
         expect(entry.summary.length).toBeGreaterThan(10);
       }
     });
 
-    it("ordering is stable (scene first, then pipeline) for predictable agent output", () => {
+    it("ordering is stable (motion first, then scene) for predictable agent output", () => {
       const list = listWalkthroughs();
-      expect(list[0].topic).toBe("scene");
-      expect(list[1].topic).toBe("pipeline");
+      expect(list[0].topic).toBe("motion");
+      expect(list[1].topic).toBe("scene");
     });
   });
 });

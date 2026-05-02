@@ -112,6 +112,19 @@ describe("executeSceneRender — validation", () => {
     expect(r.error).toMatch(/Root composition not found/);
   });
 
+  it("rejects unsupported composition engines before invoking Chrome", async () => {
+    const dir = await makeTmp();
+    await writeFile(resolve(dir, "index.html"), "<!doctype html><html><body></body></html>", "utf-8");
+    await writeFile(
+      resolve(dir, "vibe.project.yaml"),
+      "name: fixture\ncomposition:\n  engine: remotion\n  entry: index.html\n",
+      "utf-8",
+    );
+    const r = await executeSceneRender({ projectDir: dir });
+    expect(r.success).toBe(false);
+    expect(r.error).toMatch(/Unsupported composition engine: remotion/);
+  });
+
   it("(without Chrome) returns the Chrome preflight reason", async () => {
     const pre = await preflightChrome();
     if (pre.ok) return; // Chrome present — Chrome-gated integration test covers the success path.

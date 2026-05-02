@@ -36,7 +36,7 @@ import { demoCommand } from "./commands/demo.js";
 import { contextCommand } from "./commands/context.js";
 import { runCommand } from "./commands/run.js";
 import { agentCommand } from "./commands/agent.js";
-import { walkthroughCommand } from "./commands/walkthrough.js";
+import { guideCommand, legacyGuideAliasCommand } from "./commands/walkthrough.js";
 import { completionCommand } from "./commands/completion.js";
 import { ApiKeyError } from "./utils/api-key.js";
 import { isFirstRun, showFirstRunBanner, markBannerShown } from "./utils/first-run.js";
@@ -138,9 +138,11 @@ this section shows the typical entry points by use case):
 
   Automation & agents:
     vibe run workflow.yaml              Video-as-YAML pipeline
-    vibe agent                          Natural-language interface
+    vibe guide                          Choose the right workflow
+    vibe guide motion                   Text vs motion overlay guidance
     vibe schema generate.video          JSON schema for any command
-    vibe walkthrough scene              Step-by-step authoring guide
+    vibe context                        Agent integration quickstart
+    vibe agent                          Optional built-in agent when you do not use Claude Code/Codex/etc.
 
 Common-flag note: most commands accept --dry-run to preview cost/output
 before invoking paid providers.
@@ -260,7 +262,8 @@ program.addCommand(batchCommand);
 // Agent integration commands
 program.addCommand(schemaCommand);
 program.addCommand(contextCommand);
-program.addCommand(walkthroughCommand);
+program.addCommand(guideCommand);
+program.addCommand(legacyGuideAliasCommand, { hidden: true });
 program.addCommand(completionCommand);
 
 // Utility commands (less commonly used directly)
