@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.96.4] - 2026-05-02
+
+### Fixed
+
+- regenerate `docs/cli-reference.md` after rebuilding `packages/cli/dist`, so the embedded CLI version matches `package.json`. Earlier 0.96.x bumps regenerated against a stale dist and produced a file that failed `gen:reference:check` on CI.
+- `gen-cli-reference.mts --check` now prints up to 20 divergent lines on failure so future drift is diagnosable from CI logs.
+
 ## [0.96.3] - 2026-05-02
 
 ### Fixed

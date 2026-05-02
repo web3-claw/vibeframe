@@ -393,6 +393,19 @@ if (checkMode) {
   console.error(
     "docs/cli-reference.md is out of date. Run `pnpm gen:reference` and commit the result."
   );
+  // Print first divergent lines so CI logs surface the actual drift instead
+  // of just "out of date". Cap output so we don't spam logs on big diffs.
+  const existingLines = existing.split("\n");
+  const freshLines = fresh.split("\n");
+  const max = Math.max(existingLines.length, freshLines.length);
+  let shown = 0;
+  for (let i = 0; i < max && shown < 20; i++) {
+    if (existingLines[i] !== freshLines[i]) {
+      console.error(`L${i + 1}:\n  committed: ${JSON.stringify(existingLines[i] ?? "<EOF>")}\n  fresh:     ${JSON.stringify(freshLines[i] ?? "<EOF>")}`);
+      shown++;
+    }
+  }
+  console.error(`Sizes — committed: ${existing.length} chars, fresh: ${fresh.length} chars.`);
   process.exit(1);
 }
 
