@@ -1,10 +1,12 @@
 {
   "name": "@vibeframe/web",
-  "version": "0.100.0",
-  "description": "VibeFrame Web - Next.js preview UI for video editing",
+  "version": "0.101.0",
+  "description": "VibeFrame Web - landing and demo site for the storyboard-first agentic video CLI",
   "private": true,
   "keywords": [
     "vibeframe",
+    "storyboard-to-video",
+    "agentic-cli",
     "video-editing",
     "web",
     "nextjs"

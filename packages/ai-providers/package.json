@@ -1,6 +1,6 @@
 {
   "name": "@vibeframe/ai-providers",
-  "version": "0.100.0",
+  "version": "0.101.0",
   "description": "VibeFrame AI Providers - pluggable AI integrations (OpenAI, Claude, Gemini, etc.)",
   "private": true,
   "license": "MIT",
@@ -53,7 +53,8 @@
   "scripts": {
     "build": "tsc",
     "lint": "eslint --ext .ts,.tsx src/",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@fal-ai/client": "^1.10.0",

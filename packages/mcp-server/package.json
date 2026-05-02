@@ -1,6 +1,6 @@
 {
   "name": "@vibeframe/mcp-server",
-  "version": "0.100.0",
+  "version": "0.101.0",
   "description": "VibeFrame MCP Server - AI-native video editing via Model Context Protocol",
   "type": "module",
   "bin": {
@@ -17,7 +17,8 @@
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "lint": "eslint --ext .ts,.tsx src/",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepublishOnly": "node build.js"
   },
   "keywords": [

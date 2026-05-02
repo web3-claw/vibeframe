@@ -1,6 +1,6 @@
 {
   "name": "@vibeframe/core",
-  "version": "0.100.0",
+  "version": "0.101.0",
   "description": "VibeFrame Core - timeline data structures, effects, and FFmpeg export",
   "private": true,
   "license": "MIT",
@@ -40,7 +40,8 @@
   "scripts": {
     "build": "tsc",
     "lint": "eslint --ext .ts,.tsx src/",
-    "test": "vitest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "immer": "^10.0.3",
