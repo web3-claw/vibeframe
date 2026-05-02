@@ -40,13 +40,27 @@ pnpm -r exec -- npm version patch --no-git-tag-version
 # Step 3: Verify all versions match
 grep '"version"' package.json packages/*/package.json apps/*/package.json
 
-# Step 4: Commit (exclude test/temp files)
-git add package.json packages/*/package.json apps/*/package.json
+# Step 4: Rebuild — embeds the new version into packages/cli/dist
+pnpm -F @vibeframe/cli build
+
+# Step 5: Regenerate CLI reference AFTER the rebuild
+# `gen:reference` runs the dist binary and embeds `vibe --version` in
+# the file. If you skip Step 4, the regen reads the OLD version from
+# the stale dist and CI's `gen:reference:check` fails on the next
+# release because CI's fresh build embeds the NEW version.
+pnpm gen:reference
+pnpm gen:reference:check  # must pass before commit
+
+# Step 6: Commit (exclude test/temp files)
+git add package.json packages/*/package.json apps/*/package.json CHANGELOG.md docs/cli-reference.md
 git commit -m "chore: bump version to X.Y.Z"
 git tag vX.Y.Z
 ```
 
-**Common pitfall:** Running only `pnpm -r exec` will update workspace packages but NOT the root `package.json`, causing version mismatch. Always run both commands.
+**Common pitfalls:**
+- Running only `pnpm -r exec` will update workspace packages but NOT the root `package.json`, causing version mismatch. Always run both commands.
+- Regenerating `docs/cli-reference.md` BEFORE rebuilding produces a file pinned to the old version. CI rebuilds before checking, so `gen:reference:check` fails. Always: bump → rebuild → regen → check → commit.
+- Prefer the `/release` skill, which performs all steps in the correct order.
 
 **Files to update (must all have same version):**
 
