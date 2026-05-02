@@ -33,6 +33,7 @@ import { storyboardCommand } from "./commands/storyboard.js";
 import { planCommand } from "./commands/plan.js";
 import { buildCommand } from "./commands/build.js";
 import { renderCommand } from "./commands/render.js";
+import { statusCommand } from "./commands/status.js";
 import { doctorCommand } from "./commands/doctor.js";
 import { demoCommand } from "./commands/demo.js";
 import { contextCommand } from "./commands/context.js";
@@ -131,6 +132,7 @@ this section shows the typical entry points by use case):
     vibe plan my-video                  Preview build stages, cost, and missing work
     vibe build my-video                 Build STORYBOARD.md → scene assets
     vibe render my-video                Render the project to MP4
+    vibe status project my-video        Check build/review/jobs status
     vibe demo                           Try VibeFrame without API keys
 
   One-shot media:
@@ -246,6 +248,7 @@ program.addCommand(storyboardCommand);
 program.addCommand(planCommand);
 program.addCommand(buildCommand);
 program.addCommand(renderCommand);
+program.addCommand(statusCommand);
 program.addCommand(doctorCommand);
 program.addCommand(demoCommand);
 program.addCommand(runCommand);

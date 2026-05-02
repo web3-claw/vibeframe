@@ -33,6 +33,7 @@ import { rejectControlChars, validateOutputPath } from "../validate.js";
 import { loadProviderDefaults, resolveProvider } from "../../utils/provider-resolver.js";
 import { resolveUploadHost } from "../../utils/upload-host.js";
 import { downloadVideo } from "../ai-helpers.js";
+import { createAndWriteJobRecord, type JobRecord } from "../_shared/status-jobs.js";
 
 export function registerVideoCommand(parent: Command): void {
   parent
@@ -311,19 +312,32 @@ Examples:
             exitWithError(apiError(result.error || "Failed to start generation", true));
           }
 
-          console.log();
-          console.log(chalk.bold.cyan("Video Generation Started"));
-          console.log(chalk.dim("─".repeat(60)));
-          console.log(`Provider: ${chalk.bold(`Runway ${runwayModel}`)}`);
-          console.log(`Task ID: ${chalk.bold(result.id)}`);
-
           if (!options.wait) {
+            const job = await recordVideoNoWaitJob({
+              provider,
+              providerTaskId: result.id,
+              prompt,
+              providerTaskType: "text2video",
+            });
             spinner.succeed(chalk.green("Generation started"));
+            if (isJsonMode()) {
+              outputSuccess({
+                command: "generate video",
+                startedAt,
+                data: noWaitVideoData(provider, result.id, job),
+              });
+              return;
+            }
             console.log();
+            printVideoStarted(`Runway ${runwayModel}`, result.id);
             console.log(chalk.dim("Check status with:"));
-            console.log(chalk.dim(`  vibe generate video-status ${result.id} -p runway`));
+            console.log(chalk.dim(`  vibe status job ${job.id} --json`));
             console.log();
             return;
+          }
+
+          if (!isJsonMode()) {
+            printVideoStarted(`Runway ${runwayModel}`, result.id);
           }
 
           spinner.text = "Generating video (this may take 1-2 minutes)...";
@@ -384,29 +398,36 @@ Examples:
             exitWithError(apiError(result.error || "Failed to start generation", true));
           }
 
-          console.log();
-          console.log(chalk.bold.cyan("Video Generation Started"));
-          console.log(chalk.dim("─".repeat(60)));
-          console.log(`Provider: ${chalk.bold("Kling AI")}`);
-          console.log(`Task ID: ${chalk.bold(result.id)}`);
-          console.log(`Type: ${isImageToVideo ? "image2video" : "text2video"}`);
-
+          const taskType = isImageToVideo ? "image2video" : "text2video";
           if (!options.wait) {
+            const job = await recordVideoNoWaitJob({
+              provider,
+              providerTaskId: result.id,
+              prompt,
+              providerTaskType: taskType,
+            });
             spinner.succeed(chalk.green("Generation started"));
+            if (isJsonMode()) {
+              outputSuccess({
+                command: "generate video",
+                startedAt,
+                data: noWaitVideoData(provider, result.id, job),
+              });
+              return;
+            }
             console.log();
+            printVideoStarted("Kling AI", result.id, taskType);
             console.log(chalk.dim("Check status with:"));
-            console.log(
-              chalk.dim(
-                `  vibe generate video-status ${result.id} -p kling${isImageToVideo ? " --type image2video" : ""}`
-              )
-            );
+            console.log(chalk.dim(`  vibe status job ${job.id} --json`));
             console.log();
             return;
           }
 
+          if (!isJsonMode()) {
+            printVideoStarted("Kling AI", result.id, taskType);
+          }
           spinner.text = "Generating video (this may take 2-5 minutes)...";
 
-          const taskType = isImageToVideo ? "image2video" : "text2video";
           finalResult = await kling.waitForCompletion(
             result.id,
             taskType,
@@ -475,20 +496,31 @@ Examples:
             exitWithError(apiError(result.error || "Failed to start generation", true));
           }
 
-          console.log();
-          console.log(chalk.bold.cyan("Video Generation Started"));
-          console.log(chalk.dim("─".repeat(60)));
-          console.log(`Provider: ${chalk.bold("Google Veo 3.1")}`);
-          console.log(`Task ID: ${chalk.bold(result.id)}`);
-
           if (!options.wait) {
+            const job = await recordVideoNoWaitJob({
+              provider,
+              providerTaskId: result.id,
+              prompt,
+            });
             spinner.succeed(chalk.green("Generation started"));
+            if (isJsonMode()) {
+              outputSuccess({
+                command: "generate video",
+                startedAt,
+                data: noWaitVideoData(provider, result.id, job),
+              });
+              return;
+            }
             console.log();
-            console.log(chalk.dim("Veo generation is synchronous - video URL available above"));
+            printVideoStarted("Google Veo 3.1", result.id);
+            console.log(chalk.dim(`Check status with: vibe status job ${job.id} --json`));
             console.log();
             return;
           }
 
+          if (!isJsonMode()) {
+            printVideoStarted("Google Veo 3.1", result.id);
+          }
           spinner.text = "Generating video (this may take 1-3 minutes)...";
           finalResult = await gemini.waitForVideoCompletion(
             result.id,
@@ -513,21 +545,32 @@ Examples:
             exitWithError(apiError(result.error || "Failed to start generation", true));
           }
 
-          console.log();
-          console.log(chalk.bold.cyan("Video Generation Started"));
-          console.log(chalk.dim("─".repeat(60)));
-          console.log(`Provider: ${chalk.bold("xAI Grok Imagine")}`);
-          console.log(`Task ID: ${chalk.bold(result.id)}`);
-
           if (!options.wait) {
+            const job = await recordVideoNoWaitJob({
+              provider,
+              providerTaskId: result.id,
+              prompt,
+            });
             spinner.succeed(chalk.green("Generation started"));
+            if (isJsonMode()) {
+              outputSuccess({
+                command: "generate video",
+                startedAt,
+                data: noWaitVideoData(provider, result.id, job),
+              });
+              return;
+            }
             console.log();
+            printVideoStarted("xAI Grok Imagine", result.id);
             console.log(chalk.dim("Check status with:"));
-            console.log(chalk.dim(`  vibe generate video-status ${result.id} -p grok`));
+            console.log(chalk.dim(`  vibe status job ${job.id} --json`));
             console.log();
             return;
           }
 
+          if (!isJsonMode()) {
+            printVideoStarted("xAI Grok Imagine", result.id);
+          }
           spinner.text = "Generating video (this may take 1-3 minutes)...";
           finalResult = await grok.waitForCompletion(
             result.id,
@@ -637,4 +680,41 @@ Examples:
         exitWithError(apiError(`Video generation failed: ${(error as Error).message}`));
       }
     });
+}
+
+async function recordVideoNoWaitJob(opts: {
+  provider: string;
+  providerTaskId: string;
+  providerTaskType?: "text2video" | "image2video";
+  prompt: string;
+}): Promise<JobRecord> {
+  return createAndWriteJobRecord({
+    jobType: "generate-video",
+    provider: opts.provider,
+    providerTaskId: opts.providerTaskId,
+    providerTaskType: opts.providerTaskType,
+    status: "running",
+    command: "generate video --no-wait",
+    prompt: opts.prompt,
+  });
+}
+
+function noWaitVideoData(provider: string, taskId: string, job: JobRecord): Record<string, unknown> {
+  return {
+    provider,
+    taskId,
+    status: job.status,
+    jobId: job.id,
+    statusCommand: `vibe status job ${job.id} --project ${job.projectDir} --json`,
+    providerStatusCommand: job.retryWith.find((item) => item.startsWith("vibe generate video-status")),
+  };
+}
+
+function printVideoStarted(providerLabel: string, taskId: string, taskType?: string): void {
+  console.log();
+  console.log(chalk.bold.cyan("Video Generation Started"));
+  console.log(chalk.dim("─".repeat(60)));
+  console.log(`Provider: ${chalk.bold(providerLabel)}`);
+  console.log(`Task ID: ${chalk.bold(taskId)}`);
+  if (taskType) console.log(`Type: ${taskType}`);
 }

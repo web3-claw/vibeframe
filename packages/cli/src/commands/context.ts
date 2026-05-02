@@ -36,6 +36,7 @@ export const contextCommand = new Command("context")
         "render",
         "inspect render --cheap",
         "inspect render --ai when needed",
+        "status project when async jobs are involved",
       ],
       mentalModel: {
         storyboard: "intent layer; edit or mutate beat cues here",
@@ -51,7 +52,7 @@ export const contextCommand = new Command("context")
       ],
       semanticFixes: "host-agent",
       mechanicalFixes: "vibe scene repair; vibe scene lint --fix remains the lower-level primitive",
-      publicFlow: "vibe init --from <brief> -> edit STORYBOARD.md/DESIGN.md -> vibe storyboard validate -> vibe plan -> vibe build --dry-run --max-cost <usd> -> vibe build -> vibe inspect project -> vibe render -> vibe inspect render --cheap -> optional vibe inspect render --ai",
+      publicFlow: "vibe init --from <brief> -> edit STORYBOARD.md/DESIGN.md -> vibe storyboard validate -> vibe plan -> vibe build --dry-run --max-cost <usd> -> vibe build -> vibe inspect project -> vibe render -> vibe inspect render --cheap -> optional vibe inspect render --ai -> vibe status project for async jobs",
     };
 
     if (options.json) {
@@ -92,6 +93,7 @@ vibe inspect project my-video --json
 vibe render my-video --json
 vibe inspect render my-video --cheap --json
 vibe inspect render my-video --ai --json
+vibe status project my-video --json
 \`\`\`
 
 Provider precedence: CLI flag -> storyboard cue -> \`vibe.config.json\` ->

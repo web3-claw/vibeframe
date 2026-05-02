@@ -3516,6 +3516,63 @@ exports[`CLI --describe schemas (drift detection) > vibe setup --describe 1`] = 
 }
 `;
 
+exports[`CLI --describe schemas (drift detection) > vibe status job --describe 1`] = `
+{
+  "cost": "free",
+  "description": "Show one async job status",
+  "name": "status.job",
+  "parameters": {
+    "properties": {
+      "job-id": {
+        "description": "Local job id from a no-wait command",
+        "type": "string",
+      },
+      "noRefresh": {
+        "description": "Read local job record only; do not call provider APIs",
+        "type": "boolean",
+      },
+      "output": {
+        "description": "Download result media when complete",
+        "type": "string",
+      },
+      "project": {
+        "description": "Project directory containing .vibeframe/jobs",
+        "type": "string",
+      },
+      "wait": {
+        "description": "Wait for completion when the provider status helper supports it",
+        "type": "boolean",
+      },
+    },
+    "required": [
+      "job-id",
+    ],
+    "type": "object",
+  },
+}
+`;
+
+exports[`CLI --describe schemas (drift detection) > vibe status project --describe 1`] = `
+{
+  "cost": "free",
+  "description": "Summarize build, review, and async job status for a project",
+  "name": "status.project",
+  "parameters": {
+    "properties": {
+      "project-dir": {
+        "description": "VibeFrame project directory",
+        "type": "string",
+      },
+      "refresh": {
+        "description": "Refresh active supported jobs before summarizing",
+        "type": "boolean",
+      },
+    },
+    "type": "object",
+  },
+}
+`;
+
 exports[`CLI --describe schemas (drift detection) > vibe storyboard get --describe 1`] = `
 {
   "description": "Print one beat as structured JSON",

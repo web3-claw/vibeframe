@@ -64,6 +64,7 @@ const CLI_TREE: Record<string, string[]> = {
   // v0.97: storyboard mutation API for the intent layer.
   // `revise` is CLI-only (LLM-driven; host agents handle it directly).
   storyboard: ["list", "get", "set", "move", "validate", "revise"],
+  status: ["job", "project"],
 };
 
 // Top-level CLI commands with no manifest equivalent — pure ergonomics
@@ -172,6 +173,9 @@ const CLI_TO_MANIFEST: Record<string, string | null> = {
   "storyboard move":     "storyboard_move",
   "storyboard validate": "storyboard_validate",
   "storyboard revise":   null,
+  // status
+  "status job":     "status_job",
+  "status project": "status_project",
 };
 
 describe("CLI ↔ manifest sync", () => {

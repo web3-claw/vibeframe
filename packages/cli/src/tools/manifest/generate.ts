@@ -25,6 +25,7 @@ import {
   executeVideoCancel,
   executeVideoExtend,
 } from "../../commands/ai-video.js";
+import { createAndWriteJobRecord } from "../../commands/_shared/status-jobs.js";
 
 // ── generate_motion ─────────────────────────────────────────────────────────
 
@@ -176,15 +177,36 @@ export const generateMusicTool = defineTool({
       .boolean()
       .optional()
       .describe("Force instrumental, no vocals (ElevenLabs only)"),
+    wait: z.boolean().optional().describe("Wait for Replicate completion. Set false to return a local job id."),
   }),
-  async execute(args) {
+  async execute(args, ctx) {
     const result = await executeMusic(args);
     if (!result.success) return { success: false, error: result.error ?? "Music gen failed" };
+    let job: Awaited<ReturnType<typeof createAndWriteJobRecord>> | undefined;
+    if (args.wait === false && result.provider === "replicate" && result.taskId) {
+      job = await createAndWriteJobRecord({
+        jobType: "generate-music",
+        provider: "replicate",
+        providerTaskId: result.taskId,
+        status: "running",
+        workingDirectory: ctx.workingDirectory,
+        command: "generate_music wait=false",
+        prompt: args.prompt,
+      });
+    }
     return {
       success: true,
-      data: { outputPath: result.outputPath, provider: result.provider, duration: result.duration },
+      data: {
+        outputPath: result.outputPath,
+        provider: result.provider,
+        duration: result.duration,
+        taskId: result.taskId,
+        status: result.status,
+        jobId: job?.id,
+        statusCommand: job ? `vibe status job ${job.id} --project ${job.projectDir} --json` : undefined,
+      },
       humanLines: [
-        `✅ Music${result.provider ? ` (${result.provider})` : ""} → ${result.outputPath ?? "(async)"}`,
+        `✅ Music${result.provider ? ` (${result.provider})` : ""} → ${result.outputPath ?? job?.id ?? "(async)"}`,
       ],
     };
   },
@@ -380,9 +402,22 @@ export const generateVideoTool = defineTool({
     output: z.string().optional().describe("Output file path (downloads video)"),
     wait: z.boolean().optional().describe("Wait for completion (default: true)"),
   }),
-  async execute(args) {
+  async execute(args, ctx) {
     const result = await executeVideoGenerate(args);
     if (!result.success) return { success: false, error: result.error ?? "Video gen failed" };
+    let job: Awaited<ReturnType<typeof createAndWriteJobRecord>> | undefined;
+    if (args.wait === false && result.taskId && result.status !== "completed") {
+      job = await createAndWriteJobRecord({
+        jobType: "generate-video",
+        provider: result.provider ?? args.provider ?? "unknown",
+        providerTaskId: result.taskId,
+        providerTaskType: result.provider === "kling" && args.image ? "image2video" : result.provider === "kling" ? "text2video" : undefined,
+        status: "running",
+        workingDirectory: ctx.workingDirectory,
+        command: "generate_video wait=false",
+        prompt: args.prompt,
+      });
+    }
     return {
       success: true,
       data: {
@@ -392,9 +427,11 @@ export const generateVideoTool = defineTool({
         duration: result.duration,
         outputPath: result.outputPath,
         provider: result.provider,
+        jobId: job?.id,
+        statusCommand: job ? `vibe status job ${job.id} --project ${job.projectDir} --json` : undefined,
       },
       humanLines: [
-        `✅ Video (${result.provider}, ${result.status})${result.outputPath ? ` → ${result.outputPath}` : ""}`,
+        `✅ Video (${result.provider}, ${result.status})${result.outputPath ? ` → ${result.outputPath}` : job ? ` → ${job.id}` : ""}`,
       ],
     };
   },

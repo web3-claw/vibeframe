@@ -55,7 +55,7 @@ Generated from the live `cost` field in `vibe schema --list`.
 
 | Tier           | Count | Examples                                                                                                                                                                                     | Per-call cost                                                                                     |
 | -------------- | ----: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| **Free**       |    39 | `generate.music-status` · `generate.thumbnail` · `generate.video-status` · `generate.video-cancel` · `edit.noise-reduce` · `edit.fade` · `edit.text-overlay` · `edit.interpolate` · +31 more | FFmpeg only, no API call                                                                          |
+| **Free**       |    41 | `generate.music-status` · `generate.thumbnail` · `generate.video-status` · `generate.video-cancel` · `edit.noise-reduce` · `edit.fade` · `edit.text-overlay` · `edit.interpolate` · +33 more | FFmpeg only, no API call                                                                          |
 | **Low**        |    21 | `generate.speech` · `generate.narration` · `generate.sound-effect` · `generate.music` · `edit.silence-cut` · `edit.caption` · `edit.translate-srt` · `edit.jump-cut` · +13 more              | $0.01–$0.10 per call                                                                              |
 | **High**       |    10 | `generate.image` · `generate.storyboard` · `generate.motion` · `generate.background` · `edit.reframe` · `edit.image` · `edit.upscale` · `audio.dub` · +2 more                                | $1–$5 per call                                                                                    |
 | **Very High**  |     4 | `generate.video` · `generate.video-extend` · `edit.fill-gaps` · `remix.regenerate-scene`                                                                                                     | $5–$50+ per call                                                                                  |
@@ -1572,3 +1572,30 @@ Cost tier: _not tagged_
 **Parameters:**
 
 - `project-dir` _(string)_ — Project directory
+
+### `status`
+
+#### `vibe status job`
+
+Show one async job status
+
+Cost tier: `free`
+
+**Parameters:**
+
+- `job-id` _(string)_ **required** — Local job id from a no-wait command
+- `project` _(string)_ — Project directory containing .vibeframe/jobs
+- `noRefresh` _(boolean)_ — Read local job record only; do not call provider APIs
+- `wait` _(boolean)_ — Wait for completion when the provider status helper supports it
+- `output` _(string)_ — Download result media when complete
+
+#### `vibe status project`
+
+Summarize build, review, and async job status for a project
+
+Cost tier: `free`
+
+**Parameters:**
+
+- `project-dir` _(string)_ — VibeFrame project directory
+- `refresh` _(boolean)_ — Refresh active supported jobs before summarizing

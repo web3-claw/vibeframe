@@ -26,6 +26,7 @@ import {
   usageError,
 } from "../output.js";
 import { rejectControlChars, validateOutputPath } from "../validate.js";
+import { createAndWriteJobRecord, type JobRecord } from "../_shared/status-jobs.js";
 
 // ── Library: executeMusic ───────────────────────────────────────────────
 
@@ -35,12 +36,16 @@ export interface ExecuteMusicOptions {
   duration?: number;
   provider?: "elevenlabs" | "replicate";
   instrumental?: boolean;
+  wait?: boolean;
 }
 export interface ExecuteMusicResult {
   success: boolean;
   outputPath?: string;
   provider?: string;
   duration?: number;
+  taskId?: string;
+  status?: string;
+  audioUrl?: string;
   error?: string;
 }
 
@@ -97,6 +102,16 @@ export async function executeMusic(
 
     if (!result.success || !result.taskId) {
       return { success: false, error: result.error || "Music generation failed" };
+    }
+
+    if (options.wait === false) {
+      return {
+        success: true,
+        provider: "replicate",
+        taskId: result.taskId,
+        status: "processing",
+        duration,
+      };
     }
 
     const finalResult = await replicate.waitForMusic(result.taskId);
@@ -272,12 +287,23 @@ export function registerMusicCommand(parent: Command): void {
           }
 
           if (!options.wait) {
+            const job = await recordMusicNoWaitJob({
+              provider: "replicate",
+              providerTaskId: result.taskId,
+              prompt,
+            });
             spinner.succeed(chalk.green("Music generation started"));
+            if (isJsonMode()) {
+              outputSuccess({
+                command: "generate music",
+                startedAt,
+                data: noWaitMusicData("replicate", result.taskId, job),
+              });
+              return;
+            }
             console.log();
             console.log(`Task ID: ${chalk.bold(result.taskId)}`);
-            console.log(
-              chalk.dim("Check status with: vibe generate music-status " + result.taskId),
-            );
+            console.log(chalk.dim(`Check status with: vibe status job ${job.id} --json`));
             return;
           }
 
@@ -329,4 +355,30 @@ export function registerMusicCommand(parent: Command): void {
         exitWithError(apiError(`Music generation failed: ${msg}`, true));
       }
     });
+}
+
+async function recordMusicNoWaitJob(opts: {
+  provider: string;
+  providerTaskId: string;
+  prompt: string;
+}): Promise<JobRecord> {
+  return createAndWriteJobRecord({
+    jobType: "generate-music",
+    provider: opts.provider,
+    providerTaskId: opts.providerTaskId,
+    status: "running",
+    command: "generate music --no-wait",
+    prompt: opts.prompt,
+  });
+}
+
+function noWaitMusicData(provider: string, taskId: string, job: JobRecord): Record<string, unknown> {
+  return {
+    provider,
+    taskId,
+    status: job.status,
+    jobId: job.id,
+    statusCommand: `vibe status job ${job.id} --project ${job.projectDir} --json`,
+    providerStatusCommand: job.retryWith.find((item) => item.startsWith("vibe generate music-status")),
+  };
 }

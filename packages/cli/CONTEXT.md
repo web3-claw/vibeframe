@@ -130,7 +130,7 @@ legacy vibe.project.yaml → configured/env default → VibeFrame default
 
 | Group | Key rule |
 |-------|----------|
-| `generate` | Always `--dry-run` first. Costs money. `-p` selects provider; default routes via key availability. |
+| `generate` | Always `--dry-run` first. Costs money. `-p` selects provider; default routes via key availability. `--no-wait` returns local job ids. |
 | `edit` | FFmpeg-only leaves (silence-cut, fade, noise-reduce, text-overlay, interpolate) are free. caption/grade/reframe/image need API keys. |
 | `inspect` | `inspect project` and `inspect render --cheap` are local. Use `inspect render --ai` for final Gemini critique; Gemini media/review calls are low cost. |
 | `audio` | `transcribe` low cost (Whisper). `dub` is full pipeline (medium-high). `duck` is free. |
@@ -139,6 +139,7 @@ legacy vibe.project.yaml → configured/env default → VibeFrame default
 | `project / timeline` | Free. All mutating leaves support `--dry-run`. |
 | `scene` | `lint` and `list-styles` free; `add` may invoke TTS + image-gen. |
 | `init / build / render` | Top-level project flow. `init` is idempotent (existing files preserved without `--force`). |
+| `status` | Free/local by default. Use `status job` and `status project` to inspect async jobs and latest build/review reports. |
 
 ## Common patterns
 
@@ -164,6 +165,7 @@ vibe inspect project my-video --json
 vibe render my-video -o renders/final.mp4 --json
 vibe inspect render my-video --cheap --json
 vibe inspect render my-video --ai --json
+vibe status project my-video --json
 vibe scene repair --project my-video --json
 ```
 

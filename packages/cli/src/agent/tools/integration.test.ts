@@ -162,7 +162,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
     it("should register the full manifest", () => {
       // Manifest is the single source of truth post-v0.67 PR2.
       const tools = registry.getAll();
-      expect(tools.length).toBe(95);
+      expect(tools.length).toBe(97);
     });
 
     it("should register all project tools (5)", () => {
@@ -573,6 +573,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       );
       const guideTools = allTools.filter((t) => t.name === "guide");
       const runTools = allTools.filter((t) => t.name === "run");
+      const statusTools = allTools.filter((t) => t.name.startsWith("status_"));
 
       expect(projectTools.length).toBe(5);
       expect(timelineTools.length).toBe(13);  // Includes canonical timeline_create/info
@@ -589,8 +590,9 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       expect(storyboardTools.length).toBe(5); // TO-BE: list/validate/get/set/move
       expect(projectFlowTools.length).toBe(4);  // v0.75+: init/plan/build/render top-level
       expect(guideTools.length).toBe(1);  // v0.91: universal guide equivalent
+      expect(statusTools.length).toBe(2);  // TO-BE: job/project async status
 
-      // 5+13+4+12+14+16+6+3+0+3+3+6+5+4+1 = 95.
+      // 5+13+4+12+14+16+6+3+0+3+3+6+5+4+1+2 = 97.
       // timeline_create/info are canonical; project_create/info remain
       // compatibility aliases until v1.0.
       const totalTools = projectTools.length +
@@ -607,8 +609,9 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
           sceneTools.length +
           storyboardTools.length +
           projectFlowTools.length +
-          guideTools.length;
-      expect(totalTools).toBe(95);
+          guideTools.length +
+          statusTools.length;
+      expect(totalTools).toBe(97);
     });
   });
 });
@@ -657,6 +660,7 @@ describe("Tool Name Consistency", () => {
       "batch_",
       "scene_",
       "storyboard_",
+      "status_",
     ];
     // Top-level utility tools that don't fit a category prefix. Keep this
     // list small — every entry is a deliberate naming exception.
