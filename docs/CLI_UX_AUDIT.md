@@ -65,7 +65,7 @@ standard before fixing the violators.**
 - **Timing / cost-actual reporting**. No `elapsedMs`, no `costUsd`
   surfaced from real (non-dry-run) runs.
 - **Whether `--json` is even supported**. `scene.*` (most), `setup`,
-  `doctor`, `walkthrough`, `export`, `demo`, `context` emit human text only.
+  `doctor`, `guide`, `export`, `demo`, `context` emit human text only.
 - **`--dry-run` semantics for inspection commands**. Some skip it
   (correct — `audio voices`, `analyze media`), some are missing it where
   it would help (`scene render`, `scene build`).
@@ -271,7 +271,7 @@ Plus CLI-only: `project set` (vibe.project.yaml writer; agents use
 | `init` | partial (dry-run only) | ✓ | dry-run only | ✓ | scaffold; idempotent |
 | `setup` | n/a | n/a | ✗ | ✓ | interactive wizard — JSON mode meaningless |
 | `doctor` | ✗ | n/a | ✗ | ✓ | health check — should grow `--json` (#33 explicit) |
-| `walkthrough` | ✗ | n/a | ✗ | ✓ | interactive guide |
+| `guide` | ✗ | n/a | ✗ | ✓ | interactive guide |
 | `agent` | ✓ | n/a | ✓ | ✓ | natural-language REPL → CLI |
 | `schema` | ✓ (pure JSON) | n/a | ✓ | ✓ | meta-command; emits schema |
 | `run` | ✓ | ✓ | varies | ✓ | YAML pipeline runner |
@@ -341,7 +341,7 @@ Specifically missing (verified against `output.ts:132-175`):
 - All 5 `batch.*` (mostly free, varies)
 - `project create`, `project info`, `project set` (free)
 - `export video` (free)
-- One-offs: `init`, `setup`, `doctor`, `agent`, `walkthrough`,
+- One-offs: `init`, `setup`, `doctor`, `agent`, `guide`,
   `schema`, `run`, `context`, `demo` (free)
 
 ### F4. `--describe` works but option descriptions vary in quality
@@ -400,7 +400,7 @@ process; today the second never runs.
   it; install-skill already has it for dry-run).
 - Add `--json` to `doctor` (single `outputResult` at end).
 - Add `--json` to `export video`.
-- (Defer `setup`, `walkthrough`, `demo` — interactive by design.)
+- (Defer `setup`, `guide`, `demo` — interactive by design.)
 
 ### 2d — `--describe` coverage
 - Sweep `.option()` descriptions: add enum hints, file-format hints,

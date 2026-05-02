@@ -77,7 +77,7 @@ export default function LandingPage() {
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-12 animate-fade-in-up delay-100">
             VibeFrame helps humans and AI coding agents create, edit, analyze, and render video from shell commands.
             {" "}{process.env.NEXT_PUBLIC_CLI_COMMANDS}+ commands, {process.env.NEXT_PUBLIC_AI_PROVIDERS} AI providers, {process.env.NEXT_PUBLIC_MCP_TOOLS} MCP tools.
-            Works with Claude Code, OpenAI Codex, Cursor, Aider, Gemini CLI, OpenCode — any bash-capable AI agent.
+            Works from your terminal, Claude Code, OpenAI Codex, Cursor, Aider, Gemini CLI, OpenCode, or any bash-capable AI agent.
           </p>
 
           {/* Install Command */}
@@ -111,7 +111,7 @@ export default function LandingPage() {
       </section>
 
       {/* What you can build — current storyboard demo MP4 anchored above the
-          surface walkthroughs. Shows OUTPUT first, then surfaces. */}
+          surface guides. Shows OUTPUT first, then surfaces. */}
       <section className="py-20 px-4 border-t border-border/50 relative">
         <div className="mx-auto max-w-5xl">
           <div className="text-center mb-12">
@@ -249,6 +249,22 @@ export default function LandingPage() {
               <code className="text-green-400">{"✓ Rendered: final.mp4 (3:24, 1080p)"}</code>
             </pre>
           </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 max-w-4xl mx-auto mt-8">
+            {[
+              ["Generate", "image, video, speech, music, motion"],
+              ["Edit", "captions, silence, overlays, grade, reframe"],
+              ["Inspect", "image/video understanding and review"],
+              ["Remix + Audio", "highlights, shorts, animated captions, dub"],
+              ["Scene + YAML", "storyboard builds and reproducible pipelines"],
+              ["Timeline + Batch", "low-level JSON edits, detect, bulk ops"],
+            ].map(([title, body]) => (
+              <div key={title} className="rounded-lg border border-border/50 bg-secondary/30 px-4 py-3">
+                <div className="font-mono text-sm font-semibold text-foreground">{title}</div>
+                <div className="text-xs text-muted-foreground mt-1">{body}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -314,29 +330,33 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ②.5 — Step-by-step authoring guides (universal walkthroughs) */}
+      {/* ②.5 — Step-by-step workflow guides */}
       <section className="py-20 px-4 border-t border-border/50 relative">
         <div className="mx-auto max-w-5xl">
           <div className="text-center mb-10">
             <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/5 px-4 py-1.5 text-sm text-cyan-400 mb-4">
               <Sparkles className="w-4 h-4" />
-              <span>Universal walkthroughs</span>
+              <span>Workflow guides</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              <code className="text-primary bg-primary/10 px-3 py-1 rounded">vibe walkthrough</code>
+              <code className="text-primary bg-primary/10 px-3 py-1 rounded">vibe guide</code>
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Step-by-step authoring guides built into the CLI. Agents can inspect the same walkthroughs as humans.
+              Step-by-step workflow guides built into the CLI. Use them when the next command is not obvious.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto mb-8">
+          <div className="grid md:grid-cols-3 gap-4 max-w-5xl mx-auto mb-8">
             <div className="bg-secondary/40 border border-border/50 rounded-xl p-5">
-              <div className="font-mono text-sm font-semibold text-cyan-400 mb-2">vibe walkthrough scene</div>
+              <div className="font-mono text-sm font-semibold text-cyan-400 mb-2">vibe guide motion</div>
+              <p className="text-sm text-muted-foreground">Choose between static text, designed overlays, standalone motion, and Lottie overlays.</p>
+            </div>
+            <div className="bg-secondary/40 border border-border/50 rounded-xl p-5">
+              <div className="font-mono text-sm font-semibold text-cyan-400 mb-2">vibe guide scene</div>
               <p className="text-sm text-muted-foreground">Scene authoring — STORYBOARD.md → composed video via <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded text-xs">vibe build</code> and <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded text-xs">vibe render</code>.</p>
             </div>
             <div className="bg-secondary/40 border border-border/50 rounded-xl p-5">
-              <div className="font-mono text-sm font-semibold text-cyan-400 mb-2">vibe walkthrough pipeline</div>
+              <div className="font-mono text-sm font-semibold text-cyan-400 mb-2">vibe guide pipeline</div>
               <p className="text-sm text-muted-foreground">YAML pipeline authoring — Video as Code with cost estimates, checkpoints, and step references.</p>
             </div>
           </div>
@@ -344,15 +364,15 @@ export default function LandingPage() {
           <div className="bg-background/50 border border-border/50 rounded-xl p-4 max-w-3xl mx-auto">
             <div className="text-xs text-muted-foreground mb-2">List + load:</div>
             <code className="font-mono text-xs text-foreground block">
-              vibe walkthrough              <span className="text-muted-foreground"># list available topics</span>
+              vibe guide                    <span className="text-muted-foreground"># list available topics</span>
             </code>
             <code className="font-mono text-xs text-foreground block mt-1">
-              vibe walkthrough scene --json <span className="text-muted-foreground"># structured shape for an agent host</span>
+              vibe guide motion --json      <span className="text-muted-foreground"># structured shape for an agent host</span>
             </code>
           </div>
 
           <p className="text-center text-muted-foreground text-sm mt-6 max-w-3xl mx-auto">
-            Walkthroughs are plain CLI commands, so they work the same from a
+            Guides are plain CLI commands, so they work the same from a
             terminal, Codex, Claude Code, Cursor, Aider, Gemini CLI, OpenCode,
             or any other host that can run shell commands.
           </p>
@@ -384,13 +404,13 @@ export default function LandingPage() {
               <div className="bg-background/50 backdrop-blur-sm rounded-xl p-4 mb-6 border border-border/50">
                 <p className="text-sm text-muted-foreground mb-2">In Claude Desktop:</p>
                 <p className="text-foreground italic">
-                  "Load the scene walkthrough, build the storyboard project in
+                  "Load the scene guide, build the storyboard project in
                   demo-video, then render the final MP4"
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {["scene_build", "generate_image", "generate_video", "export_video", "edit_silence_cut", "walkthrough"].map((tool) => (
+                {["scene_build", "generate_image", "generate_video", "export_video", "edit_silence_cut", "guide"].map((tool) => (
                   <span key={tool} className="text-xs bg-background/50 backdrop-blur-sm border border-border/50 px-3 py-1.5 rounded-full font-mono">
                     {tool}
                   </span>
@@ -410,14 +430,14 @@ export default function LandingPage() {
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/5 px-4 py-1.5 text-sm text-purple-400 mb-4">
               <Wand2 className="w-4 h-4" />
-              <span>Agent Mode</span>
+              <span>Optional agent mode</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              Built-in AI Agent
+              Built-in AI agent, when you need one
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              No AI coding agent set up? Run <code className="text-primary bg-primary/10 px-2 py-0.5 rounded">vibe agent</code> for a standalone natural-language session.
-              It uses the same tool surface as the MCP server and external agent hosts.
+              Claude Code, Codex, Cursor, and other coding agents can drive <code className="text-primary bg-primary/10 px-2 py-0.5 rounded">vibe</code> directly through shell commands and project guidance files.
+              Run <code className="text-primary bg-primary/10 px-2 py-0.5 rounded">vibe agent</code> only when you want a standalone natural-language session inside the CLI.
             </p>
           </div>
 
@@ -455,8 +475,8 @@ export default function LandingPage() {
               />
               <FeatureItem
                 icon={<Terminal className="w-5 h-5" />}
-                title="Standalone"
-                description="No agent host needed — built-in fallback for any environment"
+                title="Fallback"
+                description="Useful when no external coding agent or MCP host is available"
                 gradient="from-green-500 to-emerald-500"
               />
             </div>
@@ -690,11 +710,11 @@ function TerminalAnimation() {
     { type: "logo", content: "" },
     { type: "prompt", content: "create a new project and add intro.mp4" },
     { type: "agent", content: "I'll create a project and add the media file." },
-    { type: "tool", content: "(uses: project_create, timeline_add_source)" },
+    { type: "tool", content: "(uses: timeline_create, timeline_add_source)" },
     { type: "success", content: "Project created, intro.mp4 added" },
     { type: "prompt", content: "trim it to 5 seconds and add fade effects" },
     { type: "agent", content: "I'll trim the clip and add fade in/out effects." },
-    { type: "tool", content: "(uses: timeline_trim, timeline_add_effect x2)" },
+    { type: "tool", content: "(uses: timeline_trim_clip, timeline_add_effect x2)" },
     { type: "success", content: "Done: trimmed to 5s, fadeIn + fadeOut applied" },
     { type: "prompt", content: "export to mp4" },
     { type: "tool", content: "(uses: export_video)" },
@@ -711,7 +731,7 @@ function TerminalAnimation() {
   return (
     <div className="p-4 font-mono text-xs sm:text-sm min-h-[280px] sm:min-h-[320px]">
       {/* ASCII Logo - hidden on mobile */}
-      <div className="hidden sm:block text-purple-400 text-[10px] leading-tight mb-4 whitespace-pre">
+      <div className="hidden sm:block text-cyan-400 text-[10px] leading-tight mb-4 whitespace-pre">
 {`██╗   ██╗██╗██████╗ ███████╗  ███████╗██████╗  █████╗ ███╗   ███╗███████╗
 ██║   ██║██║██╔══██╗██╔════╝  ██╔════╝██╔══██╗██╔══██╗████╗ ████║██╔════╝
 ██║   ██║██║██████╔╝█████╗    █████╗  ██████╔╝███████║██╔████╔██║█████╗
@@ -720,19 +740,20 @@ function TerminalAnimation() {
   ╚═══╝  ╚═╝╚═════╝ ╚══════╝  ╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝╚══════╝`}
       </div>
       {/* Compact logo for mobile */}
-      <div className="sm:hidden text-purple-400 font-bold text-lg mb-2">
+      <div className="sm:hidden text-cyan-400 font-bold text-lg mb-2">
         VibeFrame
       </div>
-      <div className="text-muted-foreground text-xs mb-4">
-        {process.env.NEXT_PUBLIC_AGENT_TOOLS} tools · openai · aliases: gen, ed, az, au, pipe<br/>
-        Commands: exit · reset · tools · context
+      <div className="text-muted-foreground text-xs mb-4 space-y-1">
+        <div>v{process.env.NEXT_PUBLIC_VERSION} · openai · ~/demo-video</div>
+        <div>{process.env.NEXT_PUBLIC_AGENT_TOOLS} tools · cost gate (high/very-high)</div>
+        <div>Commands: exit · reset · tools · context</div>
       </div>
 
       {lines.slice(1, Math.min(step + 1, lines.length)).map((line, i) => (
         <div key={i} className="flex items-start gap-2 mb-1">
           {line.type === "prompt" && (
             <>
-              <span className="text-blue-400">you&gt;</span>
+              <span className="text-green-500">you&gt;</span>
               <span className="text-foreground">{line.content}</span>
               {i === Math.min(step, lines.length - 1) - 1 && (
                 <span className="animate-pulse">▊</span>
@@ -740,7 +761,7 @@ function TerminalAnimation() {
             </>
           )}
           {line.type === "agent" && (
-            <span className="text-purple-400">vibe&gt; {line.content}</span>
+            <span className="text-cyan-400">vibe&gt; {line.content}</span>
           )}
           {line.type === "tool" && (
             <span className="text-muted-foreground text-xs">{line.content}</span>
@@ -759,7 +780,7 @@ function TerminalAnimation() {
 
       {step >= lines.length && (
         <div className="flex items-start gap-2">
-          <span className="text-blue-400">you&gt;</span>
+          <span className="text-green-500">you&gt;</span>
           <span className="animate-pulse">▊</span>
         </div>
       )}

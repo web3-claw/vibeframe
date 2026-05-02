@@ -229,16 +229,16 @@ if [ "$FULL_INSTALL" = true ]; then
   echo ""
   echo -e "  ${CYAN}vibe setup${NC}                # Configure API keys"
   echo -e "  ${CYAN}vibe doctor${NC}               # Check what's ready"
+  echo -e "  ${CYAN}vibe guide${NC}                # Choose the right workflow"
   echo -e "  ${CYAN}vibe --help${NC}               # Show all commands"
-  echo -e "  ${CYAN}vibe agent${NC}                # Interactive AI session"
   echo -e "  ${CYAN}pnpm dev${NC}                  # Start web UI (http://localhost:3000)"
 else
   echo "Quick start:"
   echo ""
   echo -e "  ${CYAN}vibe setup${NC}                # Configure API keys"
   echo -e "  ${CYAN}vibe doctor${NC}               # Check what's ready"
+  echo -e "  ${CYAN}vibe guide${NC}                # Choose the right workflow"
   echo -e "  ${CYAN}vibe --help${NC}               # Show all commands"
-  echo -e "  ${CYAN}vibe agent${NC}                # Interactive AI session"
   echo ""
   echo -e "${DIM}Want web UI? Reinstall with: curl ... | bash -s -- --full${NC}"
 fi

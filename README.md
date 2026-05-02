@@ -7,6 +7,11 @@ video from the terminal. It combines FFmpeg-style editing commands, AI media
 generation, storyboard-based scene composition, YAML pipelines, and an optional
 MCP server for hosts that prefer tool calls over shell commands.
 
+Most users do not need a new chat UI. Use VibeFrame from your terminal,
+Claude Code, Codex, Cursor, Aider, Gemini CLI, OpenCode, or any other agent
+that can run shell commands. `vibe agent` exists as an optional built-in
+fallback when you do not already have an AI coding agent.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/vericontext/vibeframe/actions/workflows/ci.yml/badge.svg)](https://github.com/vericontext/vibeframe/actions/workflows/ci.yml)
 [![GitHub stars](https://img.shields.io/github/stars/vericontext/vibeframe)](https://github.com/vericontext/vibeframe/stargazers)
@@ -27,7 +32,7 @@ image-to-video clip mounted into the final timeline.
   <video src="https://raw.githubusercontent.com/vericontext/vibeframe/main/assets/demos/sample-demo-final.mp4" controls width="800" muted></video>
 </p>
 
-For the full copy-paste walkthrough, see [DEMO.md](DEMO.md).
+For the full copy-paste quickstart, see [DEMO-quickstart.md](DEMO-quickstart.md).
 
 ## What It Does
 
@@ -39,8 +44,24 @@ For the full copy-paste walkthrough, see [DEMO.md](DEMO.md).
   then run `vibe build` and `vibe render`.
 - **Run YAML pipelines:** define reproducible multi-step workflows with
   dry-runs, budgets, checkpoints, and step references.
+- **Understand and organize media:** inspect images/videos, detect scenes,
+  silence, and beats, and script low-level timeline or batch operations.
 - **Work with AI agents:** every workflow is scriptable from shell, and an MCP
   server is available for typed tool-call hosts.
+
+## 30-Second Map
+
+| You want to... | Use |
+|---|---|
+| Generate a new image, video, voice, music, or standalone motion asset | `vibe generate ...` |
+| Change an existing media file | `vibe edit ...`, `vibe remix ...`, `vibe audio ...` |
+| Understand, review, or ask questions about media | `vibe inspect ...`, `vibe media ...` |
+| Detect scenes, silence, or beats | `vibe detect ...` |
+| Add designed motion graphics to an existing clip | `vibe edit motion-overlay ...` |
+| Build a storyboard-driven composed video | `vibe init`, `vibe build`, `vibe render` |
+| Run a repeatable multi-step workflow | `vibe run pipeline.yaml` |
+| Script low-level timeline edits or bulk imports | `vibe timeline ...`, `vibe batch ...` |
+| Decide which path fits | `vibe guide motion`, `vibe guide scene`, `vibe guide pipeline` |
 
 ## Requirements
 
@@ -72,6 +93,14 @@ pnpm vibe --help
 
 ## Quick Start
 
+First run:
+
+```bash
+vibe setup
+vibe doctor
+vibe guide
+```
+
 ### Edit Existing Media
 
 ```bash
@@ -102,6 +131,11 @@ vibe generate video \
   -i frame.png \
   -d 8 \
   -o motion.mp4
+
+vibe edit motion-overlay motion.mp4 \
+  "minimal lower-third title, clean white type, subtle grain and vignette" \
+  --understand auto \
+  -o titled.mp4
 ```
 
 ### Build A Storyboard Video
@@ -159,7 +193,8 @@ vibe run promo.yaml --resume
 ## Agent Workflows
 
 VibeFrame is designed to be easy for AI coding agents to drive because the CLI
-is the UI. Any agent that can run shell commands can use it:
+is the UI. The primary agent path is still plain shell commands plus project
+guidance files, not a separate VibeFrame chat surface.
 
 ```text
 "Remove silence from interview.mp4"
@@ -173,13 +208,26 @@ is the UI. Any agent that can run shell commands can use it:
 Code, Codex, Cursor, Aider, Gemini CLI, OpenCode, and a universal `AGENTS.md`
 fallback.
 
-Built-in walkthroughs are available from the CLI:
+How agents discover the right command:
+
+- Claude Code reads `CLAUDE.md`, which imports `AGENTS.md`.
+- Codex reads `AGENTS.md` directly.
+- Cursor/OpenCode can use `AGENTS.md` and MCP.
+- Every host can fall back to `vibe schema`, `vibe doctor`, and `vibe guide`.
+
+Built-in workflow guides are the first stop when intent is ambiguous:
 
 ```bash
-vibe walkthrough
-vibe walkthrough scene
-vibe walkthrough pipeline
+vibe guide
+vibe guide motion
+vibe guide scene
+vibe guide pipeline
 ```
+
+`vibe agent` is available for environments without Claude Code, Codex, Cursor,
+or another coding agent. Treat it as optional/advanced; external agents driving
+the CLI through `AGENTS.md`, `--json`, `--dry-run`, and `vibe schema` are the
+primary workflow.
 
 ## MCP Server
 
@@ -234,11 +282,19 @@ For model and provider details, see [MODELS.md](MODELS.md).
 
 ## Relationship To Hyperframes
 
-VibeFrame uses [Hyperframes](https://github.com/heygen-com/hyperframes) as an
-HTML scene rendering backend. Hyperframes provides deterministic browser-based
-capture and composition primitives. VibeFrame adds CLI workflows, provider
-routing, YAML orchestration, agent guidance, media generation, and traditional
-editing commands around that rendering layer.
+VibeFrame is a video workflow CLI. Scene projects declare their composition
+engine in `vibe.project.yaml`; today the supported engine is Hyperframes:
+
+```yaml
+composition:
+  engine: hyperframes
+  entry: index.html
+```
+
+[Hyperframes](https://github.com/heygen-com/hyperframes) provides deterministic
+browser-based capture and composition primitives. VibeFrame adds CLI workflows,
+provider routing, YAML orchestration, agent guidance, media generation, and
+traditional editing commands around that rendering layer.
 
 VibeFrame is not affiliated with HeyGen. See [CREDITS.md](CREDITS.md) for
 dependency and provenance notes.
@@ -259,9 +315,10 @@ docs/                    Design notes, cookbook, comparisons
 
 - [docs/cli-reference.md](docs/cli-reference.md): every command, flag, and JSON envelope (auto-generated from `vibe schema --list`)
 - [docs/cli-mental-model.md](docs/cli-mental-model.md): when to use which verb (`generate` / `edit` / `remix` / `inspect` / `audio` / `detect`)
-- [docs/cli-architecture.md](docs/cli-architecture.md): when to pick `agent` vs `build` vs `run` (orchestrating entrypoints)
+- [docs/cli-architecture.md](docs/cli-architecture.md): when to pick external agents, optional `vibe agent`, `build`, or `run`
 - [docs/1.0-readiness.md](docs/1.0-readiness.md): public API surface, historical breaking changes (v0.74 / v0.80 renames), 1.0 cut checklist
-- [DEMO.md](DEMO.md): copy-paste demo flow
+- [DEMO-quickstart.md](DEMO-quickstart.md): copy-paste first-video flow
+- [DEMO-dogfood.md](DEMO-dogfood.md): internal end-to-end dogfood flow
 - [docs/cookbook.md](docs/cookbook.md): practical recipes
 - [docs/video-project-concepts.md](docs/video-project-concepts.md): project model
 - [MODELS.md](MODELS.md): provider/model reference

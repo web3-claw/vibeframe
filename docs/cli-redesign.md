@@ -59,7 +59,7 @@ Top-level `--help` is now grouped into four tiers:
 Get started        — init / build / render / doctor / setup / demo
 One-shot tools     — generate / edit / inspect / remix / audio
 Advanced authoring — project / scene / timeline
-Automation         — run / agent / batch + schema / context / walkthrough
+Automation         — run / agent / batch + schema / context / guide
 ```
 
 ## MCP tool name alignment (v0.75)
@@ -86,12 +86,12 @@ have hardcoded the old names and can't migrate yet.
 
 ## What did not change
 
-- **`vibe schema <path>`, `vibe context`, `vibe walkthrough <topic>`**
+- **`vibe schema <path>`, `vibe context`, `vibe guide <topic>`**
   remain top-level commands. We considered consolidating them under
   `vibe agent`, but the cost (parent-chain refactor + deprecation noise
   on widely-used `vibe schema X` invocations) outweighed the visual win
   from Phase 1's help reorg.
-- **Walkthrough topic name `pipeline`** still routes to the same content
+- **Guide topic name `pipeline`** still routes to the same content
   (topic-name rename deferred — low value, breaks any saved bookmarks).
 - **Provider flag `-p`** — Microsoft guidance reserves `-p` for
   `--property`, but the VibeFrame domain meaning of "provider" is well

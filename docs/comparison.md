@@ -38,7 +38,7 @@ editing commands.
 | Project-level flow | Hyperframes project commands | `vibe init` -> `vibe build` -> `vibe render` |
 | AI image/video generation | Out of scope | `vibe generate image`, `vibe generate video`, YAML actions |
 | Editing existing media | Out of scope | `vibe edit`, `vibe audio`, `vibe remix` |
-| Agent guidance | Host-specific skills/rules | `AGENTS.md`, `SKILL.md`, host scaffolding, walkthroughs |
+| Agent guidance | Host-specific skills/rules | `AGENTS.md`, `SKILL.md`, host scaffolding, guides |
 | MCP surface | Out of scope | `@vibeframe/mcp-server` typed tools |
 | Video-as-code pipelines | Out of scope | `vibe run pipeline.yaml` |
 

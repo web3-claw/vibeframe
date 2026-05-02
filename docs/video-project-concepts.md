@@ -32,7 +32,19 @@ The default is `agent`.
 
 ## Backend Metadata
 
-Some render/backend files may include `hyperframes.json`. Treat this as implementation metadata for the HTML renderer, not as the primary VibeFrame project file.
+`vibe.project.yaml` owns the VibeFrame project contract. Scene composition is
+declared explicitly:
+
+```yaml
+composition:
+  engine: hyperframes
+  entry: index.html
+```
+
+`hyperframes` is the only supported composition engine today. Some
+render/backend files may also include `hyperframes.json`. Treat that as
+implementation metadata for the HTML renderer, not as the primary VibeFrame
+project file.
 
 New users normally do not need to edit it. The file is created only when the selected profile or later build/render steps need backend compatibility.
 

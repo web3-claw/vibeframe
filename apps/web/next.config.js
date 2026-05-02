@@ -38,9 +38,9 @@ function countManifestTools() {
       mcpOnly += lines.filter((line) => line === 'surfaces: ["mcp"],').length;
     }
   } catch {
-    return { mcp: 66, agent: 82 };
+    return { mcp: 69, agent: 85 };
   }
-  if (total === 0) return { mcp: 66, agent: 82 };
+  if (total === 0) return { mcp: 69, agent: 85 };
   return {
     mcp: total - agentOnly,
     agent: total - mcpOnly,
@@ -68,10 +68,10 @@ try {
 }
 
 // Count unique AI provider directories (each dir = one provider service)
-let aiProviders = 11;
+let aiProviders = 13;
 try {
   const entries = fs.readdirSync(aiProvidersDir, { withFileTypes: true });
-  aiProviders = entries.filter((e) => e.isDirectory() && !e.name.startsWith(".") && e.name !== "interface").length || 11;
+  aiProviders = entries.filter((e) => e.isDirectory() && !e.name.startsWith(".") && e.name !== "interface").length || 13;
 } catch {
   // Fallback
 }

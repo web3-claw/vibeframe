@@ -33,7 +33,7 @@ Cost tiers signal the AI exposure: **free** = FFmpeg only, **low** = Whisper / s
 | `music` | Music generation (ElevenLabs default, Replicate MusicGen) | low |
 | `music-status` | Check music generation status | free |
 | `storyboard` | Script → storyboard (Claude) | high |
-| `motion` | Motion graphics (Claude + Remotion) | high |
+| `motion` | Standalone motion graphics (Claude/Gemini + Remotion) | high |
 | `thumbnail` | Thumbnail extraction / generation | free–low |
 | `background` | AI background generation (OpenAI) | high |
 | `video-status` | Async video job status | free |
@@ -51,7 +51,8 @@ Cost tiers signal the AI exposure: **free** = FFmpeg only, **low** = Whisper / s
 | `translate-srt` | Translate SRT subtitles (Claude / OpenAI) | low |
 | `jump-cut` | Remove filler words (Whisper word-level) | low |
 | `grade` | AI-generated color grade (Claude + FFmpeg; presets are free) | low |
-| `text-overlay` | Burn text overlay (FFmpeg `drawtext`) | free |
+| `text-overlay` | Simple static text burn-in (FFmpeg `drawtext`) | free |
+| `motion-overlay` | Designed animated overlays on existing video (Remotion or user-provided Lottie) | low |
 | `speed-ramp` | Content-aware speed ramping (Whisper + Claude + FFmpeg) | low |
 | `reframe` | Auto-reframe to a new aspect ratio (Claude Vision + FFmpeg) | high |
 | `image` | Edit image with AI as context (Gemini / OpenAI / Grok) | high |
@@ -114,7 +115,7 @@ The audit at `docs/cli-mental-model.md`'s git history surfaced these. They're **
 
 7. **Cost-tier signaling** — `--help` shows tier in `vibe --help`'s "Cost tiers" footer but not in individual subcommand `--help`. Tracked as a future polish item; for now `vibe --help` is the canonical reference.
 
-8. **Untiered utility commands** — `setup`, `doctor`, `init`, `build`, `render`, `agent`, `run`, `demo`, `walkthrough`, `context` carry no cost tier. They're orchestrators or meta-info, not media producers — `build` and `run` orchestrate other tagged commands (their cost depends on what's inside the storyboard / pipeline), and the rest are setup / inspection. `vibe schema --list --filter free` excludes them by design; `vibe schema --list` (no filter) shows them. The doctor's "Cost-tagged: N" line counts only commands that opted in via `applyTier()`.
+8. **Untiered utility commands** — `setup`, `doctor`, `init`, `build`, `render`, `agent`, `run`, `demo`, `guide`, `context` carry no cost tier. They're orchestrators or meta-info, not media producers — `build` and `run` orchestrate other tagged commands (their cost depends on what's inside the storyboard / pipeline), `agent` is an optional built-in fallback for users without an external coding agent, and the rest are setup / inspection. `vibe schema --list --filter free` excludes them by design; `vibe schema --list` (no filter) shows them. The doctor's "Cost-tagged: N" line counts only commands that opted in via `applyTier()`.
 
 ## When in doubt
 
@@ -122,6 +123,7 @@ The audit at `docs/cli-mental-model.md`'s git history surfaced these. They're **
 - **"I want to clean up / tweak this video"** (no AI required) → `edit`
 - **"I want AI to remix my existing video"** → `remix`
 - **"I want to ask AI about this media"** → `inspect`
+- **"I want graphics that fit this exact clip"** → `edit motion-overlay clip.mp4 "..." --understand auto`
 - **"I'm working with audio specifically"** → `audio`
 - **"I want a feature list (scenes / beats / silences)"** → `detect`
 

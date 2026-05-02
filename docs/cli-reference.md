@@ -123,7 +123,7 @@ Rule 2.  vibe <bare-name>      →  <bare-name>
          e.g. vibe init / build / render / run → init / build / render / run
 
 Rule 3.  CLI-only (not exposed via MCP):
-         setup, doctor, demo, agent, schema, context, walkthrough
+         setup, doctor, demo, agent, schema, context
 
 Rule 4.  MCP-only agent tools (engine direct access):
          fs_*, media_*, project_open / project_save
@@ -135,7 +135,7 @@ Rule 4.  MCP-only agent tools (engine direct access):
 
 #### `vibe agent`
 
-Start the AI agent with natural language interface
+Optional built-in natural-language agent (fallback when no external coding agent is driving vibe)
 
 **Parameters:**
 
@@ -203,6 +203,15 @@ Check system health and available commands
 - `verbose` *(boolean)* — Show full report (every provider row, scene composer block, free-command list)
 - `testKeys` *(boolean)* — Make a lightweight authenticated request to each provider (validates configured keys; skips providers without a cheap test endpoint)
 
+#### `vibe guide`
+
+Step-by-step guide for a vibe workflow (universal /vibe-* slash-command equivalent)
+
+**Parameters:**
+
+- `topic` *(string)* — Guide topic: motion | scene | pipeline | architecture. Omit to list all.
+- `list` *(boolean)* — List available guides and exit
+
 #### `vibe init`
 
 Scaffold a VibeFrame project (video scene project or project-scope agent files)
@@ -268,15 +277,6 @@ Configure VibeFrame (LLM provider, API keys)
 - `test` *(boolean)* — After save, live-test each configured key (exits 7 if any FAIL)
 - `scope` *(string)* *(default: `"user"`)* — Where to save: 'user' (~/.vibeframe/config.yaml, shared) or 'project' (./.vibeframe/config.yaml, gitignored, this project only)
 
-#### `vibe walkthrough`
-
-Step-by-step authoring guide for a vibe workflow (universal /vibe-* slash-command equivalent)
-
-**Parameters:**
-
-- `topic` *(string)* — Walkthrough topic: scene | pipeline | architecture. Omit to list all.
-- `list` *(boolean)* — List available walkthroughs and exit
-
 ### `generate`
 
 #### `vibe generate background`
@@ -326,6 +326,8 @@ Generate motion graphics using Claude + Remotion (render & composite)
 - `render` *(boolean)* — Render the generated code with Remotion (output .webm)
 - `video` *(string)* — Base video to composite the motion graphic onto
 - `image` *(string)* — Image to analyze with Gemini — color/mood fed into Claude prompt
+- `understand` *(string)* *(default: `"auto"`)* — Analyze --video with Gemini before generating motion: auto, off, required
+- `understandingPrompt` *(string)* — Custom prompt for --video understanding
 - `fromTsx` *(string)* — Refine an existing TSX file instead of generating from scratch
 - `model` *(string)* *(default: `"sonnet"`)* — LLM model: sonnet (default), opus, gemini, gemini-3.1-pro
 - `dryRun` *(boolean)* — Preview parameters without executing
@@ -581,6 +583,29 @@ Remove filler words (um, uh, like, etc.) from video using Whisper word-level tim
 - `apiKey` *(string)* — OpenAI API key (or set OPENAI_API_KEY env)
 - `dryRun` *(boolean)* — Preview parameters without executing
 
+#### `vibe edit motion-overlay`
+
+Apply designed motion graphics overlays to an existing video
+
+**Parameters:**
+
+- `video` *(string)* **required** — Video file path
+- `description` *(string)* — Motion overlay description (omit when using --asset)
+- `asset` *(string)* — User-provided .json/.lottie animation to overlay
+- `output` *(string)* — Output video file path
+- `duration` *(number)* — Overlay/render duration in seconds
+- `start` *(number)* *(default: `0`)* — Overlay start time in seconds
+- `style` *(string)* — Style preset for generated overlays: minimal, corporate, playful, cinematic
+- `model` *(string)* *(default: `"sonnet"`)* — LLM model for generated overlays: sonnet, opus, gemini, gemini-3.1-pro
+- `understand` *(string)* *(default: `"auto"`)* — Analyze video before generated overlay: auto, off, required
+- `understandingPrompt` *(string)* — Custom prompt for video understanding
+- `position` *(string)* *(full \| center \| top-left \| top-right \| bottom-left \| bottom-right)* *(default: `"full"`)* — Lottie position: full, center, top-left, top-right, bottom-left, bottom-right
+- `scale` *(number)* — Lottie overlay scale (0.01-2)
+- `opacity` *(number)* *(default: `1`)* — Lottie overlay opacity (0-1)
+- `loop` *(boolean)* *(default: `true`)* — Loop Lottie overlay
+- `noLoop` *(boolean)* — Do not loop Lottie overlay
+- `dryRun` *(boolean)* — Preview parameters without executing
+
 #### `vibe edit noise-reduce`
 
 Remove background noise from audio/video using FFmpeg (no API key needed)
@@ -644,7 +669,7 @@ Apply content-aware speed ramping (Whisper + Claude + FFmpeg)
 
 #### `vibe edit text-overlay`
 
-Apply text overlays to video (FFmpeg drawtext)
+Apply simple static text burn-in to video (FFmpeg drawtext)
 
 **Parameters:**
 

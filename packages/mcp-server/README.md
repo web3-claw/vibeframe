@@ -10,7 +10,7 @@ Confirmed MCP hosts today: **Claude Desktop**, **Cursor**, **OpenCode**, and **C
 |---------|---------|-----------------|
 | MCP host (Claude Desktop / Cursor / OpenCode / Claude Code) | `@vibeframe/mcp-server` *(this)* | host calls tool by name, for example `mcp__vibeframe__build({...})` |
 | Shell / scripts (any agent host: Codex / Aider / Gemini CLI / etc.) | `@vibeframe/cli` | `vibe init my-video && vibe build my-video && vibe render my-video` |
-| Standalone agent REPL | `@vibeframe/cli` (`vibe agent`) | natural language -> CLI calls |
+| Optional standalone agent REPL | `@vibeframe/cli` (`vibe agent`) | natural language -> CLI calls when you do not already use Claude Code/Codex/Cursor/etc. |
 
 The tool list below is what the MCP host sees. The same operations exist as `vibe <verb> <noun>` subcommands in the CLI — see `vibe --help`.
 
@@ -77,7 +77,7 @@ Once connected, your MCP host can resolve prompts like these into typed tool cal
 > *→ `init` + 3× `scene_add` + `render`*
 
 > "Generate a cinematic backdrop image, animate it for 5 seconds, add narration"
-> *→ `generate_image` + `generate_motion` + `generate_speech`*
+> *→ `generate_image` + `generate_video` + `generate_speech`*
 
 > "Remove silent segments and add captions to my interview"
 > *→ `edit_silence_cut` + `edit_caption`*
@@ -110,9 +110,9 @@ Tool names are MCP-side. Your host typically prefixes them (e.g. Claude shows th
 |------|-------------|-----------|
 | `generate_image` | Text-to-image | OpenAI, Google, Stability |
 | `generate_background` | Cinematic backdrop image (video-tuned prompt) | OpenAI |
-| `generate_video` | Text/image-to-video (long-running) | Runway, Kling, FAL Seedance, Google Veo |
+| `generate_video` | Text/image-to-video (long-running) | Seedance via fal.ai, Grok, Kling, Runway, Google Veo |
 | `generate_video_status` / `_cancel` / `_extend` | Manage long-running video jobs | (provider-specific) |
-| `generate_motion` | Animate a still image | FAL Seedance, Runway |
+| `generate_motion` | Generate standalone designed motion graphics | Claude or Gemini + Remotion |
 | `generate_speech` | Text-to-speech | ElevenLabs |
 | `generate_music` | AI background music | Suno, ElevenLabs, Replicate MusicGen |
 | `generate_music_status` | Poll Replicate music task | Replicate |
@@ -120,14 +120,15 @@ Tool names are MCP-side. Your host typically prefixes them (e.g. Claude shows th
 | `generate_thumbnail` | AI thumbnail composition | OpenAI, Google |
 | `generate_storyboard` | Multi-beat storyboard frames | OpenAI, Google |
 
-### Editing (15)
+### Editing (16)
 
 | Tool | Description |
 |------|-------------|
 | `edit_silence_cut` | Remove silent segments (FFmpeg or Gemini) |
 | `edit_jump_cut` | Remove filler words (Whisper) |
 | `edit_caption` / `edit_animated_caption` | Burn styled / animated captions |
-| `edit_text_overlay` | Static text overlay |
+| `edit_text_overlay` | Simple static text burn-in |
+| `edit_motion_overlay` | Designed animated overlays or user-provided Lottie overlays |
 | `edit_fade` | Fade in/out |
 | `edit_grade` | Color grading |
 | `edit_speed_ramp` | Variable-speed segments |
@@ -194,11 +195,11 @@ Tool names are MCP-side. Your host typically prefixes them (e.g. Claude shows th
 | `remix_auto_shorts` | Long-form → vertical shorts |
 | `remix_regenerate_scene` | Re-render a single scene against an existing storyboard.{yaml,json} |
 
-### Walkthrough (1)
+### Guides (1)
 
 | Tool | Description |
 |------|-------------|
-| `walkthrough` | Cross-host guides for scene and pipeline workflows |
+| `guide` | Cross-host guides for motion, scene, pipeline, and architecture workflows |
 
 > **CLI ↔ MCP sync**: `packages/mcp-server/src/tools/cli-sync.test.ts` is a vitest hook that fails CI when a CLI subcommand is added/removed/renamed without the matching MCP change. Open the test file to see the live mapping table — `null` rows mark CLI-only commands (e.g. `vibe audio list-voices`, `vibe timeline set`) that are intentionally not exposed via MCP.
 
@@ -238,6 +239,12 @@ API keys are read from the host's environment (`~/.zshrc`, MCP config `env` bloc
 | `FAL_API_KEY` | Seedance image-to-video |
 | `RUNWAY_API_SECRET` | Runway video |
 | `KLING_API_KEY` | Kling video |
+| `IMGBB_API_KEY` | Default temporary image host for Seedance/Kling image-to-video |
+| `VIBE_UPLOAD_PROVIDER` | `imgbb` (default) or `s3` for temporary image uploads |
+| `VIBE_UPLOAD_S3_BUCKET` | S3 bucket when `VIBE_UPLOAD_PROVIDER=s3` |
+| `VIBE_UPLOAD_S3_PREFIX` | Optional S3 key prefix for temporary image uploads |
+| `VIBE_UPLOAD_TTL_SECONDS` | Optional TTL hint for temporary upload URLs |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION` | S3 upload host credentials |
 | `VIBE_PROJECT_PATH` | Default timeline JSON path for resources |
 
 ## Requirements

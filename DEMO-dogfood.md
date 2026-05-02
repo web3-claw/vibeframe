@@ -45,13 +45,14 @@ paid TTS key.
 Useful guide command:
 
 ```bash
-pnpm vibe walkthrough
-pnpm vibe walkthrough scene
-pnpm vibe walkthrough pipeline
-pnpm vibe walkthrough architecture
+pnpm vibe guide
+pnpm vibe guide motion
+pnpm vibe guide scene
+pnpm vibe guide pipeline
+pnpm vibe guide architecture
 ```
 
-`walkthrough` explains the workflow. It does not create files.
+`guide` explains the workflow. It does not create files.
 
 ---
 
@@ -504,10 +505,11 @@ pnpm -F @vibeframe/cli test -- \
 | Render project to MP4 | `pnpm vibe render my-video` |
 | Generate a standalone image | `pnpm vibe generate image "..."` |
 | Generate a standalone video | `pnpm vibe generate video "..." -p seedance` |
+| Add designed overlay to a video | `pnpm vibe edit motion-overlay video.mp4 "lower-third..."` |
 | Run a YAML workflow | `pnpm vibe run workflow.yaml` |
-| Learn the scene workflow | `pnpm vibe walkthrough scene` |
-| Learn the YAML workflow | `pnpm vibe walkthrough pipeline` |
-| Compare agent / build / run | `pnpm vibe walkthrough architecture` |
+| Learn the scene workflow | `pnpm vibe guide scene` |
+| Learn the YAML workflow | `pnpm vibe guide pipeline` |
+| Compare agent / build / run | `pnpm vibe guide architecture` |
 | List free-tier commands only | `pnpm vibe schema --list --filter free` |
 | Drive an agent with a USD ceiling | `pnpm vibe agent --budget-usd 5` |
 | Non-interactive first-run setup | `pnpm vibe setup --yes --provider openai` |

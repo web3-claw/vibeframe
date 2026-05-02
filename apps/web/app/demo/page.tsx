@@ -97,7 +97,7 @@ export default function DemoPage() {
               <span className="bg-gradient-to-r from-primary via-purple-500 to-pink-500 bg-clip-text text-transparent">you already work.</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-12 animate-fade-in-up delay-100">
-              Plain CLI, stand-alone agent, or a host agent — same tools,
+              Plain CLI, optional built-in agent, or a host agent — same tools,
               multiple entry points. Each surface below ships a VHS tape; install{" "}
               <a
                 href="https://github.com/charmbracelet/vhs"
@@ -119,9 +119,9 @@ export default function DemoPage() {
               command="vhs assets/demos/cli.tape"
             />
             <TapeCard
-              badge="2 · Agent"
+              badge="2 · Optional agent"
               title="vibe agent"
-              note="BYOK · natural language -> real vibe commands"
+              note="Fallback natural-language session when no host agent is driving vibe"
               command="vhs assets/demos/agent.tape"
             />
             <TapeCard

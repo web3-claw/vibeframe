@@ -17,7 +17,7 @@ conventions, and discovery hooks.
 vibe schema --list --json              # All commands with paths + descriptions
 vibe schema <group>.<leaf> --json      # JSON Schema for one command
 vibe doctor --json                     # Configured API keys + filter availability
-vibe walkthrough <topic> --json        # Step-by-step guides (scene | pipeline)
+vibe guide <topic> --json              # Step-by-step guides (motion | scene | pipeline)
 ```
 
 **Never guess flag names.** `vibe schema <command>` is the source of truth.
@@ -179,7 +179,7 @@ Rule 2.  vibe <bare-name>      →  <bare-name>
          e.g. vibe init / build / render / run → init / build / render / run
 
 Rule 3.  CLI-only (not exposed via MCP):
-         setup, doctor, demo, agent, schema, context, walkthrough
+         setup, doctor, demo, agent, schema, context
 
 Rule 4.  MCP-only agent tools (engine direct access):
          fs_*, media_*, project_open / project_save

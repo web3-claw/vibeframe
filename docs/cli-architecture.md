@@ -2,6 +2,12 @@
 
 There are three commands that *coordinate* the rest of the CLI rather than perform a single primitive: `vibe agent`, `vibe build`, and `vibe run`. New users routinely ask which one they want. This document is the audit-driven answer.
 
+Important positioning: if you already use Claude Code, Codex, Cursor, Aider,
+Gemini CLI, OpenCode, or another bash-capable coding agent, that external
+agent should usually drive `vibe` directly through shell commands, `AGENTS.md`,
+`CLAUDE.md`, `vibe schema`, and `vibe guide`. `vibe agent` is an optional
+built-in fallback for users who do not already have an agent host.
+
 > Companion to [docs/cli-mental-model.md](cli-mental-model.md) (which covers the six primitive verbs: `generate` / `edit` / `remix` / `inspect` / `audio` / `detect`).
 
 ## TL;DR
@@ -13,11 +19,12 @@ There are three commands that *coordinate* the rest of the CLI rather than perfo
 | **Reproducibility** | none — LLM decides each turn | high — same storyboard → same render | highest — explicit DAG + checkpoints |
 | **Budget caps** | per-session max-turns only | none | `--budget-usd`, `--budget-tokens`, `--max-errors` |
 | **Resume after crash** | no | re-invoke (idempotent) | `--resume` loads `.pipeline-state.yaml` |
-| **Best for** | exploration, "I'll know it when I see it" | a finished script you trust | repeatable workflows, batch jobs |
+| **Best for** | optional built-in exploration when no external agent is driving the CLI | a finished script you trust | repeatable workflows, batch jobs |
 
 ## When to pick which
 
-- **"I want to play"** → `vibe agent`. You don't yet know the steps; let the agent figure them out.
+- **"I am already in Claude Code/Codex/Cursor/etc."** → use normal `vibe` shell commands plus `vibe guide` / `vibe schema`; do not start a second agent loop unless you explicitly want it.
+- **"I want to play and I do not have an external coding agent"** → `vibe agent`. You don't yet know the steps; let the built-in fallback agent figure them out.
 - **"I have a finished script and a visual identity"** → `vibe build`. STORYBOARD.md → MP4 in one command.
 - **"I want this to run again next month with a different input"** → `vibe run`. Capture the steps as YAML; share / version it.
 

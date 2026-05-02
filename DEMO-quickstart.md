@@ -8,9 +8,10 @@ the project directory, but every command is also runnable by hand.
 
 | | |
 |---|---|
-| **Final output** | `renders/apex-ridge-narrated.mp4` (1920×1080, 30fps, ~6s, ~16MB) |
-| **Wall-clock** | ~5-7 minutes (Seedance video gen is the long pole at ~90-150s; render ~50s) |
-| **API cost** | ~$0.30-0.50 with default providers; ~$0.27 if you swap ElevenLabs for free local Kokoro |
+| **Single-scene final** (Step 5) | `renders/apex-ridge-narrated.mp4` (1920×1080, 30fps, ~6s, ~16MB) |
+| **Multi-scene final** (Step 9) | `renders/apex-ridge-full.mp4` (1920×1080, 30fps, ~19s, ~50MB) — hook → proof → close arc |
+| **Wall-clock** | Steps 1-5: ~5-7 min. Steps 6-9: +5-10 min depending on Path A vs Path B in 7-8 |
+| **API cost** | Steps 1-5: ~$0.30-0.50. Steps 6-9 with Path A (still backdrops): +~$0.15. Path B (cinematic per scene): +~$0.80 |
 | **Required keys** | `OPENAI_API_KEY`, `FAL_API_KEY`, `ANTHROPIC_API_KEY`. `ELEVENLABS_API_KEY` optional (Kokoro local fallback) |
 
 ---
@@ -135,7 +136,7 @@ step**: the agent recognises composition language ("lower-third title",
   fills in `DESIGN.md` with the cinematic identity, authors `index.html`
   composing the video + overlays + title, lints, and renders. The HTML
   stays editable forever.
-- **Path B:** uses the one-shot Remotion baker `vibe generate motion`.
+- **Path B:** uses the one-shot overlay command `vibe edit motion-overlay`.
   Faster, but the result is a flat MP4 with no editable layers.
 
 The demo uses **Path A**. Path B is at the bottom of this section.
@@ -180,12 +181,11 @@ add a minimal lower-third title 'Day One — Apex Ridge' bottom-left in clean wh
 If you want a flat baked MP4 instead of an editable HTML composition:
 
 ```bash
-vibe generate motion \
+vibe edit motion-overlay assets/peak.mp4 \
   "minimal lower-third title 'Day One — Apex Ridge' bottom-left, white sans-serif, fade in 1s hold 3s fade out 5s, 35mm grain, warm vignette" \
-  --video assets/peak.mp4 \
+  --understand auto \
   --duration 6 \
   --style cinematic \
-  --render \
   -o renders/apex-ridge-baked.mp4
 ```
 
@@ -208,13 +208,19 @@ The narration text is timed to land on the title's spoken word — "Apex"
 should arrive around the 4.2-4.5s mark so the on-screen lower-third can
 fade in just before that beat in Step 5.
 
+**Prompt (verb-less paste of the narration line itself — the agent reads it as ASSET intent and calls `vibe generate speech`):**
+
+```
+generate narration: "The mountain wakes before we do. Up here, the first golden light writes the day. Apex Ridge — day one." save to assets/narration.wav
+```
+
 **Narration text (~5-6s read time):**
 
 ```
 The mountain wakes before we do. Up here, the first golden light writes the day. Apex Ridge — day one.
 ```
 
-**ElevenLabs path:**
+**What the agent runs (ElevenLabs path):**
 
 ```bash
 vibe generate speech \
@@ -238,7 +244,15 @@ British documentary cadence) or your default ElevenLabs voice.
 ## Step 5. Integrate narration + sync title to spoken word (BUILD → `renders/apex-ridge-narrated.mp4`)
 
 Take `assets/narration.wav` and wire it into the composition from
-Step 3. The agent should:
+Step 3.
+
+**Prompt:**
+
+```
+integrate the narration from @assets/narration.wav into the apex-ridge composition. transcribe word-level timings and re-time the lower-third title to land on the spoken word "Apex" instead of the placeholder fade-in at 1s. all overlays (vignette, warm-cast, grain, title) should stay through the full 6 seconds. re-render to renders/apex-ridge-narrated.mp4
+```
+
+The agent should:
 
 1. **Transcribe with word-level timings** so the title fades in *on the
    spoken word*, not on guessed timing:
@@ -267,6 +281,221 @@ Step 3. The agent should:
 
 ---
 
+## Step 6. Promote to a multi-scene project (one-time refactor)
+
+After Step 5, `index.html` *is* the hook scene — backdrop video, grain,
+vignette, lower-third, audio all live in one composition. That's fine
+for a 6-second social post, but to extend the short into a hook → proof
+→ close arc you need the multi-scene shape vibeframe expects:
+
+| Role | File |
+|---|---|
+| **Timeline root** | `index.html` — a thin orchestrator that mounts scene clips end-to-end, with crossfades between them |
+| **Per-scene composition** | `compositions/scene-<id>.html` — one self-contained Hyperframes composition per beat |
+
+`vibe scene add` will read `index.html`, find the next free time slot,
+and append a `<div class="clip" data-scene-import="compositions/scene-X.html" data-start="..." data-duration="..." data-track-index="...">` clip on
+alternating tracks (1 / 2 / 1 / 2 …) so consecutive clips can crossfade.
+For that to work, `index.html` has to be a timeline root, not a baked
+single-scene composition.
+
+**Prompt:**
+
+```
+promote this single-scene composition into a multi-scene project. move the current index.html into compositions/scene-hook.html, then write a new index.html as a thin timeline root (1920×1080, no backdrop, no overlays) that mounts the hook scene on track 1 at data-start="0" data-duration="6". verify the refactored render is visually identical to renders/apex-ridge-narrated.mp4
+```
+
+The agent should:
+
+### 6a. Move the current composition into a scene file
+
+```bash
+mkdir -p compositions
+mv index.html compositions/scene-hook.html
+```
+
+### 6b. Update `compositions/scene-hook.html` to be self-contained
+
+Inside the moved file, fix any relative paths that pointed at
+`assets/...` from the project root — they still resolve from the project
+root because Hyperframes resolves relative to the composition that's
+*mounted*, not the file that contains the composition. So
+`<video src="assets/peak.mp4">` keeps working. (Re-prompt the agent to
+"verify scene-hook.html is self-contained and renders standalone via
+`vibe render compositions/scene-hook.html` if you want to be sure.")
+
+### 6c. Write a fresh `index.html` as the timeline root
+
+Re-prompt the agent: *"write a new index.html that is a multi-scene
+timeline root — same canvas size (1920×1080), no backdrop, no overlays.
+Mount `compositions/scene-hook.html` as the first scene clip on
+track 1, `data-start="0" data-duration="6"`. Leave room for additional
+scenes."*
+
+The shape the agent should produce:
+
+```html
+<div data-composition-id="apex-ridge" data-start="0" data-duration="6"
+     data-width="1920" data-height="1080">
+  <div class="clip"
+       data-scene-import="compositions/scene-hook.html"
+       data-start="0" data-duration="6" data-track-index="1"></div>
+</div>
+```
+
+### 6d. Verify
+
+```bash
+vibe scene lint --project . --json
+vibe render . -o renders/apex-ridge-refactored.mp4
+```
+
+Output should be byte-identical (or visually identical) to
+`renders/apex-ridge-narrated.mp4`. If it isn't, the scene file lost a
+relative path or a track was dropped — fix and re-render.
+
+This is a **one-time refactor**. Steps 7-9 stay clean.
+
+---
+
+## Step 7. Add the proof beat (image gen + composition)
+
+The proof beat is "what we found" — a tighter, more intimate shot that
+backs up the establishing wide of the hook. Two paths, depending on how
+cinematic you want each scene:
+
+**Prompt (Path A — let the agent run `vibe scene add` for a still-backdrop scene):**
+
+```
+add a proof beat to the project: visuals "tight detail of frost glittering on a wooden ridge cairn at first light, warm rim-light, shallow depth of field, cinematic 16:9, shot on Arri Alexa". narration "By six the wind drops. The cairn carries last night's frost." headline "What we found", kicker "Field log", style explainer.
+```
+
+**Prompt (Path B — cinematic per-scene, video backdrop):**
+
+```
+add a proof beat with a full cinematic per-scene treatment, same level of production as the hook scene. step 1 image: tight detail of frost glittering on a wooden ridge cairn, warm rim-light, shallow depth, cinematic 16:9. step 2 animate: slow push-in on the cairn, frost catching first light, breath of mist passing across, 6 seconds. step 3 compose compositions/scene-proof.html with backdrop @assets/cairn.mp4, lower-third "What we found / Field log", narration "By six the wind drops. The cairn carries last night's frost.", same DESIGN.md identity as scene-hook. mount it in index.html on track 2 with data-start="5.5" data-duration="6.5" so it crossfades with the hook scene's tail.
+```
+
+### Path A — quick: `vibe scene add` (still image backdrop, ~1 minute, ~$0.07)
+
+```bash
+vibe scene add proof \
+  --project . \
+  --style explainer \
+  --kicker "Field log" \
+  --headline "What we found" \
+  --visuals "tight detail of frost glittering on a wooden ridge cairn at first light, warm rim-light, shallow depth of field, cinematic 16:9, shot on Arri Alexa" \
+  --narration "By six the wind drops. The cairn carries last night's frost." \
+  --image-provider openai \
+  --tts auto
+```
+
+`vibe scene add` does it all in one call:
+- Generates `assets/scene-proof.png` (OpenAI image)
+- Generates `assets/narration-proof.mp3` (ElevenLabs or Kokoro)
+- Transcribes for word timings → `transcript-proof.json`
+- Writes `compositions/scene-proof.html` mirroring the hook's DESIGN.md identity (palette / typography / motion all inherited)
+- Updates `index.html` — adds a clip `data-start="5.5" data-duration="6.5"` (overlap with the hook scene's tail by 0.5s for the crossfade) on track 2 so the new scene rides the alternating-track pattern
+
+### Path B — cinematic: repeat Steps 1-3 per scene (~3 minutes, ~$0.40)
+
+If you want each scene to have its own animated video backdrop (not just a still), repeat the demo's first three steps for `proof`:
+
+```bash
+# 7B-1. Generate the proof beat's still image
+vibe generate image \
+  "tight detail of frost glittering on a wooden ridge cairn, warm rim-light, shallow depth, cinematic 16:9" \
+  -o assets/cairn.png \
+  --quality hd
+
+# 7B-2. Animate it
+vibe generate video \
+  "slow push-in on the cairn, frost catching first light, breath of mist passing across the frame, cinematic" \
+  --image assets/cairn.png \
+  --duration 6 \
+  -o assets/cairn.mp4
+
+# 7B-3. Author scene-proof.html with the same DESIGN.md identity
+# (re-prompt the agent: "compose compositions/scene-proof.html with backdrop assets/cairn.mp4, lower-third 'What we found / Field log', narration via TTS, same DESIGN.md palette/typography/motion as scene-hook")
+```
+
+Then have the agent insert the scene clip into `index.html` (same
+crossfade-overlap pattern as Path A: track 2, `data-start="5.5"`,
+`data-duration="6.5"`).
+
+**Output (either path):** `compositions/scene-proof.html`, scene
+mounted in `index.html`, total composition now ~12.5s.
+
+---
+
+## Step 8. Add the closing beat
+
+Same pattern — pick Path A (quick still-image scene) or Path B (full
+cinematic). The closing beat lands the arc.
+
+**Prompt:**
+
+```
+add a closing beat: visuals "wide shot of the same mountain ridge at peak golden hour, the entire valley filled with warm light, no fog, sharp clarity, cinematic 16:9". narration "And so we begin again. Apex Ridge — we'll be back tomorrow." headline "Begin again", kicker "Day one", style announcement. mount it after the proof scene so it crossfades on track 1.
+```
+
+**What the agent runs (Path A):**
+
+```bash
+vibe scene add close \
+  --project . \
+  --style announcement \
+  --kicker "Day one" \
+  --headline "Begin again" \
+  --visuals "wide shot of the same mountain ridge at peak golden hour, the entire valley filled with warm light, no fog, sharp clarity, cinematic 16:9" \
+  --narration "And so we begin again. Apex Ridge — we'll be back tomorrow." \
+  --image-provider openai \
+  --tts auto
+```
+
+The agent (or `vibe scene add`) places this clip on track 1, overlapping
+the proof scene's tail by 0.5s. Total composition ~19s.
+
+---
+
+## Step 9. Multi-scene render with transitions
+
+**Prompt:**
+
+```
+lint and validate all scenes, then render the full multi-scene project to renders/apex-ridge-full.mp4 at 1920×1080, 30fps, --quality high
+```
+
+**What the agent runs:**
+
+```bash
+# Validate everything
+vibe scene lint --project . --json
+npx hyperframes validate
+npx hyperframes inspect
+
+# Final render
+vibe render . -o renders/apex-ridge-full.mp4 --quality high --fps 30
+```
+
+`vibe render` walks the timeline root, mounts each scene composition at
+its `data-start`, applies the alternating-track crossfade rule (where
+two clips overlap on different tracks, Hyperframes blends them), and
+emits a single MP4.
+
+**Output:** `renders/apex-ridge-full.mp4` — 1920×1080 @ 30fps, ~19s,
+~50MB. Hook → proof → close, narrated, all carrying the same DESIGN.md
+identity.
+
+### Iterating from here
+
+- **Tweak one scene's copy or motion?** Edit only that scene's HTML, re-render. Other scenes are untouched, $0 spend.
+- **Swap the visual identity globally?** Edit `DESIGN.md` (palette / typography / motion), re-prompt the agent with *"regenerate all scene HTMLs to match the updated DESIGN.md"*. Image/video assets stay; only the HTML overlays update.
+- **Add a 4th beat?** `vibe scene add <name> --visuals "..." --narration "..."` — picks up where Step 8 left off, no other changes needed.
+- **Per-scene preview while iterating?** `vibe render compositions/scene-proof.html -o /tmp/preview.mp4` to render one scene in isolation, ~10s.
+
+---
+
 ## Filename chain (so you can resume mid-flow)
 
 | Step | Created | Consumed by |
@@ -276,18 +505,23 @@ Step 3. The agent should:
 | 2 | `assets/peak.mp4` | Step 3 (backdrop video in `index.html`) |
 | 3 | `DESIGN.md` (filled), `index.html`, `renders/apex-ridge.mp4` | Step 5 (re-render) |
 | 4 | `assets/narration.wav` | Step 5 (audio track) |
-| 5 | `transcript-narration.json`, `renders/apex-ridge-narrated.mp4` | **final** |
+| 5 | `transcript-narration.json`, `renders/apex-ridge-narrated.mp4` | **single-scene final** — or input to Step 6 |
+| 6 | `compositions/scene-hook.html` (moved), new `index.html` (timeline root), `renders/apex-ridge-refactored.mp4` | Steps 7-9 |
+| 7 | `compositions/scene-proof.html` + (Path A) `assets/scene-proof.png`, `assets/narration-proof.mp3`, `transcript-proof.json` | Step 9 |
+| 8 | `compositions/scene-close.html` + the same per-scene asset trio | Step 9 |
+| 9 | `renders/apex-ridge-full.mp4` | **multi-scene final** |
 
 Resuming after a crash: every output is on disk, so re-running a step
-just regenerates that one file. Step 3's `index.html` is the only
-authored artefact — keep it under version control.
+just regenerates that one file. Steps 3 and 6's HTML files are the only
+authored artefacts — keep them under version control.
 
 ---
 
-## Variants — same 5 steps, different theme
+## Variants — same 9 steps, different theme
 
 The agent doesn't need new instructions; just paste a different visual
-brief in Step 1 and it cascades.
+brief in Step 1 and it cascades through 5 (single-scene) or 9 (full
+multi-scene short).
 
 | Theme | Step 1 prompt seed |
 |---|---|
