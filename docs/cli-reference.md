@@ -12,15 +12,16 @@ machine-readable access use `vibe schema --list` and
 
 ## Mental model
 
-The **project** is the implicit area. Bare top-level commands act on the
-current project; grouped commands handle resources or one-shot
-operations.
+The **storyboard project** is the primary product lane. `STORYBOARD.md`
+and `DESIGN.md` are the source of truth; generated files under
+`compositions/` are artifacts. Use `vibe storyboard *` for narrow cue
+edits and direct Markdown edits for larger creative rewrites.
 
 ```
-init → build → render          ← 90% users start here  (Tier 1)
-generate / edit / inspect / remix ← one-shot media tools (Tier 2)
-scene / timeline                ← lower-level authoring (Tier 3)
-run / agent / schema / context  ← automation + agents   (Tier 4)
+init --from → storyboard validate → plan → build → render  ← storyboard-to-video
+generate / edit / inspect / remix                          ← one-shot media tools
+scene / timeline                                            ← lower-level authoring
+run / agent / schema / context                              ← automation + agents
 ```
 
 ## Global flags
@@ -55,10 +56,10 @@ Generated from the live `cost` field in `vibe schema --list`.
 | Tier           | Count | Examples                                                                                                                                                                                     | Per-call cost                                                                                     |
 | -------------- | ----: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | **Free**       |    37 | `generate.music-status` · `generate.thumbnail` · `generate.video-status` · `generate.video-cancel` · `edit.noise-reduce` · `edit.fade` · `edit.text-overlay` · `edit.interpolate` · +29 more | FFmpeg only, no API call                                                                          |
-| **Low**        |    19 | `generate.speech` · `generate.sound-effect` · `generate.music` · `edit.silence-cut` · `edit.caption` · `edit.translate-srt` · `edit.jump-cut` · `edit.motion-overlay` · +11 more             | $0.01–$0.10 per call                                                                              |
+| **Low**        |    20 | `generate.speech` · `generate.narration` · `generate.sound-effect` · `generate.music` · `edit.silence-cut` · `edit.caption` · `edit.translate-srt` · `edit.jump-cut` · +12 more              | $0.01–$0.10 per call                                                                              |
 | **High**       |    10 | `generate.image` · `generate.storyboard` · `generate.motion` · `generate.background` · `edit.reframe` · `edit.image` · `edit.upscale` · `audio.dub` · +2 more                                | $1–$5 per call                                                                                    |
 | **Very High**  |     4 | `generate.video` · `generate.video-extend` · `edit.fill-gaps` · `remix.regenerate-scene`                                                                                                     | $5–$50+ per call                                                                                  |
-| **Not tagged** |    11 | `setup` · `init` · `build` · `render` · `doctor` · `demo` · `run` · `agent` · +3 more                                                                                                        | Utility/orchestration/reference commands; inspect command behavior before assuming provider spend |
+| **Not tagged** |    18 | `setup` · `init` · `storyboard.list` · `storyboard.get` · `storyboard.set` · `storyboard.move` · `storyboard.revise` · `storyboard.validate` · +10 more                                      | Utility/orchestration/reference commands; inspect command behavior before assuming provider spend |
 
 > **Tip:** Run `<paid command> --dry-run --json` first — the response
 > includes a `costUsd` estimate when the command supports dry-run.
@@ -151,9 +152,12 @@ Cost tier: _not tagged_
 **Parameters:**
 
 - `project-dir` _(string)_ — Video project directory
+- `stage` _(string)_ _(default: `"all"`)_ — Build stage: assets|compose|sync|render|all
+- `beat` _(string)_ — Restrict asset/compose work to one beat id
 - `mode` _(string)_ _(default: `"auto"`)_ — Build mode: agent|batch|auto
 - `effort` _(string)_ _(default: `"medium"`)_ — Compose effort tier (batch mode only): low|medium|high
 - `composer` _(string)_ — Batch composer: claude|openai|gemini
+- `maxCost` _(number)_ — Fail before provider spend when estimated cost exceeds this USD cap
 - `skipNarration` _(boolean)_ — Don't dispatch TTS even when beats declare narration cues
 - `skipBackdrop` _(boolean)_ — Don't dispatch image-gen even when beats declare backdrop cues
 - `skipRender` _(boolean)_ — Compose only — don't render to MP4
@@ -181,7 +185,9 @@ Print CLI context/guidelines for AI agent integration
 
 Cost tier: _not tagged_
 
-_No parameters._
+**Parameters:**
+
+- `format` _(string)_ _(default: `"markdown"`)_ — Output format: markdown | json
 
 #### `vibe demo`
 
@@ -228,12 +234,30 @@ Cost tier: _not tagged_
 - `project-dir` _(string)_ — Project directory (defaults to cwd)
 - `type` _(string)_ _(default: `"scene"`)_ — Project type: scene (video project) | agent (agent files only)
 - `profile` _(string)_ _(minimal \| agent \| full)_ _(default: `"agent"`)_ — Scene profile: minimal (storyboard/design only), agent (recommended), full (render scaffold upfront)
+- `from` _(string)_ — Draft STORYBOARD.md and DESIGN.md from a brief string or text/markdown file
 - `ratio` _(string)_ _(16:9 \| 9:16 \| 1:1 \| 4:5)_ _(default: `"16:9"`)_ — Scene aspect ratio: 16:9, 9:16, 1:1, 4:5
 - `duration` _(number)_ _(default: `10`)_ — Default scene/root duration in seconds
 - `visualStyle` _(string)_ — Seed scene DESIGN.md from a named style
 - `agent` _(string)_ _(default: `"auto"`)_ — Agent target: claude-code | codex | cursor | aider | gemini-cli | opencode | all | auto
 - `force` _(boolean)_ — Overwrite existing files instead of skipping
 - `dryRun` _(boolean)_ — Print the file list without writing anything
+
+#### `vibe plan`
+
+Read STORYBOARD.md and show build plan, costs, missing cues, and provider needs
+
+Cost tier: _not tagged_
+
+**Parameters:**
+
+- `project-dir` _(string)_ — Video project directory
+- `stage` _(string)_ _(default: `"all"`)_ — Stage to plan: assets|compose|sync|render|all
+- `beat` _(string)_ — Restrict the plan to one beat
+- `mode` _(string)_ _(default: `"auto"`)_ — Build mode: agent|batch|auto
+- `skipNarration` _(boolean)_ — Don't include narration generation in the plan
+- `skipBackdrop` _(boolean)_ — Don't include backdrop image generation in the plan
+- `force` _(boolean)_ — Plan regeneration even when outputs already exist
+- `maxCost` _(number)_ — Fail if estimated cost exceeds this USD cap
 
 #### `vibe render`
 
@@ -380,6 +404,20 @@ Cost tier: `free`
 
 - `task-id` _(string)_ **required** — Task ID from music generation
 - `apiKey` _(string)_ — Replicate API token (or set REPLICATE_API_TOKEN env)
+
+#### `vibe generate narration`
+
+Generate narration from text (product-facing TTS)
+
+Cost tier: `low`
+
+**Parameters:**
+
+- `text` _(string)_ — Narration text (interactive if omitted)
+- `apiKey` _(string)_ — ElevenLabs API key (or set ELEVENLABS_API_KEY env)
+- `output` _(string)_ _(default: `"narration.mp3"`)_ — Output audio file path
+- `voice` _(string)_ _(default: `"21m00Tcm4TlvDq8ikWAM"`)_ — Voice ID (default: Rachel)
+- `dryRun` _(boolean)_ — Preview parameters without executing
 
 #### `vibe generate sound-effect`
 
@@ -1420,3 +1458,76 @@ Cost tier: `free`
 **Parameters:**
 
 - `file` _(string)_ **required** — Media file path
+
+### `storyboard`
+
+#### `vibe storyboard get`
+
+Print one beat as structured JSON
+
+Cost tier: _not tagged_
+
+**Parameters:**
+
+- `project-dir` _(string)_ **required** — Project directory
+- `beat` _(string)_ **required** — Beat id
+
+#### `vibe storyboard list`
+
+List beats, ids, cues, and durations from STORYBOARD.md
+
+Cost tier: _not tagged_
+
+**Parameters:**
+
+- `project-dir` _(string)_ — Project directory
+
+#### `vibe storyboard move`
+
+Reorder beats safely
+
+Cost tier: _not tagged_
+
+**Parameters:**
+
+- `project-dir` _(string)_ **required** — Project directory
+- `beat` _(string)_ **required** — Beat id to move
+- `after` _(string)_ — Place the beat after this beat id
+
+#### `vibe storyboard revise`
+
+Revise STORYBOARD.md from a request or source file
+
+Cost tier: _not tagged_
+
+**Parameters:**
+
+- `project-dir` _(string)_ **required** — Project directory
+- `from` _(string)_ — Revision request or path to a text/markdown file
+- `duration` _(number)_ — Target total duration in seconds
+- `dryRun` _(boolean)_ — Preview the revised storyboard without writing
+
+#### `vibe storyboard set`
+
+Update one cue in one beat without raw Markdown editing
+
+Cost tier: _not tagged_
+
+**Parameters:**
+
+- `project-dir` _(string)_ **required** — Project directory
+- `beat` _(string)_ **required** — Beat id
+- `key` _(string)_ **required** — Cue key: duration | narration | backdrop | video | motion | voice | music | asset
+- `value` _(array)_ — Cue value. Use --json-value to pass a JSON scalar/object.
+- `jsonValue` _(boolean)_ — Parse value as JSON instead of a string
+- `unset` _(boolean)_ — Remove the cue key from the beat
+
+#### `vibe storyboard validate`
+
+Validate cue blocks and beat ids
+
+Cost tier: _not tagged_
+
+**Parameters:**
+
+- `project-dir` _(string)_ — Project directory

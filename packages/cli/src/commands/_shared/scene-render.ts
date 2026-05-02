@@ -14,9 +14,7 @@
  */
 
 import { mkdir, readFile, stat } from "node:fs/promises";
-import { existsSync } from "node:fs";
 import { resolve, relative, dirname, basename } from "node:path";
-import { parse as yamlParse } from "yaml";
 import {
   createRenderJob,
   executeRenderJob,
@@ -26,6 +24,7 @@ import { preflightChrome } from "../../pipeline/renderers/chrome.js";
 import { rootExists } from "./scene-lint.js";
 import { scanSceneAudio } from "./scene-audio-scan.js";
 import { muxAudioIntoVideo } from "./scene-audio-mux.js";
+import { readProjectConfig } from "./project-config.js";
 
 export type RenderFps = 24 | 30 | 60;
 export type RenderQuality = "draft" | "standard" | "high";
@@ -94,27 +93,6 @@ export function defaultOutputPath(opts: {
   return resolve(opts.projectDir, "renders", `${name}-${stamp}.${fmt}`);
 }
 
-/** Minimal subset of `vibe.project.yaml` we care about for render. */
-interface VibeProjectShape {
-  name?: string;
-  composition?: {
-    engine?: string;
-    entry?: string;
-  };
-}
-
-async function readVibeProjectConfig(projectDir: string): Promise<VibeProjectShape | undefined> {
-  const cfgPath = resolve(projectDir, "vibe.project.yaml");
-  if (!existsSync(cfgPath)) return undefined;
-  try {
-    const raw = await (await import("node:fs/promises")).readFile(cfgPath, "utf-8");
-    const parsed = yamlParse(raw) as VibeProjectShape | null;
-    return parsed ?? undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 /**
  * Build the producer's `RenderConfig` from caller options. Pure — useful for
  * unit tests that want to assert defaults without touching Chrome.
@@ -145,15 +123,15 @@ export function buildRenderConfig(opts: {
  */
 export async function executeSceneRender(opts: SceneRenderOptions = {}): Promise<SceneRenderResult> {
   const projectDir = resolve(opts.projectDir ?? ".");
-  const projectConfig = await readVibeProjectConfig(projectDir);
-  const engine = projectConfig?.composition?.engine ?? "hyperframes";
+  const projectConfig = await readProjectConfig(projectDir);
+  const engine = projectConfig.config.composition.engine;
   if (engine !== "hyperframes") {
     return {
       success: false,
       error: `Unsupported composition engine: ${engine}. Supported engine: hyperframes.`,
     };
   }
-  const root = opts.root ?? projectConfig?.composition?.entry ?? "index.html";
+  const root = opts.root ?? projectConfig.config.composition.entry;
 
   // -- Preflight: project + Chrome ---------------------------------------
   const projectStat = await safeStat(projectDir);
@@ -172,7 +150,7 @@ export async function executeSceneRender(opts: SceneRenderOptions = {}): Promise
   }
 
   // -- Resolve output path -----------------------------------------------
-  const projectName = projectConfig?.name;
+  const projectName = projectConfig.config.name;
   const outputPath = opts.output
     ? resolve(projectDir, opts.output)
     : defaultOutputPath({ projectDir, projectName, format: opts.format });

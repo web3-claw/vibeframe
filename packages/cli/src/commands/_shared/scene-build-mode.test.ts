@@ -172,8 +172,8 @@ describe("executeSceneBuild — agent mode dispatch", () => {
     expect(executeComposeScenesWithSkills).not.toHaveBeenCalled();
     // Render NOT invoked yet — agent must author first
     expect(executeSceneRender).not.toHaveBeenCalled();
-    // Instructions present and reference scene render at the end
-    expect(r.composePrompts!.instructions.some((s) => s.includes("scene render"))).toBe(true);
+    // Instructions present and reference the top-level render command at the end
+    expect(r.composePrompts!.instructions.some((s) => s.includes("vibe render"))).toBe(true);
   });
 
   it("proceeds to render when all compositions/scene-*.html already exist", async () => {

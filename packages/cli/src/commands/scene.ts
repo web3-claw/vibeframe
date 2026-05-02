@@ -22,7 +22,6 @@ import { mkdir, readFile, writeFile, access, copyFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import chalk from "chalk";
 import ora from "ora";
-import { parse as yamlParse } from "yaml";
 import {
   GeminiProvider,
   OpenAIImageProvider,
@@ -38,6 +37,7 @@ import {
   aspectToDims,
   type VibeProjectConfig,
 } from "./_shared/scene-project.js";
+import { readProjectConfig } from "./_shared/project-config.js";
 import { applyTiers } from "./_shared/cost-tier.js";
 import {
   getVisualStyle,
@@ -569,10 +569,23 @@ async function pathExists(p: string): Promise<boolean> {
 }
 
 async function loadVibeProjectConfig(projectDir: string): Promise<VibeProjectConfig | null> {
-  const cfgPath = resolve(projectDir, "vibe.project.yaml");
-  if (!(await pathExists(cfgPath))) return null;
-  const raw = await readFile(cfgPath, "utf-8");
-  return yamlParse(raw) as VibeProjectConfig;
+  const loaded = await readProjectConfig(projectDir);
+  if (loaded.source === "default") return null;
+  return {
+    name: loaded.config.name,
+    aspect: loaded.config.aspect,
+    defaultSceneDuration: loaded.config.defaults.sceneDurationSec,
+    providers: {
+      image: loaded.config.providers.image,
+      tts: loaded.config.providers.narration,
+      transcribe: null,
+    },
+    budget: { maxUsd: loaded.config.build.maxCostUsd ?? 0 },
+    composition: {
+      engine: loaded.config.composition.engine,
+      entry: loaded.config.composition.entry,
+    },
+  };
 }
 
 /** Resolve narration text — value may be inline text or a path to a `.txt`/`.md` file. */
@@ -976,4 +989,3 @@ applyTiers(sceneCommand, {
   "lint": "free",
   "list-styles": "free",
 });
-

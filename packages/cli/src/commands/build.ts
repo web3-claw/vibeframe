@@ -10,17 +10,22 @@ import {
   type SceneBuildProgressEvent,
   type SceneBuildResult,
 } from "./_shared/scene-build.js";
+import { createBuildPlan, type BuildStage } from "./_shared/build-plan.js";
 import { parseStoryboard } from "./_shared/storyboard-parse.js";
 import { exitWithError, generalError, isJsonMode, isQuietMode, outputSuccess, usageError } from "./output.js";
 
 const VALID_MODES: SceneBuildMode[] = ["agent", "batch", "auto"];
+const VALID_STAGES: BuildStage[] = ["assets", "compose", "sync", "render", "all"];
 
 export const buildCommand = new Command("build")
   .description("Build a VibeFrame video project from STORYBOARD.md")
   .argument("[project-dir]", "Video project directory", ".")
+  .option("--stage <stage>", `Build stage: ${VALID_STAGES.join("|")}`, "all")
+  .option("--beat <id>", "Restrict asset/compose work to one beat id")
   .option("--mode <mode>", "Build mode: agent|batch|auto", "auto")
   .option("--effort <level>", "Compose effort tier (batch mode only): low|medium|high", "medium")
   .option("--composer <provider>", "Batch composer: claude|openai|gemini")
+  .option("--max-cost <usd>", "Fail before provider spend when estimated cost exceeds this USD cap")
   .option("--skip-narration", "Don't dispatch TTS even when beats declare narration cues")
   .option("--skip-backdrop", "Don't dispatch image-gen even when beats declare backdrop cues")
   .option("--skip-render", "Compose only — don't render to MP4")
@@ -45,12 +50,23 @@ Advanced equivalent: \`vibe scene build\`.`)
     if (!VALID_MODES.includes(mode)) {
       exitWithError(usageError(`Invalid --mode: ${mode}`, `Must be one of: ${VALID_MODES.join(", ")}`));
     }
+    const stage = String(options.stage ?? "all") as BuildStage;
+    if (!VALID_STAGES.includes(stage)) {
+      exitWithError(usageError(`Invalid --stage: ${stage}`, `Must be one of: ${VALID_STAGES.join(", ")}`));
+    }
+    const maxCostUsd = options.maxCost !== undefined ? Number.parseFloat(String(options.maxCost)) : undefined;
+    if (maxCostUsd !== undefined && (!Number.isFinite(maxCostUsd) || maxCostUsd < 0)) {
+      exitWithError(usageError(`Invalid --max-cost: ${String(options.maxCost)}`, "Must be a non-negative USD amount."));
+    }
 
     const params = {
       projectDir,
+      stage,
+      beatId: options.beat,
       mode,
       effort: options.effort,
       composer: options.composer,
+      maxCostUsd,
       skipNarration: options.skipNarration ?? false,
       skipBackdrop: options.skipBackdrop ?? false,
       skipRender: options.skipRender ?? false,
@@ -63,15 +79,41 @@ Advanced equivalent: \`vibe scene build\`.`)
     };
 
     if (options.dryRun) {
+      const plan = await createBuildPlan({
+        projectDir,
+        stage,
+        beat: options.beat,
+        mode,
+        skipNarration: options.skipNarration,
+        skipBackdrop: options.skipBackdrop,
+        force: options.force,
+      });
+      if (maxCostUsd !== undefined && plan.estimatedCostUsd > maxCostUsd) {
+        const warning = `Estimated cost $${plan.estimatedCostUsd.toFixed(2)} exceeds --max-cost $${maxCostUsd.toFixed(2)}.`;
+        if (isJsonMode() || isQuietMode()) {
+          outputSuccess({
+            command: "build",
+            startedAt,
+            dryRun: true,
+            warnings: [warning],
+            data: { params, plan, costCapUsd: maxCostUsd },
+          });
+          process.exitCode = 1;
+          return;
+        }
+        console.log(chalk.red(warning));
+        process.exitCode = 1;
+        return;
+      }
       if (!isJsonMode() && !isQuietMode()) {
-        printBuildDryRun(projectDirArg, params);
+        printBuildDryRun(projectDirArg, params, plan);
         return;
       }
       outputSuccess({
         command: "build",
         startedAt,
         dryRun: true,
-        data: { params },
+        data: { params, plan },
       });
       return;
     }
@@ -80,8 +122,11 @@ Advanced equivalent: \`vibe scene build\`.`)
     const result = await executeSceneBuild({
       projectDir,
       mode,
+      stage,
+      beatId: options.beat,
       effort: options.effort,
       composer: options.composer,
+      maxCostUsd,
       skipNarration: options.skipNarration,
       skipBackdrop: options.skipBackdrop,
       skipRender: options.skipRender,
@@ -123,9 +168,12 @@ Advanced equivalent: \`vibe scene build\`.`)
 
 type BuildDryRunParams = {
   projectDir: string;
+  stage: BuildStage;
+  beatId: unknown;
   mode: SceneBuildMode;
   effort: unknown;
   composer: unknown;
+  maxCostUsd: unknown;
   skipNarration: boolean;
   skipBackdrop: boolean;
   skipRender: boolean;
@@ -137,12 +185,15 @@ type BuildDryRunParams = {
   force: boolean;
 };
 
-function printBuildDryRun(projectDirArg: string, params: BuildDryRunParams): void {
+function printBuildDryRun(projectDirArg: string, params: BuildDryRunParams, plan?: Awaited<ReturnType<typeof createBuildPlan>>): void {
   console.log();
   console.log(chalk.bold.cyan("VibeFrame Build - dry run"));
   console.log(chalk.dim("-".repeat(60)));
   console.log(`  Project:       ${chalk.bold(projectDirArg)}`);
+  console.log(`  Stage:         ${chalk.bold(params.stage)}`);
+  if (params.beatId) console.log(`  Beat:          ${chalk.bold(String(params.beatId))}`);
   console.log(`  Mode:          ${chalk.bold(params.mode)}`);
+  if (params.maxCostUsd !== undefined) console.log(`  Max cost:      ${chalk.bold(`$${String(params.maxCostUsd)}`)}`);
   console.log(`  Composer:      ${chalk.bold(String(params.composer ?? "auto"))}`);
   console.log(`  TTS:           ${chalk.bold(String(params.ttsProvider ?? "auto"))}${params.skipNarration ? chalk.dim(" (skipped)") : ""}`);
   console.log(`  Image:         ${chalk.bold(String(params.imageProvider ?? "openai"))} ${chalk.dim(`${params.imageQuality} ${params.imageSize}`)}${params.skipBackdrop ? chalk.dim(" (skipped)") : ""}`);
@@ -153,7 +204,15 @@ function printBuildDryRun(projectDirArg: string, params: BuildDryRunParams): voi
   // the same per-primitive midpoints we use for `vibe agent --budget-usd`.
   // Conservative — overestimates so a $5 budget doesn't blow past $5.
   const estimate = estimateBuildCost(params);
-  if (estimate) {
+  if (plan) {
+    console.log();
+    console.log(chalk.bold.cyan("Estimated cost"));
+    console.log(chalk.dim("-".repeat(60)));
+    console.log(`  Beats:         ${chalk.bold(plan.beats.length)}`);
+    console.log(`  Missing:       ${chalk.bold(plan.missing.length > 0 ? plan.missing.join(", ") : "none")}`);
+    console.log(`  Providers:     ${chalk.bold(plan.providers.length > 0 ? plan.providers.join(", ") : "none")}`);
+    console.log(`  ${chalk.bold("Total:")}         ${chalk.bold(`$${plan.estimatedCostUsd.toFixed(2)}`)}`);
+  } else if (estimate) {
     console.log();
     console.log(chalk.bold.cyan("Estimated cost (tier-derived, conservative)"));
     console.log(chalk.dim("-".repeat(60)));

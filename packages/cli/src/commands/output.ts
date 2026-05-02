@@ -23,9 +23,12 @@ export enum ExitCode {
 export interface StructuredError {
   success: false;
   error: string;
+  message?: string;
   code: string;
   exitCode: ExitCode;
   suggestion?: string;
+  retryWith?: string[];
+  recoverable?: boolean;
   retryable: boolean;
 }
 
@@ -103,7 +106,12 @@ export function generalError(msg: string, suggestion?: string): StructuredError 
 /** Output structured error then exit */
 export function exitWithError(err: StructuredError): never {
   if (isJsonMode()) {
-    console.error(JSON.stringify(err, null, 2));
+    console.error(JSON.stringify({
+      ...err,
+      message: err.message ?? err.error,
+      recoverable: err.recoverable ?? err.retryable,
+      retryWith: err.retryWith ?? (err.suggestion ? [err.suggestion] : []),
+    }, null, 2));
   } else {
     console.error(chalk.red(`\n  ${err.error}`));
     if (err.suggestion) {

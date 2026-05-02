@@ -17,8 +17,10 @@ fallback when you do not already have an AI coding agent.
 [![GitHub stars](https://img.shields.io/github/stars/vericontext/vibeframe)](https://github.com/vericontext/vibeframe/stargazers)
 
 ```bash
-vibe init my-video
-vibe build my-video
+vibe init my-video --from "45-second launch video for an AI-native editor"
+vibe storyboard validate my-video
+vibe plan my-video
+vibe build my-video --max-cost 5
 vibe render my-video -o renders/final.mp4
 ```
 
@@ -141,11 +143,18 @@ vibe edit motion-overlay motion.mp4 \
 ### Build A Storyboard Video
 
 ```bash
-vibe init my-video --profile agent --visual-style "Swiss Pulse" -r 16:9 -d 18
+vibe init my-video \
+  --from "45-second launch video for an AI-native editor" \
+  --profile agent \
+  --visual-style "Swiss Pulse" \
+  -r 16:9 \
+  -d 45
 
 # Edit my-video/STORYBOARD.md and my-video/DESIGN.md
-vibe build my-video --dry-run
-vibe build my-video --tts kokoro
+vibe storyboard validate my-video --json
+vibe plan my-video --json
+vibe build my-video --dry-run --max-cost 5 --json
+vibe build my-video --tts kokoro --max-cost 5 --json
 vibe render my-video -o renders/final.mp4 --quality standard
 ```
 
@@ -160,6 +169,10 @@ backdrop: "Clean developer terminal beside structured storyboard cues"
 duration: 5
 ```
 ````
+
+Agents should use `vibe storyboard set/get/move/list` for narrow cue edits
+and direct Markdown edits for larger creative rewrites. `STORYBOARD.md` is
+the intent layer; files under `compositions/` are generated scene artifacts.
 
 ## Video As YAML
 

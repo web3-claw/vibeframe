@@ -28,7 +28,7 @@ import { registerMusicStatusCommand } from "./generate/music-status.js";
 import { registerVideoCancelCommand } from "./generate/video-cancel.js";
 import { registerBackgroundCommand } from "./generate/background.js";
 import { registerStoryboardCommand } from "./generate/storyboard.js";
-import { registerSpeechCommand } from "./generate/speech.js";
+import { registerNarrationCommand, registerSpeechCommand } from "./generate/speech.js";
 import { registerMusicCommand } from "./generate/music.js";
 import { registerThumbnailCommand } from "./generate/thumbnail.js";
 import { registerVideoStatusCommand } from "./generate/video-status.js";
@@ -117,6 +117,10 @@ tierLast(generateCommand, "very-high");
 // ============================================================================
 
 registerSpeechCommand(generateCommand);
+tierLast(generateCommand, "low");
+
+// Product-facing TTS name. `generate speech` remains for compatibility.
+registerNarrationCommand(generateCommand);
 tierLast(generateCommand, "low");
 
 // ============================================================================

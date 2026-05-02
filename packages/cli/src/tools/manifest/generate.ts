@@ -104,6 +104,31 @@ export const generateSpeechTool = defineTool({
   },
 });
 
+export const generateNarrationTool = defineTool({
+  name: "generate_narration",
+  category: "generate",
+  cost: "low",
+  description: "Generate narration from text using ElevenLabs TTS. Product-facing alias for generate_speech. Requires ELEVENLABS_API_KEY.",
+  schema: z.object({
+    text: z.string().describe("Narration text to convert to speech"),
+    output: z.string().optional().describe("Output audio file path (default: narration.mp3)"),
+    voice: z.string().optional().describe("Voice ID (default: Rachel)"),
+  }),
+  async execute(args) {
+    const result = await executeSpeech({
+      text: args.text,
+      output: args.output ?? "narration.mp3",
+      voice: args.voice,
+    });
+    if (!result.success) return { success: false, error: result.error ?? "Narration failed" };
+    return {
+      success: true,
+      data: { outputPath: result.outputPath, characterCount: result.characterCount },
+      humanLines: [`✅ Narration → ${result.outputPath}`],
+    };
+  },
+});
+
 // ── generate_sound_effect ───────────────────────────────────────────────────
 
 export const generateSoundEffectTool = defineTool({
@@ -472,6 +497,7 @@ export const generateVideoExtendTool = defineTool({
 export const generateTools: readonly AnyTool[] = [
   generateMotionTool as unknown as AnyTool,
   generateSpeechTool as unknown as AnyTool,
+  generateNarrationTool as unknown as AnyTool,
   generateSoundEffectTool as unknown as AnyTool,
   generateMusicTool as unknown as AnyTool,
   generateMusicStatusTool as unknown as AnyTool,

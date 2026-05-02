@@ -16,6 +16,7 @@ import { resolve, basename } from "node:path";
 import { stringify as yamlStringify } from "yaml";
 
 import type { VisualStyle } from "./visual-styles.js";
+import { projectConfigJson, VIBE_CONFIG_FILENAME } from "./project-config.js";
 
 /** Supported aspect ratios for scene projects (maps to CSS canvas dims). */
 export type SceneAspect = "16:9" | "9:16" | "1:1" | "4:5";
@@ -390,7 +391,8 @@ the framework-level minimum, not the cinematic craft layer.
 - \`assets/\` — shared media (narration audio, images, video)
 - \`transcript.json\` — Whisper word-level transcript (if narration exists)
 - \`hyperframes.json\` — HF registry config (speak to both toolchains)
-- \`vibe.project.yaml\` — VibeFrame config (providers, budget)
+- \`vibe.config.json\` — canonical VibeFrame config (providers, budget)
+- \`vibe.project.yaml\` — legacy compatibility config
 - \`renders/\` — output MP4s
 
 ## Commands
@@ -399,7 +401,7 @@ the framework-level minimum, not the cinematic craft layer.
 vibe scene add <name> --narration "..." --visuals "..."   # Author a new scene via AI
 vibe build                                                 # STORYBOARD.md → narrated MP4
 vibe scene lint                                             # Validate scenes (in-process HF linter)
-vibe scene render                                           # Render to MP4
+vibe render                                                 # Render to MP4
 
 # Hyperframes CLI (if installed — works in this project too)
 npx hyperframes preview
@@ -495,6 +497,7 @@ export function describeSceneScaffold(opts: {
     authoring: [
       resolve(dir, "STORYBOARD.md"),
       resolve(dir, "DESIGN.md"),
+      resolve(dir, VIBE_CONFIG_FILENAME),
       resolve(dir, "vibe.project.yaml"),
       resolve(dir, ".gitignore"),
     ],
@@ -592,6 +595,21 @@ export async function scaffoldSceneProject(opts: ScaffoldOptions): Promise<Scaff
   }
 
   // vibe.project.yaml — preserve existing; this is VibeFrame's own config.
+  const vibeConfigJsonPath = resolve(dir, VIBE_CONFIG_FILENAME);
+  if (await pathExists(vibeConfigJsonPath)) {
+    skipped.push(vibeConfigJsonPath);
+  } else {
+    await writeFile(
+      vibeConfigJsonPath,
+      projectConfigJson({ name, aspect }),
+      "utf-8",
+    );
+    created.push(vibeConfigJsonPath);
+  }
+
+  // vibe.project.yaml — legacy compatibility. New code reads
+  // vibe.config.json first, but we still write the legacy file during the
+  // transition so older render/build paths and external scripts keep working.
   const vibePath = resolve(dir, "vibe.project.yaml");
   if (await pathExists(vibePath)) {
     skipped.push(vibePath);

@@ -10,6 +10,7 @@ import { audioTools } from "./audio.js";
 import { editTools } from "./edit.js";
 import { inspectTools } from "./inspect.js";
 import { generateTools } from "./generate.js";
+import { storyboardTools } from "./storyboard.js";
 import { remixTools } from "./remix.js";
 import { detectTools } from "./detect.js";
 import { timelineTools } from "./timeline.js";
@@ -24,6 +25,7 @@ export const manifest: readonly AnyTool[] = [
   ...editTools,
   ...inspectTools,
   ...generateTools,
+  ...storyboardTools,
   ...remixTools,
   ...detectTools,
   ...timelineTools,
@@ -39,6 +41,7 @@ export {
   editTools,
   inspectTools,
   generateTools,
+  storyboardTools,
   remixTools,
   detectTools,
   timelineTools,

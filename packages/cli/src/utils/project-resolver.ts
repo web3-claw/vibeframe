@@ -10,7 +10,7 @@
  *   3. Non-existent path: passed through so the caller surfaces the error.
  *
  * `detectSceneProject(dir)` answers "is this a scene project directory?"
- * (i.e. has `vibe.project.yaml`). Used to give a useful error when the
+ * (i.e. has `vibe.config.json` or legacy `vibe.project.yaml`). Used to give a useful error when the
  * user runs `vibe timeline info` on a scene directory.
  */
 
@@ -19,7 +19,8 @@ import { resolve } from "node:path";
 
 export const TIMELINE_FILENAME = "timeline.json";
 export const LEGACY_TIMELINE_FILENAME = "project.vibe.json";
-export const SCENE_CONFIG_FILENAME = "vibe.project.yaml";
+export const SCENE_CONFIG_FILENAME = "vibe.config.json";
+export const LEGACY_SCENE_CONFIG_FILENAME = "vibe.project.yaml";
 
 /**
  * Resolve `inputPath` to a concrete timeline file path.
@@ -60,12 +61,17 @@ export async function resolveTimelineFile(
   return filePath;
 }
 
-/** True when the directory contains `vibe.project.yaml`. */
+/** True when the directory contains `vibe.config.json` or legacy `vibe.project.yaml`. */
 export async function detectSceneProject(dir: string): Promise<boolean> {
   try {
     await access(resolve(dir, SCENE_CONFIG_FILENAME));
     return true;
   } catch {
-    return false;
+    try {
+      await access(resolve(dir, LEGACY_SCENE_CONFIG_FILENAME));
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

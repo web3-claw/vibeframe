@@ -348,7 +348,7 @@ renders/
  * --force.
  */
 export function renderProjectYaml(opts: { name: string }): string {
-  return `# VibeFrame project config. Used by \`vibe scene render\` to name
+  return `# Legacy VibeFrame project config. Used by \`vibe render\` to name
 # outputs and by \`vibe build\` for default providers / budget.
 name: ${opts.name}
 aspect: "16:9"

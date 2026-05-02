@@ -25,7 +25,7 @@
  * Pairs with H1 (`vibe scene install-skill`) — the host agent reads
  * `SKILL.md` for framework rules, `DESIGN.md` for visual identity, then
  * writes each `compositions/scene-<id>.html`. After authoring, runs
- * `vibe scene lint --fix` to verify and `vibe scene render` to produce MP4.
+ * `vibe scene lint --fix` to verify and `vibe render` to produce MP4.
  *
  * The internal-LLM path (`vibe scene build`, PR #176) still works — it's
  * the batch / non-agent fallback. H3 will add mode dispatch so a single
@@ -223,6 +223,6 @@ function buildInstructions(args: {
   } else {
     lines.push(`4. After authoring, run \`vibe scene lint --fix\` to validate.`);
   }
-  lines.push(`5. Run \`vibe scene render\` to produce the final MP4.`);
+  lines.push(`5. Run \`vibe render\` to produce the final MP4.`);
   return lines;
 }

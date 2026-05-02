@@ -19,8 +19,9 @@
  *     already have one with sub-composition references.
  */
 
+import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
 import { config as loadDotenv } from "dotenv";
@@ -40,6 +41,7 @@ import { getApiKeyFromConfig } from "../../config/index.js";
 import { executeSceneRender, type SceneRenderResult } from "./scene-render.js";
 import { parseStoryboard, type Beat } from "./storyboard-parse.js";
 import { scaffoldSceneProject } from "./scene-project.js";
+import { createBuildPlan, type BuildStage } from "./build-plan.js";
 import {
   resolveTtsProvider,
   TtsKeyMissingError,
@@ -74,6 +76,8 @@ export interface BeatBuildOutcome {
   narrationStatus: PrimitiveStatus;
   narrationPath?: string;
   narrationError?: string;
+  narrationDurationSec?: number;
+  sceneDurationSec?: number;
   backdropStatus: PrimitiveStatus;
   backdropPath?: string;
   backdropError?: string;
@@ -128,6 +132,12 @@ export interface SceneBuildOptions {
   imageSize?: ImageOptions["size"];
   /** Force re-dispatch even when the asset already exists. */
   force?: boolean;
+  /** Stage to run. `all` preserves the historical full build behavior. */
+  stage?: BuildStage;
+  /** Restrict asset/compose work to one beat id where supported. */
+  beatId?: string;
+  /** Hard USD cap checked before provider spend. */
+  maxCostUsd?: number;
   /** Compose-scenes cache override (tests). */
   cacheDir?: string;
   /** Progress callback. */
@@ -145,7 +155,14 @@ export interface SceneBuildOptions {
  *   - `failed` — primitives, compose, or render errored. {@link error}
  *     carries the message; {@link beats} reflects partial state.
  */
-export type SceneBuildPhase = "done" | "compose-only" | "needs-author" | "failed";
+export type SceneBuildPhase = "done" | "assets-only" | "compose-only" | "sync-only" | "render-only" | "needs-author" | "failed";
+
+export interface StageReport {
+  status: "pending" | "skipped" | "done" | "failed" | "needs-author";
+  costUsd: number;
+  warnings: string[];
+  retryWith: string[];
+}
 
 export interface SceneBuildResult {
   success: boolean;
@@ -174,6 +191,13 @@ export interface SceneBuildResult {
     bundleVersion: string;
     warnings: string[];
   };
+  selectedStage?: BuildStage;
+  estimatedCostUsd?: number;
+  costUsd?: number;
+  stageReports?: Record<"assets" | "compose" | "sync" | "render", StageReport>;
+  warnings?: string[];
+  retryWith?: string[];
+  reportPath?: string;
   /** Wall-clock total. */
   totalLatencyMs: number;
 }
@@ -185,6 +209,10 @@ export async function executeSceneBuild(opts: SceneBuildOptions): Promise<SceneB
   const projectDir = resolve(opts.projectDir);
   const onProgress = opts.onProgress ?? (() => {});
   const mode = resolveSceneBuildMode(opts);
+  const selectedStage = opts.stage ?? (opts.skipRender ? "sync" : "all");
+  const stageReports = createEmptyStageReports();
+  const warnings: string[] = [];
+  const retryWith: string[] = [];
 
   const storyboardPath = join(projectDir, "STORYBOARD.md");
   if (!existsSync(storyboardPath)) {
@@ -201,6 +229,56 @@ export async function executeSceneBuild(opts: SceneBuildOptions): Promise<SceneB
       startedAt,
     );
   }
+  const selectedBeat = opts.beatId
+    ? parsed.beats.find((beat) => beat.id === opts.beatId)
+    : undefined;
+  if (opts.beatId && !selectedBeat) {
+    return finalizeBuildResult(projectDir, startedAt, {
+      success: false,
+      phase: "failed",
+      mode,
+      selectedStage,
+      error: `Beat "${opts.beatId}" not found. Available: ${parsed.beats.map((beat) => beat.id).join(", ")}`,
+      beats: [],
+      stageReports,
+      warnings,
+      retryWith: [`vibe storyboard list ${projectDir} --json`],
+      totalLatencyMs: Date.now() - startedAt,
+    });
+  }
+  const activeBeats = selectedBeat ? [selectedBeat] : parsed.beats;
+
+  const buildPlan = await createBuildPlan({
+    projectDir,
+    stage: selectedStage,
+    beat: opts.beatId,
+    mode,
+    skipNarration: opts.skipNarration,
+    skipBackdrop: opts.skipBackdrop,
+    force: opts.force,
+  });
+  warnings.push(...buildPlan.warnings);
+  retryWith.push(...buildPlan.retryWith);
+  if (opts.maxCostUsd !== undefined && buildPlan.estimatedCostUsd > opts.maxCostUsd) {
+    retryWith.push(
+      `vibe build ${projectDir} --stage ${selectedStage} --skip-backdrop --json`,
+      `vibe build ${projectDir} --stage ${selectedStage} --max-cost ${buildPlan.estimatedCostUsd} --json`,
+    );
+    return finalizeBuildResult(projectDir, startedAt, {
+      success: false,
+      phase: "failed",
+      mode,
+      selectedStage,
+      error: `Estimated cost $${buildPlan.estimatedCostUsd.toFixed(2)} exceeds --max-cost $${opts.maxCostUsd.toFixed(2)}.`,
+      beats: [],
+      estimatedCostUsd: buildPlan.estimatedCostUsd,
+      costUsd: 0,
+      stageReports,
+      warnings,
+      retryWith,
+      totalLatencyMs: Date.now() - startedAt,
+    });
+  }
 
   // Resolve providers — CLI flags > frontmatter > defaults.
   const ttsProvider = opts.ttsProvider
@@ -211,22 +289,45 @@ export async function executeSceneBuild(opts: SceneBuildOptions): Promise<SceneB
     ?? "openai") as "openai";
   const voice = opts.voice ?? parsed.frontmatter?.voice;
 
-  // ── Phase 1: per-beat primitive fanout ────────────────────────────────
-  onProgress({ type: "phase-start", phase: "primitives" });
-  const beatOutcomes = await Promise.all(
-    parsed.beats.map((beat) => buildBeatPrimitives(beat, {
-      projectDir,
-      ttsProvider,
-      voice,
-      imageProvider,
-      imageQuality: opts.imageQuality ?? "hd",
-      imageSize: opts.imageSize ?? "1536x1024",
-      skipNarration: opts.skipNarration ?? false,
-      skipBackdrop: opts.skipBackdrop ?? false,
-      force: opts.force ?? false,
-      onProgress,
-    })),
-  );
+  let beatOutcomes: BeatBuildOutcome[] = collectExistingBeatOutcomes(parsed.beats, projectDir);
+  if (shouldRunStage(selectedStage, "assets")) {
+    onProgress({ type: "phase-start", phase: "primitives" });
+    beatOutcomes = await Promise.all(
+      activeBeats.map((beat) => buildBeatPrimitives(beat, {
+        projectDir,
+        ttsProvider,
+        voice: beat.cues?.voice ? String(beat.cues.voice) : voice,
+        imageProvider,
+        imageQuality: opts.imageQuality ?? "hd",
+        imageSize: opts.imageSize ?? "1536x1024",
+        skipNarration: opts.skipNarration ?? false,
+        skipBackdrop: opts.skipBackdrop ?? false,
+        force: opts.force ?? false,
+        onProgress,
+      })),
+    );
+    stageReports.assets.status = beatOutcomes.some((beat) => beat.narrationStatus === "failed" || beat.backdropStatus === "failed") ? "failed" : "done";
+    stageReports.assets.costUsd = estimateActualAssetCost(beatOutcomes);
+  } else {
+    stageReports.assets.status = "skipped";
+  }
+
+  if (selectedStage === "assets") {
+    return finalizeBuildResult(projectDir, startedAt, {
+      success: stageReports.assets.status !== "failed",
+      phase: stageReports.assets.status === "failed" ? "failed" : "assets-only",
+      mode,
+      selectedStage,
+      error: stageReports.assets.status === "failed" ? "asset generation failed" : undefined,
+      beats: beatOutcomes,
+      estimatedCostUsd: buildPlan.estimatedCostUsd,
+      costUsd: stageReports.assets.costUsd,
+      stageReports,
+      warnings,
+      retryWith,
+      totalLatencyMs: Date.now() - startedAt,
+    });
+  }
 
   // ── Phase 2: compose ──────────────────────────────────────────────────
   // Mode dispatch: agent mode hands authorship to the host agent. We
@@ -236,17 +337,20 @@ export async function executeSceneBuild(opts: SceneBuildOptions): Promise<SceneB
   // re-invokes `vibe scene build`; this branch then sees all files
   // present and skips straight to lint+render.
   let composeData: ComposeScenesActionResult["data"] | undefined;
+  if (shouldRunStage(selectedStage, "compose")) {
   if (mode === "agent") {
     const compositionsDir = join(projectDir, "compositions");
-    const missingBeats = parsed.beats.filter(
+    const missingBeats = activeBeats.filter(
       (b) => !existsSync(join(compositionsDir, `scene-${b.id}.html`)),
     );
     if (missingBeats.length > 0) {
-      const plan = await getComposePrompts({ projectDir });
-      return {
+      const plan = await getComposePrompts({ projectDir, beatId: opts.beatId });
+      stageReports.compose.status = "needs-author";
+      return finalizeBuildResult(projectDir, startedAt, {
         success: true,
         phase: "needs-author",
         mode,
+        selectedStage,
         beats: beatOutcomes,
         composePrompts: plan.success
           ? {
@@ -260,11 +364,17 @@ export async function executeSceneBuild(opts: SceneBuildOptions): Promise<SceneB
               warnings: plan.warnings,
             }
           : undefined,
+        estimatedCostUsd: buildPlan.estimatedCostUsd,
+        costUsd: stageReports.assets.costUsd,
+        stageReports,
+        warnings,
+        retryWith: [...retryWith, `vibe scene compose-prompts ${projectDir}${opts.beatId ? ` --beat ${opts.beatId}` : ""} --json`],
         totalLatencyMs: Date.now() - startedAt,
-      };
+      });
     }
     // All compositions present — fall through to render (no compose call).
     onProgress({ type: "phase-start", phase: "compose" });
+    stageReports.compose.status = "done";
   } else {
     // batch — current internal-LLM compose path (PR #176, multi-provider).
     onProgress({ type: "phase-start", phase: "compose" });
@@ -279,23 +389,53 @@ export async function executeSceneBuild(opts: SceneBuildOptions): Promise<SceneB
       projectDir,
     );
     if (!composeResult.success) {
-      return {
+      stageReports.compose.status = "failed";
+      return finalizeBuildResult(projectDir, startedAt, {
         success: false,
         phase: "failed",
         mode,
+        selectedStage,
         error: `compose failed: ${composeResult.error ?? "unknown"}`,
         beats: beatOutcomes,
         composeData: composeResult.data,
+        estimatedCostUsd: buildPlan.estimatedCostUsd,
+        costUsd: stageReports.assets.costUsd,
+        stageReports,
+        warnings,
+        retryWith,
         totalLatencyMs: Date.now() - startedAt,
-      };
+      });
     }
     composeData = composeResult.data;
+    stageReports.compose.status = "done";
+    stageReports.compose.costUsd = (composeResult.data as { costUsd?: number } | undefined)?.costUsd ?? 0;
+  }
+  } else {
+    stageReports.compose.status = "skipped";
+  }
+
+  if (selectedStage === "compose") {
+    return finalizeBuildResult(projectDir, startedAt, {
+      success: true,
+      phase: "compose-only",
+      mode,
+      selectedStage,
+      beats: beatOutcomes,
+      composeData,
+      estimatedCostUsd: buildPlan.estimatedCostUsd,
+      costUsd: stageReports.assets.costUsd + stageReports.compose.costUsd,
+      stageReports,
+      warnings,
+      retryWith,
+      totalLatencyMs: Date.now() - startedAt,
+    });
   }
 
   // ── Phase 2.5: ensure render scaffold + wire scene compositions ──────
   // Both batch and agent modes need this — agents that just authored
   // composition HTML still need them referenced from the root index for
   // the producer to find them.
+  if (shouldRunStage(selectedStage, "sync")) {
   if (!existsSync(join(projectDir, "index.html"))) {
     await scaffoldSceneProject({
       dir: projectDir,
@@ -303,41 +443,80 @@ export async function executeSceneBuild(opts: SceneBuildOptions): Promise<SceneB
       profile: "full",
     });
   }
-  await syncRootClipReferences(parsed.beats, projectDir, beatOutcomes);
+  const allOutcomes = mergeBeatOutcomes(collectExistingBeatOutcomes(parsed.beats, projectDir), beatOutcomes);
+  await syncRootClipReferences(parsed.beats, projectDir, allOutcomes);
+  stageReports.sync.status = "done";
+  beatOutcomes = mergeBeatOutcomes(allOutcomes, beatOutcomes);
+  } else {
+    stageReports.sync.status = "skipped";
+  }
+
+  if (selectedStage === "sync" || opts.skipRender) {
+    return finalizeBuildResult(projectDir, startedAt, {
+      success: true,
+      phase: "sync-only",
+      mode,
+      selectedStage,
+      beats: beatOutcomes,
+      composeData,
+      estimatedCostUsd: buildPlan.estimatedCostUsd,
+      costUsd: stageReports.assets.costUsd + stageReports.compose.costUsd,
+      stageReports,
+      warnings,
+      retryWith,
+      totalLatencyMs: Date.now() - startedAt,
+    });
+  }
 
   // ── Phase 3: render (optional) ────────────────────────────────────────
   let outputPath: string | undefined;
   let renderResult: SceneRenderResult | undefined;
-  if (!opts.skipRender) {
+  if (shouldRunStage(selectedStage, "render")) {
     onProgress({ type: "phase-start", phase: "render" });
     onProgress({ type: "render-start" });
     renderResult = await executeSceneRender({ projectDir });
     if (!renderResult.success) {
-      return {
+      stageReports.render.status = "failed";
+      return finalizeBuildResult(projectDir, startedAt, {
         success: false,
         phase: "failed",
         mode,
+        selectedStage,
         error: `render failed: ${renderResult.error ?? "unknown"}`,
         beats: beatOutcomes,
         composeData,
         renderResult,
+        estimatedCostUsd: buildPlan.estimatedCostUsd,
+        costUsd: stageReports.assets.costUsd + stageReports.compose.costUsd,
+        stageReports,
+        warnings,
+        retryWith,
         totalLatencyMs: Date.now() - startedAt,
-      };
+      });
     }
     outputPath = renderResult.outputPath;
     if (outputPath) onProgress({ type: "render-done", outputPath });
+    stageReports.render.status = "done";
+  } else {
+    stageReports.render.status = "skipped";
   }
 
-  return {
+  return finalizeBuildResult(projectDir, startedAt, {
     success: true,
-    phase: opts.skipRender ? "compose-only" : "done",
+    phase: selectedStage === "render" ? "render-only" : "done",
     mode,
+    selectedStage,
     beats: beatOutcomes,
     outputPath,
     composeData,
     renderResult,
+    estimatedCostUsd: buildPlan.estimatedCostUsd,
+    costUsd: stageReports.assets.costUsd + stageReports.compose.costUsd,
+    stageReports,
+    warnings,
+    retryWith,
     totalLatencyMs: Date.now() - startedAt,
-  };
+  });
 }
 
 // ── Per-beat primitive dispatch ──────────────────────────────────────────
@@ -369,6 +548,10 @@ async function buildBeatPrimitives(beat: Beat, ctx: BeatDispatchContext): Promis
     narrationStatus: narration.status,
     narrationPath: narration.path,
     narrationError: narration.error,
+    narrationDurationSec: narration.durationSec,
+    sceneDurationSec: narration.path
+      ? await resolveBeatDuration({ beatDuration: beat.duration, narrationPath: narration.path, projectDir: ctx.projectDir })
+      : beat.duration,
     backdropStatus: backdrop.status,
     backdropPath: backdrop.path,
     backdropError: backdrop.error,
@@ -379,6 +562,7 @@ interface PrimitiveOutcome {
   status: PrimitiveStatus;
   path?: string;
   error?: string;
+  durationSec?: number;
 }
 
 async function dispatchNarration(beat: Beat, ctx: BeatDispatchContext): Promise<PrimitiveOutcome> {
@@ -390,7 +574,7 @@ async function dispatchNarration(beat: Beat, ctx: BeatDispatchContext): Promise<
     const rel = `assets/narration-${beat.id}.${ext}`;
     if (existsSync(join(ctx.projectDir, rel)) && !ctx.force) {
       ctx.onProgress({ type: "narration-cached", beatId: beat.id, path: rel });
-      return { status: "cached", path: rel };
+      return { status: "cached", path: rel, durationSec: await safeAudioDuration(join(ctx.projectDir, rel)) };
     }
   }
 
@@ -403,6 +587,23 @@ async function dispatchNarration(beat: Beat, ctx: BeatDispatchContext): Promise<
     return { status: "failed", error };
   }
 
+  const cacheRel = cacheAssetRel("narration", {
+    beatId: beat.id,
+    cue: text,
+    provider: resolution.provider,
+    voice: ctx.voice ?? beat.cues?.voice,
+    ext: resolution.audioExtension,
+  });
+  const cacheAbs = join(ctx.projectDir, cacheRel);
+  const rel = `assets/narration-${beat.id}.${resolution.audioExtension}`;
+  const abs = join(ctx.projectDir, rel);
+  if (existsSync(cacheAbs) && !ctx.force) {
+    await mkdir(dirname(abs), { recursive: true });
+    await copyFile(cacheAbs, abs);
+    ctx.onProgress({ type: "narration-cached", beatId: beat.id, path: rel });
+    return { status: "cached", path: rel, durationSec: await safeAudioDuration(abs) };
+  }
+
   const result = await resolution.call(text, { voice: ctx.voice });
   if (!result.success || !result.audioBuffer) {
     const error = result.error ?? "unknown TTS failure";
@@ -410,17 +611,17 @@ async function dispatchNarration(beat: Beat, ctx: BeatDispatchContext): Promise<
     return { status: "failed", error };
   }
 
-  const rel = `assets/narration-${beat.id}.${resolution.audioExtension}`;
-  const abs = join(ctx.projectDir, rel);
   await mkdir(dirname(abs), { recursive: true });
   await writeFile(abs, result.audioBuffer);
+  await mkdir(dirname(cacheAbs), { recursive: true });
+  await writeFile(cacheAbs, result.audioBuffer);
   ctx.onProgress({
     type: "narration-generated",
     beatId: beat.id,
     path: rel,
     provider: resolution.provider,
   });
-  return { status: "generated", path: rel };
+  return { status: "generated", path: rel, durationSec: await safeAudioDuration(abs) };
 }
 
 async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<PrimitiveOutcome> {
@@ -436,6 +637,21 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
   const rel = `assets/backdrop-${beat.id}.png`;
   const abs = join(ctx.projectDir, rel);
   if (existsSync(abs) && !ctx.force) {
+    ctx.onProgress({ type: "backdrop-cached", beatId: beat.id, path: rel });
+    return { status: "cached", path: rel };
+  }
+  const cacheRel = cacheAssetRel("backdrop", {
+    beatId: beat.id,
+    cue: prompt,
+    provider: ctx.imageProvider,
+    quality: ctx.imageQuality,
+    size: ctx.imageSize,
+    ext: "png",
+  });
+  const cacheAbs = join(ctx.projectDir, cacheRel);
+  if (existsSync(cacheAbs) && !ctx.force) {
+    await mkdir(dirname(abs), { recursive: true });
+    await copyFile(cacheAbs, abs);
     ctx.onProgress({ type: "backdrop-cached", beatId: beat.id, path: rel });
     return { status: "cached", path: rel };
   }
@@ -462,7 +678,10 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
   }
 
   await mkdir(dirname(abs), { recursive: true });
-  await writeFile(abs, Buffer.from(result.images[0].base64, "base64"));
+  const buffer = Buffer.from(result.images[0].base64, "base64");
+  await writeFile(abs, buffer);
+  await mkdir(dirname(cacheAbs), { recursive: true });
+  await writeFile(cacheAbs, buffer);
   ctx.onProgress({
     type: "backdrop-generated",
     beatId: beat.id,
@@ -504,6 +723,131 @@ function failBeforePrimitives(error: string, startedAt: number): SceneBuildResul
     error,
     beats: [],
     totalLatencyMs: Date.now() - startedAt,
+  };
+}
+
+function createEmptyStageReports(): Record<"assets" | "compose" | "sync" | "render", StageReport> {
+  return {
+    assets: { status: "pending", costUsd: 0, warnings: [], retryWith: [] },
+    compose: { status: "pending", costUsd: 0, warnings: [], retryWith: [] },
+    sync: { status: "pending", costUsd: 0, warnings: [], retryWith: [] },
+    render: { status: "pending", costUsd: 0, warnings: [], retryWith: [] },
+  };
+}
+
+function shouldRunStage(selected: BuildStage, stage: Exclude<BuildStage, "all">): boolean {
+  if (selected === "all") return true;
+  return selected === stage;
+}
+
+function estimateActualAssetCost(outcomes: BeatBuildOutcome[]): number {
+  let cost = 0;
+  for (const outcome of outcomes) {
+    if (outcome.narrationStatus === "generated") cost += 0.05;
+    if (outcome.backdropStatus === "generated") cost += 3;
+  }
+  return Number(cost.toFixed(2));
+}
+
+function collectExistingBeatOutcomes(beats: Beat[], projectDir: string): BeatBuildOutcome[] {
+  return beats.map((beat) => {
+    const narrationPath = firstExisting(projectDir, [
+      `assets/narration-${beat.id}.mp3`,
+      `assets/narration-${beat.id}.wav`,
+    ]);
+    const backdropPath = firstExisting(projectDir, [`assets/backdrop-${beat.id}.png`]);
+    return {
+      beatId: beat.id,
+      narrationStatus: narrationPath ? "cached" : beat.cues?.narration ? "skipped" : "no-cue",
+      narrationPath: narrationPath ?? undefined,
+      sceneDurationSec: beat.duration,
+      backdropStatus: backdropPath ? "cached" : beat.cues?.backdrop ? "skipped" : "no-cue",
+      backdropPath: backdropPath ?? undefined,
+    };
+  });
+}
+
+function mergeBeatOutcomes(base: BeatBuildOutcome[], updates: BeatBuildOutcome[]): BeatBuildOutcome[] {
+  const byId = new Map(base.map((outcome) => [outcome.beatId, outcome]));
+  for (const update of updates) {
+    byId.set(update.beatId, { ...(byId.get(update.beatId) ?? {}), ...update });
+  }
+  return [...byId.values()];
+}
+
+function firstExisting(projectDir: string, relPaths: string[]): string | null {
+  for (const rel of relPaths) {
+    if (existsSync(join(projectDir, rel))) return rel;
+  }
+  return null;
+}
+
+function cacheAssetRel(kind: string, parts: Record<string, unknown>): string {
+  const ext = String(parts.ext ?? "bin");
+  const key = createHash("sha256").update(JSON.stringify({ kind, ...parts })).digest("hex");
+  return `.vibeframe/cache/assets/${kind}-${key}.${ext}`;
+}
+
+async function safeAudioDuration(absPath: string): Promise<number | undefined> {
+  try {
+    return Number((await getAudioDuration(absPath)).toFixed(2));
+  } catch {
+    return undefined;
+  }
+}
+
+async function finalizeBuildResult(
+  projectDir: string,
+  startedAt: number,
+  result: SceneBuildResult,
+): Promise<SceneBuildResult> {
+  const reportPath = join(projectDir, "build-report.json");
+  if (result.stageReports) {
+    for (const report of Object.values(result.stageReports)) {
+      if (report.status === "pending") report.status = "skipped";
+    }
+  }
+  const withMeta: SceneBuildResult = {
+    ...result,
+    reportPath,
+    totalLatencyMs: Date.now() - startedAt,
+  };
+  try {
+    await writeFile(reportPath, JSON.stringify(toBuildReport(projectDir, withMeta), null, 2) + "\n", "utf-8");
+  } catch {
+    // Report writing should not hide the underlying build result.
+  }
+  return withMeta;
+}
+
+function toBuildReport(projectDir: string, result: SceneBuildResult): Record<string, unknown> {
+  return {
+    schemaVersion: "1",
+    project: projectDir,
+    phase: result.phase,
+    mode: result.mode,
+    selectedStage: result.selectedStage ?? "all",
+    success: result.success,
+    error: result.error,
+    estimatedCostUsd: result.estimatedCostUsd ?? 0,
+    costUsd: result.costUsd ?? 0,
+    beats: result.beats.map((beat) => ({
+      id: beat.beatId,
+      narrationPath: beat.narrationPath,
+      narrationDurationSec: beat.narrationDurationSec,
+      sceneDurationSec: beat.sceneDurationSec,
+      backdropPath: beat.backdropPath,
+      compositionPath: `compositions/scene-${beat.beatId}.html`,
+      narrationStatus: beat.narrationStatus,
+      backdropStatus: beat.backdropStatus,
+      narrationError: beat.narrationError,
+      backdropError: beat.backdropError,
+    })),
+    outputPath: result.outputPath,
+    stageReports: result.stageReports,
+    warnings: result.warnings ?? [],
+    retryWith: result.retryWith ?? [],
+    totalLatencyMs: result.totalLatencyMs,
   };
 }
 

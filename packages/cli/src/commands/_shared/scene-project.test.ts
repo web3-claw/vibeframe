@@ -231,6 +231,7 @@ describe("scaffoldSceneProject", () => {
       "hyperframes.json",
       "meta.json",
       "index.html",
+      "vibe.config.json",
       "vibe.project.yaml",
       "CLAUDE.md",
       "DESIGN.md",
@@ -307,6 +308,19 @@ describe("scaffoldSceneProject", () => {
     });
   });
 
+  it("vibe.config.json parses as the canonical project contract", async () => {
+    const dir = await makeTmp();
+    await scaffoldSceneProject({ dir, name: "fixture", aspect: "9:16", duration: 10 });
+    const raw = await readFile(resolve(dir, "vibe.config.json"), "utf-8");
+    const parsed = JSON.parse(raw);
+    expect(parsed).toMatchObject({
+      schemaVersion: "1",
+      name: "fixture",
+      aspect: "9:16",
+      composition: { engine: "hyperframes", entry: "index.html" },
+    });
+  });
+
   it("is idempotent: running twice is a no-op (no overwrites of user-editable files)", async () => {
     const dir = await makeTmp();
     const first = await scaffoldSceneProject({ dir, name: "fixture" });
@@ -367,6 +381,7 @@ describe("scaffoldSceneProject", () => {
 
     expect(await pathExists(resolve(dir, "STORYBOARD.md"))).toBe(true);
     expect(await pathExists(resolve(dir, "DESIGN.md"))).toBe(true);
+    expect(await pathExists(resolve(dir, "vibe.config.json"))).toBe(true);
     expect(await pathExists(resolve(dir, "vibe.project.yaml"))).toBe(true);
     expect(await pathExists(resolve(dir, "index.html"))).toBe(false);
     expect(await pathExists(resolve(dir, "hyperframes.json"))).toBe(false);
@@ -381,6 +396,7 @@ describe("scaffoldSceneProject", () => {
     const result = await scaffoldSceneProject({ dir, name: "fixture", profile: "agent" });
 
     expect(await pathExists(resolve(dir, "STORYBOARD.md"))).toBe(true);
+    expect(await pathExists(resolve(dir, "vibe.config.json"))).toBe(true);
     expect(await pathExists(resolve(dir, "CLAUDE.md"))).toBe(true);
     expect(await pathExists(resolve(dir, "index.html"))).toBe(false);
     expect(await pathExists(resolve(dir, "hyperframes.json"))).toBe(false);

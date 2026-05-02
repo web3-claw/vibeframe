@@ -88,15 +88,16 @@ machine-readable access use \`vibe schema --list\` and
 
 const MENTAL_MODEL = `## Mental model
 
-The **project** is the implicit area. Bare top-level commands act on the
-current project; grouped commands handle resources or one-shot
-operations.
+The **storyboard project** is the primary product lane. \`STORYBOARD.md\`
+and \`DESIGN.md\` are the source of truth; generated files under
+\`compositions/\` are artifacts. Use \`vibe storyboard *\` for narrow cue
+edits and direct Markdown edits for larger creative rewrites.
 
 \`\`\`
-init → build → render          ← 90% users start here  (Tier 1)
-generate / edit / inspect / remix ← one-shot media tools (Tier 2)
-scene / timeline                ← lower-level authoring (Tier 3)
-run / agent / schema / context  ← automation + agents   (Tier 4)
+init --from → storyboard validate → plan → build → render  ← storyboard-to-video
+generate / edit / inspect / remix                          ← one-shot media tools
+scene / timeline                                            ← lower-level authoring
+run / agent / schema / context                              ← automation + agents
 \`\`\`
 `;
 

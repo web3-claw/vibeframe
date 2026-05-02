@@ -366,6 +366,8 @@ export const sceneRenderTool = defineTool({
 
 const sceneBuildSchema = z.object({
   projectDir: z.string().optional().describe("Project directory containing STORYBOARD.md, DESIGN.md, index.html. Defaults to the surface's cwd."),
+  stage: z.enum(["assets", "compose", "sync", "render", "all"]).optional().describe("Build stage to run. Default all."),
+  beat: z.string().optional().describe("Restrict asset/compose work to one beat id."),
   mode: z.enum(["agent", "batch", "auto"]).optional().describe("Build mode dispatch [Plan H — Phase 3]. 'agent' = the calling host agent authors per-beat HTML itself (no internal LLM call); on missing compositions/scene-*.html files, returns a needs-author plan with prompts for the agent to consume. 'batch' = current internal-LLM compose path (Claude/OpenAI/Gemini). 'auto' (default) = agent if any agent host is detected, else batch. Override via VIBE_BUILD_MODE env var."),
   effort: z.enum(["low", "medium", "high"]).optional().describe("Compose effort tier (batch mode only) passed to compose-scenes-with-skills. Default 'medium'."),
   composer: z.enum(["claude", "openai", "gemini"]).optional().describe("LLM provider that composes the per-beat scene HTML in batch mode. Default: auto-resolve from available API keys (ANTHROPIC_API_KEY > GOOGLE_API_KEY > OPENAI_API_KEY). All three pass first-shot lint per the v0.70 spike; Claude is fastest, Gemini cheapest. Ignored in agent mode."),
@@ -377,6 +379,7 @@ const sceneBuildSchema = z.object({
   imageProvider: z.enum(["openai"]).optional().describe("Image provider for backdrops. Default 'openai' (gpt-image-2)."),
   imageQuality: z.enum(["standard", "hd"]).optional().describe("OpenAI image quality. Default 'standard'."),
   imageSize: z.enum(["1024x1024", "1536x1024", "1024x1536"]).optional().describe("OpenAI image size. Default '1536x1024' (cinematic 16:9-ish)."),
+  maxCostUsd: z.number().optional().describe("Fail before provider spend when estimated cost exceeds this USD cap."),
   force: z.boolean().optional().describe("Re-dispatch primitives even when cached assets exist."),
 });
 
@@ -393,6 +396,8 @@ export const sceneBuildTool = defineTool({
       : ctx.workingDirectory;
     const result = await executeSceneBuild({
       projectDir,
+      stage: args.stage,
+      beatId: args.beat,
       mode: args.mode,
       effort: args.effort,
       composer: args.composer,
@@ -404,6 +409,7 @@ export const sceneBuildTool = defineTool({
       imageProvider: args.imageProvider,
       imageQuality: args.imageQuality,
       imageSize: args.imageSize,
+      maxCostUsd: args.maxCostUsd,
       force: args.force,
     });
     if (!result.success) {
@@ -414,7 +420,12 @@ export const sceneBuildTool = defineTool({
       data: {
         phase: result.phase,
         mode: result.mode,
+        selectedStage: result.selectedStage,
         outputPath: result.outputPath,
+        reportPath: result.reportPath,
+        estimatedCostUsd: result.estimatedCostUsd,
+        costUsd: result.costUsd,
+        stageReports: result.stageReports,
         beats: result.beats.map((b) => ({
           beatId: b.beatId,
           narrationStatus: b.narrationStatus,

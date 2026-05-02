@@ -13,8 +13,49 @@ const __dirname = dirname(__filename);
 
 export const contextCommand = new Command("context")
   .description("Print CLI context/guidelines for AI agent integration")
+  .option("--format <format>", "Output format: markdown | json", "markdown")
   .action(async (_options, cmd) => {
-    const options = { json: cmd.parent?.opts()?.json || cmd.opts()?.json };
+    const options = {
+      json: cmd.parent?.opts()?.json || cmd.opts()?.json || cmd.opts()?.format === "json",
+      format: String(cmd.opts()?.format ?? "markdown"),
+    };
+    if (options.format !== "markdown" && options.format !== "json") {
+      console.error("Invalid --format. Use markdown or json.");
+      process.exit(2);
+    }
+
+    const contract = {
+      product: "vibeframe",
+      sourceOfTruth: ["STORYBOARD.md", "DESIGN.md", "vibe.config.json"],
+      preferredFlow: [
+        "storyboard validate",
+        "plan",
+        "build --dry-run",
+        "build",
+        "render",
+      ],
+      mentalModel: {
+        storyboard: "intent layer; edit or mutate beat cues here",
+        scene: "generated artifact layer; lint/repair composition HTML here",
+      },
+      providerPrecedence: [
+        "CLI flag",
+        "per-beat STORYBOARD.md cue",
+        "project vibe.config.json",
+        "legacy vibe.project.yaml",
+        "configured default or environment",
+        "VibeFrame default",
+      ],
+      semanticFixes: "host-agent",
+      mechanicalFixes: "vibe scene lint --fix; scene repair is reserved for deterministic P1 repairs",
+      publicFlow: "vibe init --from <brief> -> edit STORYBOARD.md/DESIGN.md -> vibe storyboard validate -> vibe plan -> vibe build --dry-run --max-cost <usd> -> vibe build -> vibe render",
+    };
+
+    if (options.json) {
+      console.log(JSON.stringify(contract, null, 2));
+      return;
+    }
+
     // CONTEXT.md lives at packages/cli/CONTEXT.md (one level up from dist/).
     // Pre-v0.79.3 this resolved to `../../CONTEXT.md` which silently
     // missed the file and fell through to the inline fallback every
@@ -23,35 +64,34 @@ export const contextCommand = new Command("context")
 
     try {
       const content = await readFile(contextPath, "utf-8");
+      console.log(
+        content.replace(
+          "## Mental model",
+          `## Storyboard-to-video contract
 
-      if (options.json) {
-        // Parse sections from markdown
-        const sections: Record<string, string> = {};
-        let currentSection = "overview";
-        const lines = content.split("\n");
+Source of truth: \`STORYBOARD.md\`, \`DESIGN.md\`, and \`vibe.config.json\`.
+\`STORYBOARD.md\` is the intent layer. Generated scene files under
+\`compositions/\` are artifact layer. Use \`vibe storyboard *\` for narrow
+cue edits; use \`vibe scene lint --fix\` for deterministic composition checks.
+Semantic creative fixes belong to the host agent.
 
-        for (const line of lines) {
-          const headerMatch = line.match(/^##\s+(.+)/);
-          if (headerMatch) {
-            currentSection = headerMatch[1]
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, "_")
-              .replace(/^_|_$/g, "");
-            sections[currentSection] = "";
-          } else {
-            sections[currentSection] = (sections[currentSection] || "") + line + "\n";
-          }
-        }
+Canonical flow:
 
-        // Trim all section values
-        for (const key of Object.keys(sections)) {
-          sections[key] = sections[key].trim();
-        }
+\`\`\`bash
+vibe init my-video --from "brief" --json
+vibe storyboard validate my-video --json
+vibe plan my-video --json
+vibe build my-video --dry-run --max-cost 5 --json
+vibe build my-video --max-cost 5 --json
+vibe render my-video --json
+\`\`\`
 
-        console.log(JSON.stringify({ tool: "vibeframe", version: process.env.npm_package_version || "unknown", sections }, null, 2));
-      } else {
-        console.log(content);
-      }
+Provider precedence: CLI flag -> storyboard cue -> \`vibe.config.json\` ->
+legacy \`vibe.project.yaml\` -> configured/env default -> VibeFrame default.
+
+## Mental model`,
+        ),
+      );
     } catch {
       // Fallback: inline minimal context if file not found (e.g., bundled/npx usage)
       const fallback = `# VibeFrame CLI Agent Context
@@ -67,10 +107,6 @@ Group → MCP tool name: '<group>_<leaf>' (snake_case). Bare top-level (init/bui
 
 Full reference: docs/cli-reference.md
 `;
-      if (options.json) {
-        console.log(JSON.stringify({ tool: "vibeframe", fallback: true, context: fallback }));
-      } else {
-        console.log(fallback);
-      }
+      console.log(fallback);
     }
   });

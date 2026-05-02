@@ -508,6 +508,10 @@ exports[`CLI --describe schemas (drift detection) > vibe build --describe 1`] = 
   "name": "build",
   "parameters": {
     "properties": {
+      "beat": {
+        "description": "Restrict asset/compose work to one beat id",
+        "type": "string",
+      },
       "composer": {
         "description": "Batch composer: claude|openai|gemini",
         "type": "string",
@@ -534,6 +538,10 @@ exports[`CLI --describe schemas (drift detection) > vibe build --describe 1`] = 
         "description": "Image size: 1024x1024|1536x1024|1024x1536",
         "type": "string",
       },
+      "maxCost": {
+        "description": "Fail before provider spend when estimated cost exceeds this USD cap",
+        "type": "number",
+      },
       "mode": {
         "default": "auto",
         "description": "Build mode: agent|batch|auto",
@@ -559,6 +567,11 @@ exports[`CLI --describe schemas (drift detection) > vibe build --describe 1`] = 
       "skipRender": {
         "description": "Compose only — don't render to MP4",
         "type": "boolean",
+      },
+      "stage": {
+        "default": "all",
+        "description": "Build stage: assets|compose|sync|render|all",
+        "type": "string",
       },
       "tts": {
         "description": "TTS provider: auto|elevenlabs|kokoro",
@@ -598,7 +611,13 @@ exports[`CLI --describe schemas (drift detection) > vibe context --describe 1`] 
   "description": "Print CLI context/guidelines for AI agent integration",
   "name": "context",
   "parameters": {
-    "properties": {},
+    "properties": {
+      "format": {
+        "default": "markdown",
+        "description": "Output format: markdown | json",
+        "type": "string",
+      },
+    },
     "type": "object",
   },
 }
@@ -1912,6 +1931,41 @@ exports[`CLI --describe schemas (drift detection) > vibe generate music-status -
 }
 `;
 
+exports[`CLI --describe schemas (drift detection) > vibe generate narration --describe 1`] = `
+{
+  "cost": "low",
+  "description": "Generate narration from text (product-facing TTS)",
+  "name": "generate.narration",
+  "parameters": {
+    "properties": {
+      "apiKey": {
+        "description": "ElevenLabs API key (or set ELEVENLABS_API_KEY env)",
+        "type": "string",
+      },
+      "dryRun": {
+        "description": "Preview parameters without executing",
+        "type": "boolean",
+      },
+      "output": {
+        "default": "narration.mp3",
+        "description": "Output audio file path",
+        "type": "string",
+      },
+      "text": {
+        "description": "Narration text (interactive if omitted)",
+        "type": "string",
+      },
+      "voice": {
+        "default": "21m00Tcm4TlvDq8ikWAM",
+        "description": "Voice ID (default: Rachel)",
+        "type": "string",
+      },
+    },
+    "type": "object",
+  },
+}
+`;
+
 exports[`CLI --describe schemas (drift detection) > vibe generate sound-effect --describe 1`] = `
 {
   "cost": "low",
@@ -2385,6 +2439,10 @@ exports[`CLI --describe schemas (drift detection) > vibe init --describe 1`] = `
         "description": "Overwrite existing files instead of skipping",
         "type": "boolean",
       },
+      "from": {
+        "description": "Draft STORYBOARD.md and DESIGN.md from a brief string or text/markdown file",
+        "type": "string",
+      },
       "profile": {
         "default": "agent",
         "description": "Scene profile: minimal (storyboard/design only), agent (recommended), full (render scaffold upfront)",
@@ -2666,6 +2724,52 @@ exports[`CLI --describe schemas (drift detection) > vibe media info --describe 1
     "required": [
       "file",
     ],
+    "type": "object",
+  },
+}
+`;
+
+exports[`CLI --describe schemas (drift detection) > vibe plan --describe 1`] = `
+{
+  "description": "Read STORYBOARD.md and show build plan, costs, missing cues, and provider needs",
+  "name": "plan",
+  "parameters": {
+    "properties": {
+      "beat": {
+        "description": "Restrict the plan to one beat",
+        "type": "string",
+      },
+      "force": {
+        "description": "Plan regeneration even when outputs already exist",
+        "type": "boolean",
+      },
+      "maxCost": {
+        "description": "Fail if estimated cost exceeds this USD cap",
+        "type": "number",
+      },
+      "mode": {
+        "default": "auto",
+        "description": "Build mode: agent|batch|auto",
+        "type": "string",
+      },
+      "project-dir": {
+        "description": "Video project directory",
+        "type": "string",
+      },
+      "skipBackdrop": {
+        "description": "Don't include backdrop image generation in the plan",
+        "type": "boolean",
+      },
+      "skipNarration": {
+        "description": "Don't include narration generation in the plan",
+        "type": "boolean",
+      },
+      "stage": {
+        "default": "all",
+        "description": "Stage to plan: assets|compose|sync|render|all",
+        "type": "string",
+      },
+    },
     "type": "object",
   },
 }
@@ -3308,6 +3412,165 @@ exports[`CLI --describe schemas (drift detection) > vibe setup --describe 1`] = 
       "yes": {
         "description": "Non-interactive: write config without prompting (CI / devcontainer)",
         "type": "boolean",
+      },
+    },
+    "type": "object",
+  },
+}
+`;
+
+exports[`CLI --describe schemas (drift detection) > vibe storyboard get --describe 1`] = `
+{
+  "description": "Print one beat as structured JSON",
+  "name": "storyboard.get",
+  "parameters": {
+    "properties": {
+      "beat": {
+        "description": "Beat id",
+        "type": "string",
+      },
+      "project-dir": {
+        "description": "Project directory",
+        "type": "string",
+      },
+    },
+    "required": [
+      "project-dir",
+      "beat",
+    ],
+    "type": "object",
+  },
+}
+`;
+
+exports[`CLI --describe schemas (drift detection) > vibe storyboard list --describe 1`] = `
+{
+  "description": "List beats, ids, cues, and durations from STORYBOARD.md",
+  "name": "storyboard.list",
+  "parameters": {
+    "properties": {
+      "project-dir": {
+        "description": "Project directory",
+        "type": "string",
+      },
+    },
+    "type": "object",
+  },
+}
+`;
+
+exports[`CLI --describe schemas (drift detection) > vibe storyboard move --describe 1`] = `
+{
+  "description": "Reorder beats safely",
+  "name": "storyboard.move",
+  "parameters": {
+    "properties": {
+      "after": {
+        "description": "Place the beat after this beat id",
+        "type": "string",
+      },
+      "beat": {
+        "description": "Beat id to move",
+        "type": "string",
+      },
+      "project-dir": {
+        "description": "Project directory",
+        "type": "string",
+      },
+    },
+    "required": [
+      "project-dir",
+      "beat",
+    ],
+    "type": "object",
+  },
+}
+`;
+
+exports[`CLI --describe schemas (drift detection) > vibe storyboard revise --describe 1`] = `
+{
+  "description": "Revise STORYBOARD.md from a request or source file",
+  "name": "storyboard.revise",
+  "parameters": {
+    "properties": {
+      "dryRun": {
+        "description": "Preview the revised storyboard without writing",
+        "type": "boolean",
+      },
+      "duration": {
+        "description": "Target total duration in seconds",
+        "type": "number",
+      },
+      "from": {
+        "description": "Revision request or path to a text/markdown file",
+        "type": "string",
+      },
+      "project-dir": {
+        "description": "Project directory",
+        "type": "string",
+      },
+    },
+    "required": [
+      "project-dir",
+    ],
+    "type": "object",
+  },
+}
+`;
+
+exports[`CLI --describe schemas (drift detection) > vibe storyboard set --describe 1`] = `
+{
+  "description": "Update one cue in one beat without raw Markdown editing",
+  "name": "storyboard.set",
+  "parameters": {
+    "properties": {
+      "beat": {
+        "description": "Beat id",
+        "type": "string",
+      },
+      "jsonValue": {
+        "description": "Parse value as JSON instead of a string",
+        "type": "boolean",
+      },
+      "key": {
+        "description": "Cue key: duration | narration | backdrop | video | motion | voice | music | asset",
+        "type": "string",
+      },
+      "project-dir": {
+        "description": "Project directory",
+        "type": "string",
+      },
+      "unset": {
+        "description": "Remove the cue key from the beat",
+        "type": "boolean",
+      },
+      "value": {
+        "description": "Cue value. Use --json-value to pass a JSON scalar/object.",
+        "items": {
+          "type": "string",
+        },
+        "type": "array",
+      },
+    },
+    "required": [
+      "project-dir",
+      "beat",
+      "key",
+    ],
+    "type": "object",
+  },
+}
+`;
+
+exports[`CLI --describe schemas (drift detection) > vibe storyboard validate --describe 1`] = `
+{
+  "description": "Validate cue blocks and beat ids",
+  "name": "storyboard.validate",
+  "parameters": {
+    "properties": {
+      "project-dir": {
+        "description": "Project directory",
+        "type": "string",
       },
     },
     "type": "object",

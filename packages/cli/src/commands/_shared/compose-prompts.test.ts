@@ -111,7 +111,7 @@ describe("getComposePrompts", () => {
     expect(r.warnings).toEqual([]);
     expect(r.instructions[0]).toContain("SKILL.md");
     expect(r.instructions.some((l) => l.includes("scene lint"))).toBe(true);
-    expect(r.instructions.some((l) => l.includes("scene render"))).toBe(true);
+    expect(r.instructions.some((l) => l.includes("vibe render"))).toBe(true);
   });
 
   it("returns failure when DESIGN.md is missing", async () => {

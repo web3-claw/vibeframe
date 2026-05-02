@@ -29,6 +29,8 @@ import { batchCommand } from "./commands/batch.js";
 import { detectCommand } from "./commands/detect.js";
 import { setupCommand } from "./commands/setup.js";
 import { initCommand } from "./commands/init.js";
+import { storyboardCommand } from "./commands/storyboard.js";
+import { planCommand } from "./commands/plan.js";
 import { buildCommand } from "./commands/build.js";
 import { renderCommand } from "./commands/render.js";
 import { doctorCommand } from "./commands/doctor.js";
@@ -107,7 +109,7 @@ program
     outputError: (str, write) => {
       // In JSON mode, output structured error to stderr
       if (process.env.VIBE_JSON_OUTPUT === "1" || process.argv.includes("--json")) {
-        const err = { success: false, error: str.trim(), code: "USAGE_ERROR", exitCode: 2, retryable: false };
+        const err = { success: false, error: str.trim(), message: str.trim(), code: "USAGE_ERROR", exitCode: 2, retryable: false, recoverable: false, retryWith: ["Run with --help for full options."] };
         process.stderr.write(JSON.stringify(err, null, 2) + "\n");
       } else {
         write(chalk.red(str.trim()) + "\n");
@@ -125,6 +127,8 @@ this section shows the typical entry points by use case):
     vibe doctor                         System health + key status
     vibe setup                          Configure API keys interactively
     vibe init my-video                  Scaffold a video project
+    vibe storyboard validate my-video   Validate STORYBOARD.md cues
+    vibe plan my-video                  Preview build stages, cost, and missing work
     vibe build my-video                 Build STORYBOARD.md → scene assets
     vibe render my-video                Render the project to MP4
     vibe demo                           Try VibeFrame without API keys
@@ -238,6 +242,8 @@ program.addCommand(audioCommand);
 program.addCommand(remixCommand);
 program.addCommand(setupCommand);
 program.addCommand(initCommand);
+program.addCommand(storyboardCommand);
+program.addCommand(planCommand);
 program.addCommand(buildCommand);
 program.addCommand(renderCommand);
 program.addCommand(doctorCommand);
@@ -277,7 +283,7 @@ function propagateErrorHandling(cmd: Command): void {
     sub.configureOutput({
       outputError: (str, write) => {
         if (process.env.VIBE_JSON_OUTPUT === "1" || process.argv.includes("--json")) {
-          const err = { success: false, error: str.trim(), code: "USAGE_ERROR", exitCode: 2, retryable: false };
+          const err = { success: false, error: str.trim(), message: str.trim(), code: "USAGE_ERROR", exitCode: 2, retryable: false, recoverable: false, retryWith: ["Run with --help for full options."] };
           process.stderr.write(JSON.stringify(err, null, 2) + "\n");
         } else {
           write(chalk.red(str.trim()) + "\n");

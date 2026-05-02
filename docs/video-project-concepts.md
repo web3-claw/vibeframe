@@ -2,7 +2,7 @@
 
 VibeFrame has two main flows:
 
-- **Create a new video from text:** `vibe init`, edit `STORYBOARD.md` and `DESIGN.md`, then run `vibe build` and `vibe render`.
+- **Create a new video from text:** `vibe init --from`, edit `STORYBOARD.md` and `DESIGN.md`, then run `vibe storyboard validate`, `vibe plan`, `vibe build`, and `vibe render`.
 - **Process existing media:** use `vibe remix`, `vibe edit`, `vibe audio`, or `vibe inspect`.
 
 ## Project Commands
@@ -10,9 +10,11 @@ VibeFrame has two main flows:
 Use these commands first:
 
 ```bash
-vibe init my-video
-vibe build my-video --dry-run
-vibe build my-video
+vibe init my-video --from "45-second launch video"
+vibe storyboard validate my-video
+vibe plan my-video
+vibe build my-video --dry-run --max-cost 5
+vibe build my-video --max-cost 5
 vibe render my-video -o renders/final.mp4
 ```
 
@@ -32,13 +34,17 @@ The default is `agent`.
 
 ## Backend Metadata
 
-`vibe.project.yaml` owns the VibeFrame project contract. Scene composition is
-declared explicitly:
+`vibe.config.json` owns the VibeFrame project contract. Legacy
+`vibe.project.yaml` files are still read for compatibility. Scene composition
+is declared explicitly:
 
-```yaml
-composition:
-  engine: hyperframes
-  entry: index.html
+```json
+{
+  "composition": {
+    "engine": "hyperframes",
+    "entry": "index.html"
+  }
+}
 ```
 
 `hyperframes` is the only supported composition engine today. Some
@@ -71,7 +77,8 @@ vibe generate video --help
 Use `--dry-run` before paid generation:
 
 ```bash
-vibe build my-video --dry-run
+vibe plan my-video
+vibe build my-video --dry-run --max-cost 5
 vibe render my-video --dry-run
 vibe generate video "..." -p seedance --dry-run
 ```

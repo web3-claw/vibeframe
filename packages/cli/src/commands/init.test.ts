@@ -57,7 +57,7 @@ function runInit(args: string[] = []): { stdout: string; stderr: string } {
 }
 
 describe("vibe init (black-box)", () => {
-  it("scaffolds AGENTS.md / .env.example / .gitignore / vibe.project.yaml in a fresh dir with --agent all", () => {
+  it("scaffolds AGENTS.md / .env.example / .gitignore / vibe.config.json in a fresh dir with --agent all", () => {
     const { stdout } = runInit(["--agent", "all"]);
     const result = JSON.parse(stdout);
 
@@ -68,6 +68,7 @@ describe("vibe init (black-box)", () => {
     expect(existsSync(join(projectDir, "CLAUDE.md"))).toBe(true);
     expect(existsSync(join(projectDir, ".env.example"))).toBe(true);
     expect(existsSync(join(projectDir, ".gitignore"))).toBe(true);
+    expect(existsSync(join(projectDir, "vibe.config.json"))).toBe(true);
     expect(existsSync(join(projectDir, "vibe.project.yaml"))).toBe(true);
 
     // CLAUDE.md imports AGENTS.md so they stay single-sourced.

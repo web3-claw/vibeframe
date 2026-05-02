@@ -240,3 +240,66 @@ export function registerSpeechCommand(parent: Command): void {
       }
     });
 }
+
+export function registerNarrationCommand(parent: Command): void {
+  parent
+    .command("narration")
+    .alias("voiceover")
+    .description("Generate narration from text (product-facing TTS)")
+    .argument("[text]", "Narration text (interactive if omitted)")
+    .option("-k, --api-key <key>", "ElevenLabs API key (or set ELEVENLABS_API_KEY env)")
+    .option("-o, --output <path>", "Output audio file path", "narration.mp3")
+    .option("--voice <id>", "Voice ID (default: Rachel)", "21m00Tcm4TlvDq8ikWAM")
+    .option("--dry-run", "Preview parameters without executing")
+    .action(async (text: string | undefined, options) => {
+      const startedAt = Date.now();
+      try {
+        if (!text) {
+          if (hasTTY()) {
+            text = await promptText(chalk.cyan("What narration text? "));
+            if (!text?.trim()) exitWithError(usageError("Text is required."));
+          } else {
+            exitWithError(usageError("Text argument is required.", "Usage: vibe generate narration <text>"));
+          }
+        }
+        rejectControlChars(text);
+        if (options.output) validateOutputPath(options.output);
+
+        if (options.dryRun) {
+          outputSuccess({
+            command: "generate narration",
+            startedAt,
+            dryRun: true,
+            data: { params: { text, voice: options.voice, output: options.output } },
+          });
+          return;
+        }
+
+        if (options.apiKey) process.env.ELEVENLABS_API_KEY = options.apiKey;
+        const result = await executeSpeech({ text, output: options.output, voice: options.voice });
+        if (!result.success) {
+          exitWithError(apiError(result.error ?? "Narration generation failed", true));
+        }
+
+        if (isJsonMode()) {
+          outputSuccess({
+            command: "generate narration",
+            startedAt,
+            data: {
+              characterCount: result.characterCount,
+              outputPath: result.outputPath,
+            },
+          });
+          return;
+        }
+
+        console.log();
+        console.log(chalk.dim(`Characters: ${result.characterCount}`));
+        console.log(chalk.green(`Saved to: ${result.outputPath}`));
+        console.log();
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        exitWithError(apiError(`Narration generation failed: ${msg}`, true));
+      }
+    });
+}

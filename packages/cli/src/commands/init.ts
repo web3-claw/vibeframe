@@ -35,6 +35,8 @@ import {
   type SceneAspect,
 } from "./_shared/scene-project.js";
 import { getVisualStyle, visualStyleNames } from "./_shared/visual-styles.js";
+import { draftStoryboardFromBrief } from "./_shared/storyboard-draft.js";
+import { projectConfigJson, VIBE_CONFIG_FILENAME } from "./_shared/project-config.js";
 import { deriveInstallHosts, installHyperframesSkill } from "./_shared/install-skill.js";
 import {
   AGENTS_MD,
@@ -62,6 +64,7 @@ export const initCommand = new Command("init")
   .argument("[project-dir]", "Project directory (defaults to cwd)", ".")
   .option("--type <type>", "Project type: scene (video project) | agent (agent files only)", "scene")
   .option("--profile <profile>", "Scene profile: minimal (storyboard/design only), agent (recommended), full (render scaffold upfront)", "agent")
+  .option("--from <brief>", "Draft STORYBOARD.md and DESIGN.md from a brief string or text/markdown file")
   .option("-r, --ratio <ratio>", "Scene aspect ratio: 16:9, 9:16, 1:1, 4:5", "16:9")
   .option("-d, --duration <sec>", "Default scene/root duration in seconds", "10")
   .option("--visual-style <name>", "Seed scene DESIGN.md from a named style")
@@ -157,7 +160,15 @@ export const initCommand = new Command("init")
       options.dryRun,
     ));
 
-    // ── vibe.project.yaml (only when missing) ──────────────────────────
+    // ── vibe.config.json (TO-BE project contract, only when missing) ───
+    actions.push(await writeIfMissing(
+      resolve(projectDir, VIBE_CONFIG_FILENAME),
+      projectConfigJson({ name: projectName }),
+      options.force,
+      options.dryRun,
+    ));
+
+    // ── vibe.project.yaml (legacy, only when missing) ──────────────────
     actions.push(await writeIfMissing(
       resolve(projectDir, "vibe.project.yaml"),
       renderProjectYaml({ name: projectName }),
@@ -243,6 +254,9 @@ async function runSceneInit(projectDirArg: string, options: Record<string, unkno
   const projectDir = resolve(projectDirArg);
   const projectName = basename(projectDir);
   const groups = describeSceneScaffold({ dir: projectDir, profile });
+  const fromBrief = typeof options.from === "string" && options.from.trim()
+    ? await readBriefOrLiteral(String(options.from), process.cwd())
+    : null;
 
   if (options.dryRun) {
     if (!isJsonMode()) {
@@ -252,6 +266,7 @@ async function runSceneInit(projectDirArg: string, options: Record<string, unkno
         aspect,
         duration,
         visualStyleName: visualStyle?.name ?? null,
+        briefSummary: fromBrief ? summariseBrief(fromBrief) : null,
         groups,
         dryRun: true,
       });
@@ -269,6 +284,7 @@ async function runSceneInit(projectDirArg: string, options: Record<string, unkno
         aspect,
         duration,
         visualStyle: visualStyle?.name ?? null,
+        from: fromBrief ? summariseBrief(fromBrief) : null,
         groups,
       },
     });
@@ -283,6 +299,25 @@ async function runSceneInit(projectDirArg: string, options: Record<string, unkno
     visualStyle,
     profile,
   });
+  const draftWarnings: string[] = [];
+  if (fromBrief) {
+    const draft = draftStoryboardFromBrief({
+      name: projectName,
+      brief: fromBrief,
+      durationSec: duration,
+    });
+    const storyboardPath = resolve(projectDir, "STORYBOARD.md");
+    const designPath = resolve(projectDir, "DESIGN.md");
+    if (options.force || result.created.includes(storyboardPath) || !existsSync(storyboardPath)) {
+      await writeFile(storyboardPath, draft.storyboardMd, "utf-8");
+      if (!result.created.includes(storyboardPath)) result.created.push(storyboardPath);
+    }
+    if (options.force || result.created.includes(designPath) || !existsSync(designPath)) {
+      await writeFile(designPath, draft.designMd, "utf-8");
+      if (!result.created.includes(designPath)) result.created.push(designPath);
+    }
+    draftWarnings.push(...draft.warnings);
+  }
   const detectedIds = detectedAgentHosts().map((h) => h.id);
   const skillResult = profile === "agent" || profile === "full"
     ? await installHyperframesSkill({
@@ -303,12 +338,14 @@ async function runSceneInit(projectDirArg: string, options: Record<string, unkno
         aspect,
         duration,
         visualStyle: visualStyle?.name ?? null,
+        from: fromBrief ? summariseBrief(fromBrief) : null,
         created: result.created,
         merged: result.merged,
         skipped: result.skipped,
         groups: result.groups,
         skillFiles: skillResult.files,
         skillBundleVersion: skillResult.bundleVersion,
+        warnings: draftWarnings,
       },
     });
     return;
@@ -319,6 +356,8 @@ async function runSceneInit(projectDirArg: string, options: Record<string, unkno
   console.log(chalk.dim("─".repeat(60)));
   console.log(`${chalk.dim("Project")}  ${projectDir}`);
   console.log(`${chalk.dim("Profile")}  ${profile} ${chalk.dim(sceneProfileSummary(profile))}`);
+  if (fromBrief) console.log(`${chalk.dim("Brief")}    ${summariseBrief(fromBrief)}`);
+  for (const warning of draftWarnings) console.log(chalk.yellow(`Warning: ${warning}`));
   console.log();
   console.log(chalk.bold("Edit first"));
   console.log(`  ${chalk.cyan("STORYBOARD.md")}  ${chalk.dim("beats: narration, backdrop, minimum duration")}`);
@@ -352,6 +391,7 @@ function printSceneInitPlan(opts: {
   aspect: SceneAspect;
   duration: number;
   visualStyleName: string | null;
+  briefSummary: string | null;
   groups: ReturnType<typeof describeSceneScaffold>;
   dryRun: boolean;
 }): void {
@@ -361,6 +401,7 @@ function printSceneInitPlan(opts: {
   console.log(`${chalk.dim("Project")}  ${opts.projectDir}`);
   console.log(`${chalk.dim("Profile")}  ${opts.profile} ${chalk.dim(sceneProfileSummary(opts.profile))}`);
   console.log(`${chalk.dim("Canvas")}   ${opts.aspect} · ${opts.duration}s default`);
+  if (opts.briefSummary) console.log(`${chalk.dim("Brief")}    ${opts.briefSummary}`);
   if (opts.visualStyleName) console.log(`${chalk.dim("Style")}    ${opts.visualStyleName}`);
   console.log();
   console.log(chalk.bold("Edit first"));
@@ -382,6 +423,19 @@ function printGroup(label: string, files: string[], projectDir: string): void {
   for (const file of files) {
     console.log(chalk.dim(`    ${file.replace(projectDir + "/", "")}`));
   }
+}
+
+async function readBriefOrLiteral(value: string, cwd: string): Promise<string> {
+  const candidate = resolve(cwd, value);
+  if (existsSync(candidate)) {
+    return readFile(candidate, "utf-8");
+  }
+  return value;
+}
+
+function summariseBrief(value: string): string {
+  const compact = value.trim().replace(/\s+/g, " ");
+  return compact.length > 100 ? `${compact.slice(0, 97)}...` : compact;
 }
 
 function resolveTargets(agent: AgentSelection): AgentHostId[] {

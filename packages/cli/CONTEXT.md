@@ -104,15 +104,25 @@ export IMGBB_API_KEY="..."         # Local image upload (Seedance image-to-video
 
 ## Mental model
 
-The **project** is the implicit area. Bare top-level commands act on
-the current project; grouped commands handle resources or one-shot
-operations.
+The **storyboard project** is the primary product lane. `STORYBOARD.md`
+and `DESIGN.md` are the source of truth; generated files under
+`compositions/` are artifacts. Use `vibe storyboard *` for narrow cue
+edits and direct Markdown edits for larger creative rewrites. Use
+`vibe scene lint --fix` for deterministic composition checks. Semantic
+creative fixes belong to the host agent.
 
 ```
-init → build → render          # 90% users start here   (Tier 1 — project flow)
-gen / edit / inspect / remix    # one-shot media tools   (Tier 2)
-scene / timeline                # lower-level authoring  (Tier 3)
-run / agent / schema / context  # automation + agents    (Tier 4)
+init --from → storyboard validate → plan → build → render  # storyboard-to-video
+generate / edit / inspect / remix                          # one-shot media tools
+scene / timeline                                            # lower-level authoring
+run / agent / schema / context                              # automation + agents
+```
+
+Provider precedence for project builds:
+
+```
+CLI flag → per-beat STORYBOARD.md cue → vibe.config.json →
+legacy vibe.project.yaml → configured/env default → VibeFrame default
 ```
 
 ## Per-group invariants
@@ -143,10 +153,12 @@ vibe generate music "mood description" -o bgm.mp3 -d 10 --json
 ### Project flow (canonical)
 
 ```bash
-vibe init my-video --visual-style "Swiss Pulse" --json
+vibe init my-video --from "45-second launch video" --visual-style "Swiss Pulse" --json
 # edit my-video/STORYBOARD.md, my-video/DESIGN.md
-vibe build my-video --dry-run --json
-vibe build my-video --json
+vibe storyboard validate my-video --json
+vibe plan my-video --json
+vibe build my-video --dry-run --max-cost 5 --json
+vibe build my-video --max-cost 5 --json
 vibe render my-video -o renders/final.mp4 --json
 ```
 

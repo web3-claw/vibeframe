@@ -6,7 +6,8 @@ GitHub Issues.
 
 ## Now
 
-- Stabilize the storyboard project flow: `vibe init` -> `vibe build` ->
+- Stabilize the storyboard project flow: `vibe init --from` ->
+  `vibe storyboard validate` -> `vibe plan` -> `vibe build` ->
   `vibe render`.
 - Keep `docs/cli-reference.md` generated from the live CLI schema.
 - Tighten provider setup, `vibe doctor`, and dry-run behavior so paid calls are
