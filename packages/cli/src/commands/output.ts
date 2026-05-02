@@ -194,7 +194,7 @@ function formatCost(min: number, max: number, unit: string): string {
 // Errors still go to stderr via exitWithError(StructuredError) — unchanged.
 // `success` / `ok` keys are intentionally omitted: exit code 0 is the UNIX
 // success signal. Duplicating it on stdout invites buggy agents that check
-// both. See docs/CLI_UX_AUDIT.md "Decisions" section for the rationale.
+// both and can drift when a subprocess wrapper rewrites one of them.
 
 export interface SuccessEnvelopeOptions {
   /** Canonical command name, e.g. "generate image". Matches `vibe schema --list`. */

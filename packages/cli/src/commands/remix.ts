@@ -209,7 +209,7 @@ Required API Key: OPENAI_API_KEY (Whisper transcription)
     }
   });
 
-// Cost-tier annotations — SSOT: docs/cli-mental-model.md
+// Cost-tier annotations for schema/help output.
 applyTiers(remixCommand, {
   "regenerate-scene": "very-high",
   "highlights": "high",

@@ -1,11 +1,10 @@
 /**
- * Render backend abstraction for the VibeFrame export pipeline.
+ * Render backend abstraction for VibeFrame rendering.
  *
- * Existing FFmpeg-filter-graph path lives in packages/cli/src/commands/export.ts.
- * New backends (hyperframes, future Remotion bridge) implement RenderBackend
- * to slot in via `vibe export --backend` or YAML `render.backend`.
+ * Backends implement RenderBackend so `vibe render` and YAML render steps can
+ * target FFmpeg, Hyperframes, or future renderers through one contract.
  *
- * See docs/design/hyperframes-adapter.md for the Hyperframes wiring plan.
+ * Renderer details live with each backend implementation.
  */
 
 import type { TimelineState } from "@vibeframe/core";

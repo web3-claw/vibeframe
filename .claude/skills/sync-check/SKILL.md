@@ -19,13 +19,15 @@ All versions must match. Report any mismatches.
 ## 2. Landing Page Sync (apps/web/app/page.tsx)
 
 - Version badge matches package.json
-- Agent tool count matches actual (`grep -c "registry.register" packages/cli/src/agent/tools/*.ts`)
-- MCP tool count matches actual (`grep -c "server.tool" packages/mcp-server/src/tools/*.ts`)
+- Count metadata matches actual source-derived values:
+  `bash scripts/sync-counts.sh --check`
 
 ## 3. README.md Sync
 
-- Test count matches (`CI=true pnpm -F @vibeframe/cli exec vitest run 2>&1 | tail -5`)
-- Provider count and feature tables are up to date
+- Provider and CLI command counts are up to date:
+  `bash scripts/sync-counts.sh --check`
+- CLI reference is generated from the current CLI:
+  `pnpm gen:reference:check`
 
 ## 4. MODELS.md Sync
 
@@ -35,9 +37,9 @@ All versions must match. Report any mismatches.
 
 Report as table:
 
-| Check | Status | Details |
-|-------|--------|---------|
-| Version sync | Pass/Fail | ... |
-| Landing page | Pass/Fail | ... |
-| README.md | Pass/Fail | ... |
-| MODELS.md | Pass/Fail | ... |
+| Check        | Status    | Details |
+| ------------ | --------- | ------- |
+| Version sync | Pass/Fail | ...     |
+| Landing page | Pass/Fail | ...     |
+| README.md    | Pass/Fail | ...     |
+| MODELS.md    | Pass/Fail | ...     |

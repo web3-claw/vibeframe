@@ -715,7 +715,7 @@ audioCommand
     }
   });
 
-// Cost-tier annotations — SSOT: docs/cli-mental-model.md
+// Cost-tier annotations for schema/help output.
 applyTiers(audioCommand, {
   "transcribe": "low",
   "list-voices": "low",

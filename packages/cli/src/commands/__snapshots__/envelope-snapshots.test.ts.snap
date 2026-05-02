@@ -7,12 +7,8 @@ exports[`CLI --describe schemas (drift detection) > vibe agent --describe 1`] = 
   "parameters": {
     "properties": {
       "budgetUsd": {
-        "description": "Reject tool calls past this cumulative USD ceiling (tier-estimated, conservative)",
-        "enum": [
-          "tier-estimated",
-          "conservative",
-        ],
-        "type": "string",
+        "description": "Reject tool calls past this cumulative USD ceiling using conservative tier estimates",
+        "type": "number",
       },
       "confirm": {
         "description": "Confirm before every tool — broadens the default cost gate (paid only) to all calls",

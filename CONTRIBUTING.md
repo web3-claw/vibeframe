@@ -24,14 +24,14 @@ Please be respectful and considerate of others. We want to foster an inclusive a
 
 ## Package Structure
 
-| Package | Path | Description |
-|---------|------|-------------|
-| `@vibeframe/cli` | `packages/cli` | Main CLI interface (Commander.js + Agent) |
-| `@vibeframe/core` | `packages/core` | Timeline data structures, effects, FFmpeg export |
-| `@vibeframe/ai-providers` | `packages/ai-providers` | Pluggable AI provider integrations |
-| `@vibeframe/mcp-server` | `packages/mcp-server` | MCP server for Claude Desktop/Cursor |
-| `@vibeframe/ui` | `packages/ui` | Shared React components (Radix UI + Tailwind) |
-| `@vibeframe/web` | `apps/web` | Next.js preview UI |
+| Package                   | Path                    | Description                                      |
+| ------------------------- | ----------------------- | ------------------------------------------------ |
+| `@vibeframe/cli`          | `packages/cli`          | Main CLI interface (Commander.js + Agent)        |
+| `@vibeframe/core`         | `packages/core`         | Timeline data structures, effects, FFmpeg export |
+| `@vibeframe/ai-providers` | `packages/ai-providers` | Pluggable AI provider integrations               |
+| `@vibeframe/mcp-server`   | `packages/mcp-server`   | MCP server for Claude Desktop/Cursor             |
+| `@vibeframe/ui`           | `packages/ui`           | Shared React components (Radix UI + Tailwind)    |
+| `@vibeframe/web`          | `apps/web`              | Next.js preview UI                               |
 
 ## Running Tests
 
@@ -117,6 +117,7 @@ For `edit`: creates `packages/cli/src/commands/_shared/edit/<name>.ts` and adds 
 ### Then fill in the logic
 
 Each scaffolded file contains:
+
 - `XxxOptions` and `XxxResult` interfaces — define the shape of inputs/outputs.
 - `executeXxx(options)` — pure function returning `{ success, ... }`. Used by the manifest layer (MCP/Agent) and the CLI handler.
 - `registerXxxCommand(parent)` — wraps `executeXxx` in a Commander chain with options, action handler, JSON-mode output, etc.
@@ -138,7 +139,7 @@ pnpm -F @vibeframe/cli test
 ### 5. Update documentation (when changing user-visible surface)
 
 - `CLAUDE.md` — tool counts and tables
-- `ROADMAP.md` — mark completed items
+- `ROADMAP.md` — only when public product direction changes
 - `MODELS.md` — if adding a new AI model/provider
 
 ## Commit Message Guidelines

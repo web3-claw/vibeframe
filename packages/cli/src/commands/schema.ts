@@ -206,6 +206,7 @@ function inferType(
     "<n>",
     "<count>",
     "<duration>",
+    "<usd>",
   ];
   if (numericFlags.some((f) => opt.flags.includes(f))) {
     return "number";
@@ -229,6 +230,7 @@ function inferType(
     "bitrate",
     "width",
     "height",
+    "budgetUsd",
   ];
   if (numericNames.includes(name)) {
     return "number";

@@ -1,13 +1,14 @@
 ---
 name: version-checker
-description: Checks version and info sync across all package.json files, landing page, and README. Use proactively after version bumps, releases, or doc changes.
+description: Checks version, generated references, public docs, and metadata sync. Use proactively after version bumps, releases, CLI changes, or doc changes.
 tools: Read, Grep, Glob, Bash
 model: haiku
 maxTurns: 15
 permissionMode: default
 ---
 
-You are a version and info sync checker for VibeFrame, an AI-native video editing CLI monorepo.
+You are a version and info sync checker for VibeFrame, an AI-native video CLI
+monorepo.
 
 ## What to Check
 
@@ -27,7 +28,8 @@ packages/ui/package.json
 apps/web/package.json
 ```
 
-Also check `apps/web/app/page.tsx` for the version badge (search for pattern like `v0.X.Y`).
+Also check `apps/web/app/page.tsx` and `README.md` for any hardcoded version
+strings.
 
 ### 2. Test Count
 
@@ -37,16 +39,17 @@ Also check `apps/web/app/page.tsx` for the version badge (search for pattern lik
 
 ### 3. Tool & Provider Counts
 
-- Agent tool count: grep for `registry.register` in `packages/cli/src/agent/tools/` to get actual count
-- MCP tool count: grep for `server.tool` in `packages/mcp-server/src/` to get actual count
+- CLI command count: `pnpm vibe schema --list`
+- Provider/tool counts: `bash scripts/sync-counts.sh --check`
 - Compare against:
-  - `apps/web/app/page.tsx`: Agent tool count, MCP tool badge
-  - `README.md`: MCP tools listed, provider table
-  - `CLAUDE.md`: tool counts mentioned
+  - `apps/web/app/page.tsx`: hero counts and command claims
+  - `README.md`: provider/command claims
+  - `CLAUDE.md`: developer guidance
 
 ### 4. Install URL
 
 Must be consistent across:
+
 - `README.md`: install commands
 - `apps/web/app/page.tsx`: install command
 - `scripts/install.sh`: the actual script
@@ -56,24 +59,33 @@ Canonical URL: `https://vibeframe.ai/install.sh`
 ### 5. MCP Config
 
 MCP server package name and config JSON should match across:
+
 - `README.md`
 - `CLAUDE.md`
 - `packages/mcp-server/README.md`
 
 ### 6. CLI Command Sync
 
-README.md "CLI Reference" section must list all available commands.
+Generated CLI docs must match the built CLI.
 
 **How to check:**
-1. Run `pnpm vibe --help` to get top-level commands
-2. Run `pnpm vibe generate --help`, `pnpm vibe edit --help`, `pnpm vibe analyze --help`, `pnpm vibe audio --help`, `pnpm vibe pipeline --help`
-3. Run `pnpm vibe detect --help`, `pnpm vibe batch --help` for other subcommands
-4. Compare against the CLI Reference section in `README.md`
+
+1. Run `pnpm build`
+2. Run `pnpm gen:reference:check`
+3. Run `pnpm vibe schema --list` and confirm the top-level groups align with
+   README / DEMO docs:
+   `generate`, `edit`, `inspect`, `audio`, `remix`, `init`, `build`,
+   `render`, `run`, `agent`, `scene`, `timeline`, `detect`, `batch`,
+   `media`, `guide`, `context`, `completion`.
+4. Confirm `DEMO-quickstart.md` and `DEMO-dogfood.md` use current commands,
+   not removed namespaces such as `vibe ai`, `vibe project`, `vibe export`,
+   or `vibe pipeline`.
 
 **Report:**
-- Commands in CLI but missing from README
-- Commands in README but not in CLI (removed/renamed)
-- Count: README lists N of M actual commands
+
+- CLI reference status
+- Public docs with removed/stale commands
+- Count: docs cover the intended top-level groups or explain why not
 
 ## Report Format
 
@@ -105,9 +117,9 @@ README.md "CLI Reference" section must list all available commands.
 
 ## CLI Command Sync
 - Actual CLI commands: N
-- README lists: M of N
-- Missing from README: [list]
-- In README but not in CLI: [list]
+- `docs/cli-reference.md`: OK / MISMATCH
+- Stale public command refs: [list]
+- DEMO coverage: [summary]
 
 ## Summary
 - N checks passed

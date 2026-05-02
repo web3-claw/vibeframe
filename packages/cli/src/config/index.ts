@@ -217,8 +217,11 @@ export async function isConfigured(): Promise<boolean> {
  * Get an API key. Auto-detects scope (project > user) and falls through to
  * the provider's environment variable if neither config has it.
  */
-export async function getApiKeyFromConfig(providerKey: string): Promise<string | undefined> {
-  const config = await loadConfig();
+export async function getApiKeyFromConfig(
+  providerKey: string,
+  options: Pick<LoadConfigOptions, "cwd"> = {},
+): Promise<string | undefined> {
+  const config = await loadConfig({ cwd: options.cwd });
   if (config?.providers[providerKey as keyof typeof config.providers]) {
     return config.providers[providerKey as keyof typeof config.providers];
   }

@@ -28,7 +28,7 @@ export interface StartAgentOptions {
   /** When true, suppress *all* confirm prompts including the cost gate. */
   noConfirm?: boolean;
   /** Cumulative USD ceiling — agent rejects further tool calls past this. */
-  budgetUsd?: string;
+  budgetUsd?: number | string;
 }
 
 /**
@@ -87,8 +87,8 @@ export async function startAgent(options: StartAgentOptions = {}): Promise<void>
   const isNonInteractive = !!options.input;
   const confirmAlways = options.confirm || false;
   const noConfirm = options.noConfirm || false;
-  const budgetUsd = options.budgetUsd ? parseFloat(options.budgetUsd) : undefined;
-  if (budgetUsd !== undefined && (Number.isNaN(budgetUsd) || budgetUsd < 0)) {
+  const budgetUsd = options.budgetUsd !== undefined ? Number(options.budgetUsd) : undefined;
+  if (budgetUsd !== undefined && (!Number.isFinite(budgetUsd) || budgetUsd < 0)) {
     exitWithError(generalError(`Invalid --budget-usd: ${options.budgetUsd}`, "Must be a non-negative number (e.g., --budget-usd 5)"));
   }
 
@@ -370,7 +370,7 @@ export const agentCommand = new Command("agent")
   .option("-i, --input <query>", "Run a single query and exit (non-interactive)")
   .option("-c, --confirm", "Confirm before every tool — broadens the default cost gate (paid only) to all calls")
   .option("--no-confirm", "Disable all confirm prompts including the high/very-high cost gate (CI / automation)")
-  .option("--budget-usd <usd>", "Reject tool calls past this cumulative USD ceiling (tier-estimated, conservative)")
+  .option("--budget-usd <usd>", "Reject tool calls past this cumulative USD ceiling using conservative tier estimates", parseFloat)
   .action(async (options) => {
     await startAgent(options);
   });

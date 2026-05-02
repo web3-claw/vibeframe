@@ -12,45 +12,82 @@ paths:
 
 ## Package Structure
 
-- **packages/cli** — CLI + Agent mode. Entry: `src/index.ts`. Commands: `src/commands/`. Agent: `src/agent/`.
-- **packages/core** — Timeline, effects, FFmpeg export. Zustand + Immer.
-- **packages/ai-providers** — Pluggable AI providers. Each in its own directory.
-- **packages/mcp-server** — MCP server for Claude Desktop/Cursor. Bundled with esbuild.
-- **packages/ui** — Shared React components. **apps/web** — Next.js landing page.
+- **packages/cli** - CLI, built-in agent mode, command implementations.
+  Entry: `src/index.ts`.
+- **packages/core** - Timeline/project primitives and FFmpeg-oriented editing
+  model.
+- **packages/ai-providers** - Provider registry and provider implementations.
+- **packages/mcp-server** - MCP wrapper around the CLI, bundled with esbuild.
+- **packages/ui** - Shared React components.
+- **apps/web** - Next.js public site.
 
-## CLI ↔ Agent Tool Sync
+## Current CLI Shape
 
-When adding CLI commands, expose as Agent tools if useful for natural language invocation.
+The canonical user-facing workflow commands are:
 
-**Naming:** `vibe <group> <action>` → `<group>_<action>` (snake_case)
+- Project video flow: `init`, `build`, `render`
+- One-shot media: `generate`, `edit`, `inspect`, `audio`, `remix`
+- Automation: `run`, `agent`, `schema`, `context`, `guide`
+- Lower-level operations: `scene`, `timeline`, `detect`, `batch`, `media`
 
-**Pattern:**
-1. Extract `execute*()` function in `src/commands/ai-<module>.ts`
-2. Create tool in `src/agent/tools/ai-generation.ts` (or `ai-editing.ts`, `ai-pipeline.ts`)
-3. Register via `registry.register(def, handler)`
+Do not introduce new docs or agent instructions that use removed namespaces such
+as `vibe ai`, `vibe project`, `vibe export`, or `vibe pipeline`.
+
+Use `vibe schema --list` and `vibe schema <command>` as the source of truth for
+command availability and parameters.
+
+## CLI <-> Agent Tool Sync
+
+When adding CLI commands, expose them as agent tools only when natural-language
+invocation is useful.
+
+Naming: `vibe <group> <action>` -> `<group>_<action>` in snake_case.
+
+Pattern:
+
+1. Extract a testable `execute*()` function from the command module.
+2. Reuse the same executor from CLI, YAML pipeline, and agent/MCP wrappers where
+   practical.
+3. Register an agent tool with a schema that matches the CLI command's behavior.
+4. Add focused tests for the executor and wrapper.
 
 ## Agent Invariants
 
 When invoking CLI commands from agent context:
 
-1. Always `--json` for structured output
-2. Always `--dry-run` before mutating operations (84 commands support it)
-3. Use `vibe schema <command>` to discover parameters — never guess
-4. Confirm with user before `remix` commands (high cost: $5-$50+; was: `pipeline`, deprecated alias)
-5. Use `--stdin` for complex options: `echo '{...}' | vibe <cmd> --stdin --json`
+1. Prefer `--json` for structured output.
+2. Run `--dry-run` before paid or mutating operations when the command supports
+   it.
+3. Use `vibe schema <command>` before constructing non-trivial arguments.
+4. Confirm with the user before high/very-high cost operations such as
+   `generate video`, `edit fill-gaps`, and provider-backed `remix` workflows.
+5. Use `--stdin` for complex option payloads instead of fragile shell quoting.
 
-## API Cost Tiers
+## Cost Awareness
 
-| Tier | Commands | Est. Cost |
-|------|----------|-----------|
-| Free | `detect *`, `edit silence-cut/noise-reduce/fade`, `schema`, `project`, `timeline` | $0 |
-| Low | `inspect *`, `audio transcribe`, `generate image` | $0.01-$0.10 |
-| High | `generate video`, `edit image` | $1-$5 |
-| Very High | `remix *` | $5-$50+ |
+Do not maintain a separate hardcoded cost table in docs or agent prompts. The
+CLI stamps cost tiers on commands; use:
+
+```bash
+vibe schema --list
+vibe schema --list --filter free
+vibe schema generate.video
+```
+
+General expectation:
+
+- Free/local: schema, setup/doctor, timeline/batch/detect/media, many FFmpeg
+  edits.
+- Low: speech, transcription, inspection, simple AI-assisted edits.
+- High: image generation, storyboard/motion generation.
+- Very high: video generation and expensive provider-backed transforms.
 
 ## Error Handling
 
-- Use `exitWithError()` from `commands/output.ts` — not `console.error` + `process.exit(1)`
-- Use `requireApiKey()` from `utils/api-key.ts` — not manual checks
-- Exit codes: 0=success, 2=usage, 3=not-found, 4=auth, 5=api-error, 6=network
-- JSON errors go to **stderr**: `{ success, error, code, exitCode, suggestion, retryable }`
+- Use `exitWithError()` from `commands/output.ts`; do not pair
+  `console.error` with `process.exit(1)`.
+- Use `requireApiKey()` for required API keys and `hasApiKey()` for
+  side-effect-free detection.
+- Use `resolveProvider()` / provider registry helpers instead of duplicating
+  provider fallback logic.
+- JSON errors go to stderr in the structured error envelope.

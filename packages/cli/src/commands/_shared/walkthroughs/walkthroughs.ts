@@ -279,9 +279,7 @@ const ARCHITECTURE_WALKTHROUGH = `# vibe agent / build / run — when to pick wh
 
 The CLI has three orchestrating commands that coordinate other primitives:
 \`vibe agent\`, \`vibe build\`, \`vibe run\`. New users routinely ask which one
-they want for a given task. The full audit lives in
-[\`docs/cli-architecture.md\`](../../../docs/cli-architecture.md); this
-guide is the operator-facing summary.
+they want for a given task. This guide is the operator-facing summary.
 
 If you already use Claude Code, Codex, Cursor, Aider, Gemini CLI, OpenCode,
 or another coding agent, let that host drive \`vibe\` directly through shell

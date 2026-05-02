@@ -58,8 +58,7 @@ import {
 export const BUNDLE_VERSION = "970367f-2026-04-25";
 
 /**
- * Files included in the bundle, in concatenation order (matches what
- * `tests/v059-preflight/run-pass-1.ts` validated as system prompt).
+ * Files included in the bundle, in concatenation order.
  */
 const VENDORED_SECTIONS: ReadonlyArray<{ label: string; content: string }> = [
   { label: "hyperframes/SKILL.md",             content: SKILL_MD             },

@@ -1,87 +1,128 @@
 ---
 name: vibe-pipeline
-description: Author and run VibeFrame YAML pipelines (Video as Code). Use when the user wants a reproducible, multi-step video workflow or wants to convert a ad-hoc sequence of commands into a pipeline file.
+description: Author and run VibeFrame YAML pipelines with `vibe run`. Use when the user wants a reproducible multi-step video workflow, checkpoints, or budget ceilings.
 ---
 
-# vibe-pipeline — Video as Code
+# vibe-pipeline
 
-A pipeline is a YAML manifest with steps that reference each other's outputs. Executes with checkpointing and cost estimation.
+A VibeFrame pipeline is a YAML manifest executed by `vibe run`. Steps can
+reference earlier outputs with `$<step-id>.output`, and the executor writes a
+checkpoint under the output directory so failed runs can resume.
 
-## Minimal skeleton
+## Minimal Skeleton
 
 ```yaml
 name: promo-video
-description: 15s product teaser
+budget:
+  costUsd: 8
+  maxToolErrors: 1
 steps:
-  - id: backdrop
+  - id: image
     action: generate-image
-    prompt: "sleek product shot on white background"
-    output: backdrop.png
-  - id: scene
+    provider: openai
+    model: "2"
+    size: 1536x1024
+    quality: hd
+    prompt: "sleek product shot on a quiet studio background"
+    output: hero.png
+
+  - id: video
     action: generate-video
-    image: $backdrop.output        # reference previous step output
-    prompt: "slow camera pan"
+    provider: seedance
+    image: $image.output
+    prompt: "slow cinematic camera push, polished product demo motion"
     duration: 5
-    output: scene.mp4
-  - id: voice
-    action: generate-tts
-    text: "Meet the new standard."
-    output: voice.mp3
-  - id: final
-    action: compose
-    video: $scene.output
-    audio: $voice.output
-    output: final.mp4
+    ratio: "16:9"
+    output: hero.mp4
+
+  - id: titled
+    action: edit-motion-overlay
+    input: $video.output
+    description: "minimal lower-third title, clean sans-serif, subtle grain"
+    model: gemini
+    understand: auto
+    output: titled.mp4
 ```
 
-## Supported actions (keep in sync with `packages/cli/src/pipeline/executor.ts`)
+## Scene Project Skeleton
 
-- `generate-image`, `generate-video`, `generate-tts`, `generate-music`, `generate-sound-effect`, `generate-storyboard`, `generate-motion`
-- `edit-silence-cut`, `edit-jump-cut`, `edit-caption`, `edit-grade`, `edit-reframe`, `edit-speed-ramp`, `edit-fade`, `edit-noise-reduce`, `edit-text-overlay`, `edit-fill-gaps`
-- `analyze-media`, `analyze-video`, `analyze-review`, `analyze-suggest`
-- `audio-transcribe`, `audio-isolate`, `audio-voice-clone`, `audio-dub`, `audio-duck`
-- `detect-scenes`, `detect-silence`, `detect-beats`
-- `compose`, `export`
+Use `scene-build` and `scene-render` when a storyboard project already exists:
 
-If unsure, run `vibe run --list-actions` (if implemented) or read the executor source.
+```yaml
+name: storyboard-render
+budget:
+  costUsd: 2
+  maxToolErrors: 1
+steps:
+  - id: build
+    action: scene-build
+    project: my-video
+    mode: batch
+    composer: openai
+    tts: kokoro
+    skipBackdrop: true
+    skipRender: true
 
-## Variable references
+  - id: render
+    action: scene-render
+    project: my-video
+    output: renders/final.mp4
+    quality: standard
+    fps: 30
+    format: mp4
+```
 
-- `$<step-id>.output` — previous step's output path
-- `$<step-id>.result.<field>` — structured field from JSON result
-- `${ENV_VAR}` — environment variable
-- Values can be templated: `"${SCRIPT_TITLE} - Episode ${EPISODE}"`
+## Supported Actions
+
+Keep this in sync with `packages/cli/src/pipeline/types.ts` and
+`packages/cli/src/pipeline/executor.ts`.
+
+- Generate: `generate-image`, `generate-video`, `generate-tts`,
+  `generate-sfx`, `generate-music`, `generate-storyboard`, `generate-motion`
+- Edit: `edit-silence-cut`, `edit-jump-cut`, `edit-caption`,
+  `edit-noise-reduce`, `edit-fade`, `edit-translate-srt`,
+  `edit-text-overlay`, `edit-motion-overlay`, `edit-grade`,
+  `edit-speed-ramp`, `edit-reframe`, `edit-interpolate`, `edit-upscale`,
+  `edit-image`
+- Audio: `audio-transcribe`, `audio-isolate`, `audio-dub`, `audio-duck`
+- Detect: `detect-scenes`, `detect-silence`, `detect-beats`
+- Analyze/review: `analyze-video`, `analyze-media`, `review-video`
+- Scene: `compose-scenes-with-skills`, `scene-build`, `scene-render`
+- Legacy/meta: `export`
+
+If unsure, read the executor source. There is no public `vibe run
+--list-actions` command.
 
 ## Running
 
 ```bash
-vibe run pipeline.yaml --dry-run           # plan + cost estimate, no execution
-vibe run pipeline.yaml                     # execute
-vibe run pipeline.yaml --resume            # retry from last successful step
-vibe run pipeline.yaml --from scene        # start at specific step
-vibe run pipeline.yaml --provider-video kling   # override provider
+vibe run pipeline.yaml --dry-run
+vibe run pipeline.yaml -o pipeline-output
+vibe run pipeline.yaml -o pipeline-output --resume
+vibe run pipeline.yaml -o pipeline-output --budget-usd 5
+vibe run pipeline.yaml -o pipeline-output --json
 ```
 
-Checkpoints land next to the YAML: `pipeline.yaml.checkpoint.json`.
+Useful flags:
 
-## Authoring tips
+- `--dry-run` validates the graph and shows upper-bound cost estimates.
+- `--resume` skips completed checkpointed steps.
+- `--budget-usd`, `--budget-tokens`, `--max-errors` override or extend the
+  manifest budget.
+- `--effort low|medium|high|xhigh` forwards an LLM effort hint where supported.
+- `--json` returns structured output for agents.
 
-1. **Start from examples**: `examples/demo-pipeline.yaml` (FFmpeg-only, no keys), `examples/promo-video.yaml` (AI providers).
-2. **Dry-run first** — you see estimated cost and resolved variable graph before spending API credits.
-3. **Keep step ids short and descriptive** (`intro`, `scene1`, `voice`, `bgm`) — they appear in logs and variable refs.
-4. **Name outputs** with extensions matching the action (`.mp4`, `.mp3`, `.png`, `.json`).
-5. **Declare `budget:`** on expensive pipelines (see Opus 4.7 task budgets):
-   ```yaml
-   budget:
-     tokens: 500_000
-     max_tool_errors: 3
-     cost_usd: 5.00
-   ```
-6. **Split large pipelines** into smaller YAML files and compose via `action: run-pipeline` (nested).
+Checkpoint file: `<output-dir>/.pipeline-state.yaml`.
 
-## Converting ad-hoc shell sessions to pipelines
+## Authoring Rules
 
-When a user has a working shell sequence, extract steps:
-- Each `vibe ...` command becomes one step
-- File outputs become step outputs; downstream `-i <file>` references become `$<id>.output`
-- Shared parameters move to top-level `defaults:` section
+1. Dry-run before executing paid provider steps.
+2. Keep step ids short and stable (`image`, `motion`, `title`, `render`).
+3. Name outputs with the real extension (`.png`, `.mp4`, `.mp3`, `.json`).
+4. Use `$<step-id>.output` rather than repeating file paths.
+5. Add a `budget:` block for any pipeline that can call image/video providers.
+6. Use `scene-build` for storyboard projects and `generate-*` / `edit-*` for
+   standalone media chains.
+
+When converting a shell sequence, map each `vibe ...` command to one action and
+turn downstream input paths into step references.

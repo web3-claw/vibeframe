@@ -24,12 +24,12 @@ vibe render my-video -o renders/final.mp4
 
 ## Demo
 
-This sample was rendered from a VibeFrame storyboard project. It uses local
-Kokoro narration, authored HTML scene composition, and a Seedance
-image-to-video clip mounted into the final timeline.
+The current quickstart recording shows Claude Code driving the installed
+`vibe` CLI through image generation, image-to-video, media inspection, and a
+motion-overlay edit.
 
 <p align="center">
-  <video src="https://raw.githubusercontent.com/vericontext/vibeframe/main/assets/demos/sample-demo-final.mp4" controls width="800" muted></video>
+  <video src="https://raw.githubusercontent.com/vericontext/vibeframe/main/assets/demos/quickstart-claude-code.mp4" controls width="800" muted></video>
 </p>
 
 For the full copy-paste quickstart, see [DEMO-quickstart.md](DEMO-quickstart.md).
@@ -51,17 +51,17 @@ For the full copy-paste quickstart, see [DEMO-quickstart.md](DEMO-quickstart.md)
 
 ## 30-Second Map
 
-| You want to... | Use |
-|---|---|
-| Generate a new image, video, voice, music, or standalone motion asset | `vibe generate ...` |
-| Change an existing media file | `vibe edit ...`, `vibe remix ...`, `vibe audio ...` |
-| Understand, review, or ask questions about media | `vibe inspect ...`, `vibe media ...` |
-| Detect scenes, silence, or beats | `vibe detect ...` |
-| Add designed motion graphics to an existing clip | `vibe edit motion-overlay ...` |
-| Build a storyboard-driven composed video | `vibe init`, `vibe build`, `vibe render` |
-| Run a repeatable multi-step workflow | `vibe run pipeline.yaml` |
-| Script low-level timeline edits or bulk imports | `vibe timeline ...`, `vibe batch ...` |
-| Decide which path fits | `vibe guide motion`, `vibe guide scene`, `vibe guide pipeline` |
+| You want to...                                                        | Use                                                            |
+| --------------------------------------------------------------------- | -------------------------------------------------------------- |
+| Generate a new image, video, voice, music, or standalone motion asset | `vibe generate ...`                                            |
+| Change an existing media file                                         | `vibe edit ...`, `vibe remix ...`, `vibe audio ...`            |
+| Understand, review, or ask questions about media                      | `vibe inspect ...`, `vibe media ...`                           |
+| Detect scenes, silence, or beats                                      | `vibe detect ...`                                              |
+| Add designed motion graphics to an existing clip                      | `vibe edit motion-overlay ...`                                 |
+| Build a storyboard-driven composed video                              | `vibe init`, `vibe build`, `vibe render`                       |
+| Run a repeatable multi-step workflow                                  | `vibe run pipeline.yaml`                                       |
+| Script low-level timeline edits or bulk imports                       | `vibe timeline ...`, `vibe batch ...`                          |
+| Decide which path fits                                                | `vibe guide motion`, `vibe guide scene`, `vibe guide pipeline` |
 
 ## Requirements
 
@@ -308,19 +308,20 @@ packages/ai-providers/   Provider registry and implementations
 packages/mcp-server/     MCP server package
 packages/ui/             Shared React UI
 apps/web/                Next.js landing/demo app
-docs/                    Design notes, cookbook, comparisons
+docs/                    Compact public docs
+scripts/                 Install, docs generation, demos, and maintainer helpers
+tests/                   Manual smoke checks outside CI
 ```
 
 ## Useful Docs
 
+- [docs/README.md](docs/README.md): compact docs index
 - [docs/cli-reference.md](docs/cli-reference.md): every command, flag, and JSON envelope (auto-generated from `vibe schema --list`)
-- [docs/cli-mental-model.md](docs/cli-mental-model.md): when to use which verb (`generate` / `edit` / `remix` / `inspect` / `audio` / `detect`)
-- [docs/cli-architecture.md](docs/cli-architecture.md): when to pick external agents, optional `vibe agent`, `build`, or `run`
-- [docs/1.0-readiness.md](docs/1.0-readiness.md): public API surface, historical breaking changes (v0.74 / v0.80 renames), 1.0 cut checklist
 - [DEMO-quickstart.md](DEMO-quickstart.md): copy-paste first-video flow
-- [DEMO-dogfood.md](DEMO-dogfood.md): internal end-to-end dogfood flow
+- [DEMO-dogfood.md](DEMO-dogfood.md): contributor dogfood flow
 - [docs/cookbook.md](docs/cookbook.md): practical recipes
 - [docs/video-project-concepts.md](docs/video-project-concepts.md): project model
+- [docs/comparison.md](docs/comparison.md): how VibeFrame relates to Hyperframes
 - [MODELS.md](MODELS.md): provider/model reference
 - [ROADMAP.md](ROADMAP.md): roadmap
 

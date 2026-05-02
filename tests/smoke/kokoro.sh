@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #
-# v0.54 smoke test — exercises the full local-TTS + word-sync pipeline
-# end-to-end against a real Kokoro model and a real Whisper API. Lives
+# Manual smoke test for the local-TTS + word-sync pipeline. It runs
+# end-to-end against a real Kokoro model and optionally Whisper. Lives
 # outside CI because:
 #
 #   1. The first run downloads ~330MB to ~/.cache/huggingface/hub.
 #   2. Whisper transcribe needs OPENAI_API_KEY (~$0.001/scene).
 #
-# Run manually after a v0.54.x release:
+# Run manually before release when touching narration, scene add, or render:
 #
 #   bash tests/smoke/kokoro.sh
 #

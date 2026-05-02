@@ -1076,7 +1076,7 @@ editCommand
 
 // ── Cost-tier annotations ──────────────────────────────────────────────────
 // Applied at module-bottom so tier metadata stays next to the catalog.
-// SSOT: docs/cli-mental-model.md.
+// These tiers feed schema/help output.
 applyTiers(editCommand, {
   // free — FFmpeg only
   "noise-reduce": "free",

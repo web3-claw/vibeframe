@@ -9,6 +9,8 @@ import { parse as yamlParse, stringify as yamlStringify } from "yaml";
 import type { PipelineManifest, PipelineAction, PipelineBudget, StepResult, PipelineResult, BudgetUsage } from "./types.js";
 import { resolveStepParams, findUnresolvedRefs } from "./resolver.js";
 import { COST_ESTIMATES } from "../commands/output.js";
+import { getApiKeyFromConfig } from "../config/index.js";
+import { loadProviderDefaults, resolveProvider } from "../utils/provider-resolver.js";
 
 // ── Action metadata registry (for cost/help/schema growth) ──────────────
 
@@ -88,6 +90,73 @@ function getOutput(params: Record<string, unknown>, outputDir: string, defaultNa
   return resolve(outputDir, defaultName);
 }
 
+function stringParam(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() !== "" ? value : undefined;
+}
+
+function numberParam(value: unknown): number | undefined {
+  if (typeof value === "number") return Number.isFinite(value) ? value : undefined;
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
+async function resolvePipelineImageProvider(provider: unknown): Promise<"gemini" | "openai" | "grok" | undefined> {
+  const explicit = stringParam(provider)?.toLowerCase();
+  if (explicit) return explicit as "gemini" | "openai" | "grok";
+
+  await loadProviderDefaults();
+  return (resolveProvider("image")?.name ?? "gemini") as "gemini" | "openai" | "grok";
+}
+
+async function resolvePipelineVideoProvider(
+  provider: unknown,
+): Promise<"grok" | "kling" | "runway" | "veo" | "seedance" | "fal" | undefined> {
+  const explicit = stringParam(provider)?.toLowerCase();
+  if (explicit === "fal") return "seedance";
+  if (explicit) return explicit as "grok" | "kling" | "runway" | "veo" | "seedance";
+
+  await loadProviderDefaults();
+  return (resolveProvider("video")?.name ?? "grok") as "grok" | "kling" | "runway" | "veo" | "seedance";
+}
+
+function providerKeyForImage(provider: string | undefined): string | undefined {
+  switch (provider) {
+    case "openai":
+      return "openai";
+    case "gemini":
+      return "google";
+    case "grok":
+      return "xai";
+    default:
+      return undefined;
+  }
+}
+
+function providerKeyForVideo(provider: string | undefined): string | undefined {
+  switch (provider) {
+    case "seedance":
+    case "fal":
+      return "fal";
+    case "grok":
+      return "xai";
+    case "kling":
+      return "kling";
+    case "runway":
+      return "runway";
+    case "veo":
+      return "google";
+    default:
+      return undefined;
+  }
+}
+
+async function apiKeyForProvider(providerKey: string | undefined): Promise<string | undefined> {
+  return providerKey ? getApiKeyFromConfig(providerKey) : undefined;
+}
+
 // ── Register all actions (lazy-loaded to avoid circular imports) ─────────
 
 async function ensureActionsRegistered(): Promise<void> {
@@ -97,21 +166,42 @@ async function ensureActionsRegistered(): Promise<void> {
   registerAction("generate-image", async (params, outputDir) => {
     const { executeImageGenerate } = await import("../commands/ai-image.js");
     const output = getOutput(params, outputDir, "image.png");
-    const r = await executeImageGenerate({ prompt: params.prompt as string, provider: params.provider as "gemini" | "openai" | "grok" | undefined, output, model: params.model as string | undefined, ratio: params.ratio as string | undefined });
+    const provider = await resolvePipelineImageProvider(params.provider);
+    const r = await executeImageGenerate({
+      prompt: params.prompt as string,
+      provider,
+      output,
+      model: stringParam(params.model),
+      ratio: stringParam(params.ratio),
+      size: stringParam(params.size),
+      quality: stringParam(params.quality),
+      style: stringParam(params.style),
+      count: numberParam(params.count),
+      apiKey: await apiKeyForProvider(providerKeyForImage(provider)),
+    });
     return { id: "", action: "generate-image", success: r.success, output: r.outputPath, data: { provider: r.provider, model: r.model }, error: r.error };
   });
 
   registerAction("generate-video", async (params, outputDir) => {
     const { executeVideoGenerate } = await import("../commands/ai-video.js");
     const output = getOutput(params, outputDir, "video.mp4");
+    const provider = await resolvePipelineVideoProvider(params.provider);
     const r = await executeVideoGenerate({
       prompt: params.prompt as string,
-      provider: params.provider as "grok" | "kling" | "runway" | "veo" | "seedance" | "fal" | undefined,
-      image: params.image as string | undefined,
-      duration: params.duration as number | undefined,
-      ratio: params.ratio as string | undefined,
+      provider,
+      image: stringParam(params.image),
+      duration: numberParam(params.duration),
+      ratio: stringParam(params.ratio),
+      seed: numberParam(params.seed),
+      mode: stringParam(params.mode),
+      negative: stringParam(params.negative),
+      resolution: stringParam(params.resolution),
+      veoModel: stringParam(params.veoModel),
+      runwayModel: stringParam(params.runwayModel),
+      seedanceModel: stringParam(params.seedanceModel),
       output,
       wait: true,
+      apiKey: await apiKeyForProvider(providerKeyForVideo(provider)),
     });
     return { id: "", action: "generate-video", success: r.success, output: r.outputPath || r.videoUrl, data: { taskId: r.taskId, provider: r.provider, videoUrl: r.videoUrl }, error: r.error };
   });

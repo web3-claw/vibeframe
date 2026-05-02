@@ -162,7 +162,7 @@ Examples:
           // Soft-deprecation: `-p fal` was the v0.x id; canonical is now
           // `seedance`. Warn once on stderr (not log/spinner — those go to
           // stdout in JSON mode), translate to canonical, then continue.
-          // Removal at 1.0 per docs/1.0-readiness.md.
+          // Review this alias at the 1.0 cut.
           if (provider === "fal") {
             process.stderr.write(
               chalk.yellow(

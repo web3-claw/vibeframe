@@ -36,6 +36,7 @@ import {
 import type { ComposerProvider } from "./composer-resolve.js";
 import { getComposePrompts, type ComposePromptsBeat } from "./compose-prompts.js";
 import { detectedAgentHosts } from "../../utils/agent-host-detect.js";
+import { getApiKeyFromConfig } from "../../config/index.js";
 import { executeSceneRender, type SceneRenderResult } from "./scene-render.js";
 import { parseStoryboard, type Beat } from "./storyboard-parse.js";
 import { scaffoldSceneProject } from "./scene-project.js";
@@ -440,7 +441,7 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
   }
 
   loadSceneBuildEnv(ctx.projectDir);
-  const apiKey = process.env.OPENAI_API_KEY ?? "";
+  const apiKey = (await getApiKeyFromConfig("openai", { cwd: ctx.projectDir })) ?? process.env.OPENAI_API_KEY ?? "";
   if (!apiKey) {
     const error = "OPENAI_API_KEY not set — cannot dispatch backdrop";
     ctx.onProgress({ type: "backdrop-failed", beatId: beat.id, error });

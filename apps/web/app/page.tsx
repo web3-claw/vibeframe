@@ -110,26 +110,25 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* What you can build — current storyboard demo MP4 anchored above the
-          surface guides. Shows OUTPUT first, then surfaces. */}
+      {/* Current quickstart recording anchored above the surface guides. */}
       <section className="py-20 px-4 border-t border-border/50 relative">
         <div className="mx-auto max-w-5xl">
           <div className="text-center mb-12">
             <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/5 px-4 py-1.5 text-sm text-blue-400 mb-4">
               <Video className="w-4 h-4" />
-              <span>What you can build · storyboard demo</span>
+              <span>What you can build · quickstart recording</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              Storyboard scenes → MP4
+              Prompt to finished clip
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Author storyboard beats, generate AI media when useful, compose
-              editable HTML scenes, and render a final video with narration.
+              Generate an image, animate it, inspect the result, and add a
+              designed motion overlay from the CLI.
             </p>
           </div>
           <div className="rounded-xl overflow-hidden border border-border/50 shadow-2xl bg-black mx-auto max-w-4xl">
             <video
-              src="https://raw.githubusercontent.com/vericontext/vibeframe/main/assets/demos/sample-demo-final.mp4"
+              src="https://raw.githubusercontent.com/vericontext/vibeframe/main/assets/demos/quickstart-claude-code.mp4"
               controls
               muted
               autoPlay
@@ -141,13 +140,13 @@ export default function LandingPage() {
           <p className="text-center text-sm text-muted-foreground mt-6">
             Sample:{" "}
             <Link
-              href="https://github.com/vericontext/vibeframe/blob/main/assets/demos/sample-demo-final.mp4"
+              href="https://github.com/vericontext/vibeframe/blob/main/assets/demos/quickstart-claude-code.mp4"
               target="_blank"
               className="underline hover:text-foreground"
             >
-              assets/demos/sample-demo-final.mp4
+              assets/demos/quickstart-claude-code.mp4
             </Link>
-            {" — Kokoro narration, composed scenes, Seedance motion asset."}
+            {" — Claude Code driving image generation, video generation, inspection, and overlay editing."}
           </p>
         </div>
       </section>

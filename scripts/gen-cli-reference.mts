@@ -17,6 +17,8 @@ import { execFileSync } from "node:child_process";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { format as formatMarkdown } from "prettier";
+import { TIER_DESCRIPTION, type CostTier } from "../packages/cli/src/commands/_shared/cost-tier.js";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI_BIN = resolve(REPO_ROOT, "packages/cli/dist/index.js");
@@ -30,6 +32,7 @@ if (!existsSync(CLI_BIN)) {
 interface SchemaListEntry {
   path: string;
   description: string;
+  cost?: CostTier;
 }
 
 interface ParameterSchema {
@@ -42,6 +45,7 @@ interface ParameterSchema {
 interface ToolSchema {
   name: string;
   description: string;
+  cost?: CostTier;
   parameters: {
     type: "object";
     properties: Record<string, ParameterSchema>;
@@ -78,8 +82,8 @@ const HEADER = `# VibeFrame CLI Reference
 
 VibeFrame is CLI-first: every operation is a shell command. This file
 lists every command, its arguments, and its options. For agentic /
-machine-readable access use \`vibe schema --list --json\` and
-\`vibe schema <command> --json\` directly.
+machine-readable access use \`vibe schema --list\` and
+\`vibe schema <command>\` directly; both return JSON.
 `;
 
 const MENTAL_MODEL = `## Mental model
@@ -90,7 +94,7 @@ operations.
 
 \`\`\`
 init → build → render          ← 90% users start here  (Tier 1)
-gen / edit / inspect / remix    ← one-shot media tools  (Tier 2)
+generate / edit / inspect / remix ← one-shot media tools (Tier 2)
 scene / timeline                ← lower-level authoring (Tier 3)
 run / agent / schema / context  ← automation + agents   (Tier 4)
 \`\`\`
@@ -98,7 +102,7 @@ run / agent / schema / context  ← automation + agents   (Tier 4)
 
 const GLOBAL_FLAGS = `## Global flags
 
-Work with any command:
+Defined on the root \`vibe\` program and available across commands:
 
 | Flag | Effect |
 |---|---|
@@ -109,51 +113,83 @@ Work with any command:
 | \`-q, --quiet\` | Output only the result value (path / URL / ID) |
 | \`--stdin\` | Read options from stdin as JSON (agent / script use) |
 | \`--describe\` | Print the command's JSON Schema and exit (no execution) |
-| \`--dry-run\` | Preview parameters without executing (most commands) |
 `;
 
-const SHORT_FLAG_TABLE = `## Standard short flags (per-command, dominant meaning only)
+const OPTION_DISCOVERY = `## Option discovery
 
-After the v0.78 dedup, each one-letter flag has a single canonical
-meaning. Non-dominant uses are long-only.
+Short aliases are command-local. Use \`vibe <command> --help\` for the
+exact CLI spelling, and use \`vibe schema <command>\` for stable
+machine-readable parameter names. Scripts and agents should prefer long
+flags, \`--stdin\`, or schema fields over one-letter aliases.
 
-| Short | Long | Uses |
-|---|---|---|
-| \`-o\` | \`--output\` | 40 |
-| \`-k\` | \`--api-key\` | 31 |
-| \`-d\` | \`--duration\` | 19 |
-| \`-m\` | \`--model\` | 11 |
-| \`-p\` | \`--provider\` | 10 |
-| \`-r\` | \`--ratio\` | 9 |
-| \`-l\` | \`--language\` | 9 |
-| \`-a\` | \`--aspect\` | 5 |
-| \`-v\` | \`--verbose\` | 3 |
-| \`-i\` | \`--image\` / \`--input\` | 3 |
-| \`-c\` | \`--confirm\` | 1 |
-
-Flags without a short form (\`--style\`, \`--name\`, \`--size\`, \`--count\`,
-\`--mode\`, \`--text\`, \`--fps\`, etc.) had no dominant meaning across the
-surface and were collapsed to long-only.
+\`--dry-run\` is also command-specific: most paid or mutating commands
+support it, but it is not a root/global flag. Check the command schema or
+\`--help\` page before assuming it exists.
 `;
 
-const COST_TIERS = `## Cost tiers
+function costLabel(tier: CostTier | "untiered"): string {
+  if (tier === "very-high") return "Very High";
+  if (tier === "untiered") return "Not tagged";
+  return tier[0].toUpperCase() + tier.slice(1);
+}
 
-| Tier | Commands | Per-call cost |
-|---|---|---|
-| **Free** | \`detect *\` · \`edit silence-cut/fade/noise-reduce/text-overlay/interpolate\` · \`timeline *\` · \`scene lint\` / \`list-styles\` · \`audio duck\` | $0 |
-| **Low** | \`inspect *\` · \`audio transcribe\` / \`list-voices\` · \`generate image\` | ~$0.01–0.10 |
-| **High** | \`generate video\` · \`edit image\` · \`edit grade\` / \`reframe\` / \`speed-ramp\` (Claude analysis) | ~$1–5 |
-| **Very High** | \`remix highlights\` / \`auto-shorts\` / \`regenerate-scene\` · \`vibe build\` (full pipeline) | ~$5–50+ |
+function renderCostTiers(leaves: SchemaListEntry[]): string {
+  const buckets: Record<CostTier | "untiered", string[]> = {
+    free: [],
+    low: [],
+    high: [],
+    "very-high": [],
+    untiered: [],
+  };
 
-> **Tip:** Run \`<paid command> --dry-run --json\` first — the response
-> includes a \`costUsd\` estimate without spending a cent.
-`;
+  for (const leaf of leaves) {
+    const tier = leaf.cost ?? "untiered";
+    buckets[tier].push(leaf.path);
+  }
+
+  const formatExamples = (paths: string[]): string => {
+    const examples = paths.slice(0, 8).map((path) => `\`${path}\``);
+    if (paths.length > examples.length) examples.push(`+${paths.length - examples.length} more`);
+    return examples.join(" · ");
+  };
+
+  const lines: string[] = [
+    "## Cost tiers",
+    "",
+    "Generated from the live `cost` field in `vibe schema --list`.",
+    "",
+    "| Tier | Count | Examples | Per-call cost |",
+    "|---|---:|---|---|",
+  ];
+
+  for (const tier of ["free", "low", "high", "very-high"] as const) {
+    const paths = buckets[tier];
+    lines.push(
+      `| **${costLabel(tier)}** | ${paths.length} | ${formatExamples(paths)} | ${TIER_DESCRIPTION[tier]} |`
+    );
+  }
+
+  if (buckets.untiered.length > 0) {
+    lines.push(
+      `| **${costLabel("untiered")}** | ${buckets.untiered.length} | ${formatExamples(buckets.untiered)} | Utility/orchestration/reference commands; inspect command behavior before assuming provider spend |`
+    );
+  }
+
+  lines.push(
+    "",
+    "> **Tip:** Run `<paid command> --dry-run --json` first — the response",
+    "> includes a `costUsd` estimate when the command supports dry-run.",
+    ""
+  );
+
+  return lines.join("\n");
+}
 
 const ENVELOPE = `## JSON envelope
 
 ### Success
 
-\`\`\`json
+\`\`\`jsonc
 {
   "command": "<group> <leaf>",
   "elapsedMs": 12345,
@@ -190,29 +226,29 @@ const ENVELOPE = `## JSON envelope
 
 const MCP_MAPPING = `## CLI ↔ MCP tool name mapping
 
-\`@vibeframe/mcp-server\` exposes the same operations as MCP tools:
+\`@vibeframe/mcp-server\` is generated from the CLI/tool manifest, not
+from this markdown file. The common naming convention is:
 
 \`\`\`
 Rule 1.  vibe <group> <leaf>   →  <group>_<leaf>      (snake_case)
          e.g. vibe edit silence-cut → edit_silence_cut
 
-Rule 2.  vibe <bare-name>      →  <bare-name>
-         e.g. vibe init / build / render / run → init / build / render / run
+Rule 2.  Manifest-only helpers may expose filesystem/project/media
+         operations that do not have a 1:1 top-level CLI command.
 
-Rule 3.  CLI-only (not exposed via MCP):
-         setup, doctor, demo, agent, schema, context
-
-Rule 4.  MCP-only agent tools (engine direct access):
-         fs_*, media_*, project_open / project_save
+Rule 3.  Interactive diagnostics and local setup commands may remain
+         CLI-only. Use MCP tools/list or the manifest as the source of
+         truth for exact availability.
 \`\`\`
 `;
 
 // ── Render command catalog ────────────────────────────────────────────────────
 
 interface RenderedLeaf {
-  pathDots: string;        // e.g. "edit.silence-cut"
-  pathSpace: string;       // e.g. "edit silence-cut"
+  pathDots: string; // e.g. "edit.silence-cut"
+  pathSpace: string; // e.g. "edit silence-cut"
   description: string;
+  cost?: CostTier;
   parameters: Record<string, ParameterSchema>;
   required: string[];
 }
@@ -220,7 +256,8 @@ interface RenderedLeaf {
 function renderArg(name: string, schema: ParameterSchema, isRequired: boolean): string {
   const desc = schema.description ?? "";
   const enums = schema.enum ? ` *(${schema.enum.join(" \\| ")})*` : "";
-  const def = schema.default !== undefined ? ` *(default: \`${JSON.stringify(schema.default)}\`)*` : "";
+  const def =
+    schema.default !== undefined ? ` *(default: \`${JSON.stringify(schema.default)}\`)*` : "";
   const requiredMark = isRequired ? " **required**" : "";
   return `- \`${name}\` *(${schema.type ?? "any"})*${requiredMark}${enums}${def} — ${desc}`;
 }
@@ -230,6 +267,8 @@ function renderLeaf(leaf: RenderedLeaf): string {
   lines.push(`#### \`vibe ${leaf.pathSpace}\``);
   lines.push("");
   lines.push(leaf.description);
+  lines.push("");
+  lines.push(`Cost tier: ${leaf.cost ? `\`${leaf.cost}\`` : "_not tagged_"}`);
   lines.push("");
   const props = Object.entries(leaf.parameters);
   if (props.length === 0) {
@@ -268,6 +307,7 @@ function buildReference(): string {
       pathDots: leaf.path,
       pathSpace: leaf.path.replace(/\./g, " "),
       description: leaf.description,
+      cost: schema.cost ?? leaf.cost,
       parameters: schema.parameters?.properties ?? {},
       required: schema.parameters?.required ?? [],
     };
@@ -289,8 +329,8 @@ function buildReference(): string {
     "",
     MENTAL_MODEL,
     GLOBAL_FLAGS,
-    SHORT_FLAG_TABLE,
-    COST_TIERS,
+    OPTION_DISCOVERY,
+    renderCostTiers(leaves),
     ENVELOPE,
     MCP_MAPPING,
     "## Commands",
@@ -308,8 +348,16 @@ function buildReference(): string {
 
   // Then groups in a stable, intent-ordered sequence.
   const GROUP_ORDER = [
-    "generate", "edit", "inspect", "audio", "remix",
-    "project", "scene", "timeline", "detect", "batch", "media",
+    "generate",
+    "edit",
+    "inspect",
+    "audio",
+    "remix",
+    "scene",
+    "timeline",
+    "detect",
+    "batch",
+    "media",
   ];
   for (const groupName of GROUP_ORDER) {
     if (!groups[groupName]) continue;
@@ -321,7 +369,12 @@ function buildReference(): string {
     sections.push(renderGroup(groupName, leaves));
   }
 
-  return sections.join("\n").replace(/\n{3,}/g, "\n\n").trimEnd() + "\n";
+  return (
+    sections
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trimEnd() + "\n"
+  );
 }
 
 // ── Entrypoint ────────────────────────────────────────────────────────────────
@@ -329,7 +382,7 @@ function buildReference(): string {
 const args = process.argv.slice(2);
 const checkMode = args.includes("--check");
 
-const fresh = buildReference();
+const fresh = await formatMarkdown(buildReference(), { parser: "markdown" });
 
 if (checkMode) {
   const existing = existsSync(OUT_PATH) ? readFileSync(OUT_PATH, "utf-8") : "";
@@ -337,7 +390,9 @@ if (checkMode) {
     console.log(`docs/cli-reference.md is up-to-date (${fresh.length} chars).`);
     process.exit(0);
   }
-  console.error("docs/cli-reference.md is out of date. Run `pnpm gen:reference` and commit the result.");
+  console.error(
+    "docs/cli-reference.md is out of date. Run `pnpm gen:reference` and commit the result."
+  );
   process.exit(1);
 }
 

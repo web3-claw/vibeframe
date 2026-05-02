@@ -50,28 +50,27 @@ export default function DemoPage() {
         </div>
       </nav>
 
-      {/* Current storyboard demo MP4: composed scenes, local narration, and
-          Seedance motion media mounted into the final timeline. */}
+      {/* Current quickstart recording. */}
       <section className="pt-32 pb-12 px-4">
         <div className="mx-auto max-w-5xl">
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/5 px-4 py-1.5 text-sm text-blue-400 mb-6 animate-fade-in">
               <Video className="w-4 h-4" />
-              <span>Built with <code className="font-mono text-xs">vibe build</code> + <code className="font-mono text-xs">vibe render</code></span>
+              <span>Recorded from <code className="font-mono text-xs">DEMO-quickstart.md</code></span>
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 animate-fade-in-up">
               What agents<br />
               <span className="bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">can build.</span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8 animate-fade-in-up delay-100">
-              A 1920×1080 storyboard video with local Kokoro narration,
-              editable HTML scenes, and a Seedance image-to-video clip composed
-              into the final timeline.
+              Claude Code drives the installed VibeFrame CLI through image
+              generation, image-to-video, inspection, and motion-overlay
+              editing.
             </p>
           </div>
           <div className="rounded-xl overflow-hidden border border-border/50 shadow-2xl bg-black animate-fade-in-up delay-200">
             <video
-              src="https://raw.githubusercontent.com/vericontext/vibeframe/main/assets/demos/sample-demo-final.mp4"
+              src="https://raw.githubusercontent.com/vericontext/vibeframe/main/assets/demos/quickstart-claude-code.mp4"
               controls
               muted
               autoPlay
@@ -113,28 +112,16 @@ export default function DemoPage() {
 
           <div className="grid md:grid-cols-2 gap-6 animate-fade-in-up delay-200">
             <TapeCard
-              badge="1 · CLI"
-              title="vibe (terminal)"
-              note="Hand-authored STORYBOARD -> vibe build -> vibe render"
-              command="vhs assets/demos/cli.tape"
+              badge="1 · Quickstart"
+              title="DEMO-quickstart"
+              note="Host agent drives image generation, video generation, inspection, and overlay editing"
+              command="vhs assets/demos/quickstart-claude-code.tape"
             />
             <TapeCard
-              badge="2 · Optional agent"
-              title="vibe agent"
-              note="Fallback natural-language session when no host agent is driving vibe"
-              command="vhs assets/demos/agent.tape"
-            />
-            <TapeCard
-              badge="3 · Host agent"
-              title="storyboard build"
-              note="Host agent drives storyboard -> multi-beat MP4"
-              command="vhs assets/demos/host-agent.tape"
-            />
-            <TapeCard
-              badge="4 · Host agent"
-              title="primitive chain"
-              note="t2i -> i2v (Seedance) -> narration -> composed video"
-              command="vhs assets/demos/host-agent-i2v.tape"
+              badge="2 · Dogfood"
+              title="DEMO-dogfood"
+              note="Host agent runs the fuller storyboard build, render, and YAML workflow"
+              command="vhs assets/demos/dogfood-claude-code.tape"
             />
           </div>
 

@@ -5,10 +5,9 @@
  * (v0.59+) needs: a `global` direction block (everything before the first
  * `## Beat …` heading) plus an array of `beats`.
  *
- * The format follows Hyperframes' step-4-storyboard.md convention — see
- * `tests/v059-preflight/fixtures/STORYBOARD.md` for an exemplar — but stays
- * forgiving on small variations (em-dash vs hyphen vs colon between
- * "Beat N" and the title; explicit "Beat" prefix optional).
+ * The format follows Hyperframes' step-4-storyboard.md convention, but stays
+ * forgiving on small variations (em-dash vs hyphen vs colon between "Beat N"
+ * and the title; explicit "Beat" prefix optional).
  *
  * v0.60 adds optional YAML cue extraction so a `vibe scene build` driver can
  * dispatch TTS / image-gen / duration without separate flags:

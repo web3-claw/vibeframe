@@ -7,8 +7,8 @@
  * generator also reads it back via the symbol stamped on each Command,
  * exposing the tier as `--describe` JSON for agents.
  *
- * The single source of truth for which tier each subcommand belongs to
- * is `docs/cli-mental-model.md`.
+ * The command modules apply the actual tier values near their command
+ * registration so schema/help output stays close to the implementation.
  */
 
 import type { Command } from "commander";

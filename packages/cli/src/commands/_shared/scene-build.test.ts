@@ -18,7 +18,8 @@ vi.mock("./tts-resolve.js", () => ({
   TtsKeyMissingError: class TtsKeyMissingError extends Error {},
 }));
 
-vi.mock("@vibeframe/ai-providers", () => ({
+vi.mock("@vibeframe/ai-providers", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@vibeframe/ai-providers")>()),
   OpenAIImageProvider: vi.fn(),
 }));
 

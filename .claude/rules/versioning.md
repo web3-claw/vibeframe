@@ -10,6 +10,7 @@ paths:
 All packages share the same version number. Update versions when making significant changes:
 
 **When to bump versions:**
+
 - `patch` (0.1.0 → 0.1.1): Bug fixes, minor improvements
 - `minor` (0.1.0 → 0.2.0): New features, new commands
 - `major` (0.1.0 → 1.0.0): Breaking changes, major milestones
@@ -18,11 +19,13 @@ All packages share the same version number. Update versions when making signific
 
 **Auto-bump rule for Claude Code:**
 After committing `feat:` or `fix:` changes, bump the version before pushing:
+
 - `fix:` commits → bump `patch`
 - `feat:` commits → bump `minor`
 - Multiple commits in one session → bump once based on highest level (feat > fix)
 
 **How to update:**
+
 ```bash
 # IMPORTANT: pnpm -r exec only updates packages/*, NOT root package.json
 # You must run BOTH commands to keep versions in sync:
@@ -46,6 +49,7 @@ git tag vX.Y.Z
 **Common pitfall:** Running only `pnpm -r exec` will update workspace packages but NOT the root `package.json`, causing version mismatch. Always run both commands.
 
 **Files to update (must all have same version):**
+
 - `package.json` (root) — Often forgotten!
 - `packages/cli/package.json`
 - `packages/core/package.json`
@@ -72,18 +76,18 @@ A `PreToolUse` hook (`.claude/hooks/pre-push-validate.sh`) automatically validat
 
 Root-level docs:
 
-| File | Purpose |
-|------|---------|
-| `README.md` | Public-facing intro, quick start, MCP setup |
-| `CLAUDE.md` | Developer guidance for Claude Code |
-| `ROADMAP.md` | Feature roadmap with `[x]` completion tracking |
-| `MODELS.md` | AI model SSOT (Single Source of Truth) |
+| File         | Purpose                                          |
+| ------------ | ------------------------------------------------ |
+| `README.md`  | Public-facing intro, quick start, MCP setup      |
+| `CLAUDE.md`  | Developer guidance for Claude Code               |
+| `ROADMAP.md` | Public roadmap: Now / Next / Later / Not Planned |
+| `MODELS.md`  | AI model SSOT (Single Source of Truth)           |
 
 ## Update Rules
 
 After completing any feature or fix, update:
 
-1. **`ROADMAP.md`** - Mark completed items with `[x]`, add new CLI commands to status section
+1. **`ROADMAP.md`** - Keep public roadmap categories current; avoid internal implementation logs
 2. **`MODELS.md`** - Update when adding/changing AI providers or models (SSOT — never duplicate model tables elsewhere)
 3. **`README.md`** - Keep tool counts, test counts, feature highlights in sync
 4. **`apps/web/app/page.tsx`** - Keep version badge and feature counts in sync

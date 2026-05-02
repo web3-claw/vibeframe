@@ -1,230 +1,156 @@
 ---
 name: vibe-scene
-description: Author and edit per-scene HTML compositions (Hyperframes-backed). Use when the user wants editable, agent-friendly scenes instead of opaque MP4s — or wants to iterate on a single scene without re-rendering the whole project.
+description: Author and edit VibeFrame scene projects. Use when the user wants editable HTML-based video scenes, storyboard-to-MP4 composition, or a host-agent authoring loop.
 ---
 
-# vibe-scene — Per-scene HTML authoring
+# vibe-scene
 
-A scene project is a directory that is **bilingual**: it works with both
-`vibe` and `npx hyperframes`. Each scene is one HTML file with scoped CSS and
-a paused GSAP timeline. Cheap to edit, cheap to lint, expensive only at render.
+VibeFrame scene projects are editable video projects built from:
 
-`vibe scene build` (v0.60+) is the supported one-shot driver from a
-written storyboard to an MP4. The older `vibe pipeline script-to-video`
-was deprecated in v0.63 and will be removed in a later major.
+- `STORYBOARD.md` - beats, narration, backdrop cues, duration hints
+- `DESIGN.md` - visual identity, palette, typography, motion rules
+- `compositions/scene-*.html` - per-beat HTML compositions
+- `index.html` - root timeline that references scene compositions
+- `assets/` and `renders/` - generated inputs and final outputs
 
-## Three authoring paths (v0.60+)
-
-VibeFrame supports three paths into the same project layout. Pick by how
-much the user wants to author by hand vs. delegate to an agent.
-
-| Path | Command | When to use | Output quality |
-|---|---|---|---|
-| **One-shot (default, v0.60+)** | `vibe scene build [project-dir]` | STORYBOARD.md has YAML frontmatter + per-beat cues — single command dispatches narration TTS + backdrop image-gen + composes scene HTML via skills + renders. Idempotent. | Cinematic; matches the v0.60 demo MP4 |
-| **High-craft (manual)** | `DESIGN.md` + `/hyperframes` skill in Claude Code | Maximum control: hand-author each scene with the agent reading DESIGN.md as a hard-gate | Cinematic; matches what the Hyperframes ecosystem ships |
-| **Quick draft / fallback** | `vibe scene add --style <preset>` | No agent or no API keys; fast iteration on layout/text | Generic but functional |
-
-**Recommend `vibe scene build` whenever the user has a STORYBOARD with
-narration / backdrop intent.** It's the cleanest path and handles the full
-storyboard → MP4 chain.
-
-The `scene-html-emit` 5-preset path (used by `vibe scene add --style ...`)
-exists so non-agent flows still work — it is intentionally not the
-cinematic finish layer.
-
-## High-craft path (DESIGN.md → agent → HTML)
-
-1. `vibe scene init my-promo --visual-style "Swiss Pulse"` — seeds
-   `DESIGN.md` (palette, typography, motion, transitions) plus the
-   `vibe.project.yaml`/`hyperframes.json`/`index.html` scaffold.
-2. Install / load the Hyperframes skill set so `/hyperframes` is in scope:
-   ```bash
-   npx skills add heygen-com/hyperframes
-   ```
-3. Hand the user's `DESIGN.md` + `STORYBOARD.md` (and any narration text)
-   to Claude Code with `/hyperframes` loaded; ask it to author each scene
-   HTML directly under `compositions/scene-<id>.html`. The skill enforces
-   the visual identity contract — scenes that contradict DESIGN.md are
-   rejected on lint.
-4. `vibe scene lint --fix` for mechanical issues, `vibe scene render` to
-   MP4. Asset generation (`vibe scene add --visuals "..." --no-html`) can
-   still run alongside.
-
-`DESIGN.md` is the hard-gate: never author scene HTML before it exists.
-Browse named styles via `vibe scene styles`; re-seed an existing project
-with `vibe scene init . --visual-style "<name>"` (idempotent).
-
-## Quick-draft path (5-preset `scene add`)
+Use the top-level commands for the main project lifecycle:
 
 ```bash
-vibe scene init my-promo -r 16:9 -d 30          # 1. scaffold project
-vibe scene add intro --style announcement \
-    --headline "Ship videos, not clicks"        # 2. author scene(s)
-vibe scene lint                                 # 3. validate
-vibe scene render                               # 4. render to MP4 (Chrome)
+vibe init my-video --profile agent --ratio 16:9
+vibe build my-video
+vibe render my-video -o renders/final.mp4
 ```
 
-`vibe scene init` is **idempotent** — running it on an existing Hyperframes
-directory merges `hyperframes.json` instead of clobbering it. Safe to invoke
-on user-provided projects.
+The `vibe scene ...` namespace is now the lower-level authoring surface:
+`install-skill`, `compose-prompts`, `list-styles`, `add`, and `lint`.
 
-## Subcommands
+## Pick The Right Path
+
+| Path                       | Use when                                                                                | Commands                                                     |
+| -------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Self-contained batch build | A human is running the demo or CI should produce scene HTML without a host coding agent | `vibe build --mode batch --composer openai`                  |
+| Host-agent authoring       | Claude Code/Codex/Cursor should write the scene HTML from a plan                        | `vibe build --mode agent`, then `vibe scene compose-prompts` |
+| Single-scene draft         | You need a quick template scene or fallback HTML                                        | `vibe scene add`                                             |
+
+Default recommendation for public demos and reproducible dogfood runs:
 
 ```bash
-vibe scene init <dir> [-r 16:9|9:16|1:1|4:5] [-d <sec>] [--visual-style "<name>"]
-vibe scene styles [<name>]                    # list / show vendored visual identities
-vibe scene add <name> --style <preset> [...]
-vibe scene lint [<root>] [--json] [--fix]
-vibe scene render [<root>] [--fps 30] [--quality standard] [--format mp4]
+vibe init my-video --profile agent --ratio 16:9
+# edit DESIGN.md and STORYBOARD.md
+vibe build my-video \
+  --mode batch \
+  --composer openai \
+  --tts kokoro \
+  --skip-backdrop \
+  --skip-render
+vibe scene lint index.html --project my-video --fix
+vibe render my-video -o renders/final.mp4 --quality standard
 ```
 
-Run `vibe scene <sub> --help` for the full flag list, or
-`vibe schema scene.<sub>` for a machine-readable JSON shape.
+Use `--skip-backdrop` when you want a low-cost composition test. Remove it when
+the demo should exercise OpenAI image generation from each beat's `backdrop`
+cue.
 
-## Style presets (for `vibe scene add --style`)
+## Host-Agent Loop
 
-- **simple** — backdrop + bottom caption (default)
-- **announcement** — single huge headline, gradient text
-- **explainer** — kicker + title + subtitle stack
-- **kinetic-type** — words animate in word-by-word
-- **product-shot** — corner label + bottom headline + slow zoom
-
-All presets accept `--narration <text|file>`, `--visuals <prompt>`,
-`--headline`, `--kicker`. With `--narration`, scene duration auto-derives
-from the generated TTS audio.
-
-## Asset generation
-
-`vibe scene add` integrates the existing AI providers:
-
-- `--narration "..."` → TTS provider (see below) → `assets/narration-<id>.{mp3|wav}`
-- `--narration-file <path>` → copies a pre-existing wav/mp3 (TTS skipped)
-- After audio exists → Whisper word-level transcribe → `assets/transcript-<id>.json`
-- `--visuals "..."` → Gemini (default) or OpenAI image → `assets/scene-<id>.png`
-- `--no-audio` / `--no-image` / `--no-transcribe` skip individual stages
-  (useful for hand-authored or CI-friendly seeds).
-
-### TTS provider (`--tts <auto|elevenlabs|kokoro>`)
-
-| Provider | Cost | Quality | Cold start | Output |
-|---|---|---|---|---|
-| **ElevenLabs** | ~$0.02/scene | high | none | mp3 |
-| **Kokoro** (local, Apache 2.0) | $0 | medium-high | first call downloads ~330MB | wav |
-
-`--tts auto` (default): picks ElevenLabs when `ELEVENLABS_API_KEY` is set,
-otherwise falls back to Kokoro. Local-only users get a working pipeline
-with no API key. The first Kokoro call shows a `~330MB download` spinner
-and caches to `~/.cache/huggingface/hub`; subsequent calls add ~1–2s.
-
-Voice: `--voice af_heart` (Kokoro, default), `--voice rachel` (ElevenLabs).
-
-### Word-level caption sync
-
-Whenever `assets/transcript-<id>.json` exists, three presets render each
-narration word as its own `<span class="word">` and animate them at the
-audio's absolute word start time:
-
-- `simple` — caption splits into word spans with fade-in at each start.
-- `explainer` — subtitle splits; kicker + title stay static.
-- `kinetic-type` — uses transcript timing instead of even stagger.
-  **Visible text comes from the transcript**, not `--headline` (narration
-  is the ground truth).
-
-`announcement` and `product-shot` ignore the transcript — their headlines
-are intentionally static. Use `--no-transcribe` to skip Whisper if you
-don't want word-sync (or have no `OPENAI_API_KEY`).
-
-### Audio in the rendered MP4 (v0.55)
-
-`vibe scene render` runs an ffmpeg post-pass that overlays every
-`<audio>` element onto the producer's video at its absolute timeline
-position. The producer's video stream is copied untouched (`-c:v copy`
-— no re-encode) so the only added cost is one cheap audio mux.
-
-The render JSON now reports `audioCount` (how many `<audio>` elements
-were found) and `audioMuxApplied` (whether the ffmpeg pass succeeded).
-If `ffmpeg` is missing from PATH the producer's silent video is left
-in place and `audioMuxWarning` carries the reason.
-
-## Lint feedback loop (agent pattern)
+Use this when Claude Code or another coding agent should be the reasoner that
+authors `compositions/scene-*.html`.
 
 ```bash
-vibe scene lint --json
+vibe build my-video \
+  --mode agent \
+  --tts kokoro \
+  --skip-backdrop \
+  --skip-render
+
+vibe scene compose-prompts my-video --json
 ```
 
-Returns structured `{ ok, errorCount, warningCount, files: [{file, findings:[...]}], fixed: [...] }`.
-Each finding has `severity`, `code`, `message`, and an optional `fixHint`. The
-recommended agent loop:
+If `vibe build --mode agent` returns a `needs-author` plan:
 
-1. Run `vibe scene lint --json --fix` (mechanical fixes applied).
-2. If `errorCount > 0`, read the findings and edit the scene HTML.
-3. Re-lint. **Cap retries at 3** — if errors persist, fall back to a template
-   preset (`vibe scene add <id> --style simple --force`) and surface the
-   error to the user.
+1. Read the compose plan.
+2. Author each missing `compositions/scene-<id>.html`.
+3. Run `vibe scene lint index.html --project my-video --fix`.
+4. Fix remaining lint errors by editing the HTML.
+5. Run `vibe render my-video`.
 
-`--fix` currently auto-resolves: missing `class="clip"`, missing
-`data-track-index`, GSAP timeline registration. Layout and content errors
-must be hand-fixed.
+Hard rules for authored scene HTML:
 
-## STORYBOARD-to-MP4 (one command, v0.60+)
+- Every timed element needs `data-start`, `data-duration`, and `data-track-index`.
+- Timed elements must have `class="clip"`.
+- GSAP timelines must be paused and registered on `window.__timelines`.
+- Do not use `Date.now()`, `Math.random()`, or network fetches in render paths.
+- Route final audio through root-level `<audio>` elements when possible.
+
+## Low-Level Scene Commands
 
 ```bash
-vibe scene init my-promo --visual-style "Swiss Pulse" -d 12
-# (edit STORYBOARD.md with per-beat YAML cues — narration, backdrop, duration)
-vibe scene build my-promo
+vibe scene install-skill my-video --host auto
+vibe scene compose-prompts my-video --json
+vibe scene list-styles
+vibe scene add intro --project my-video --style announcement --headline "Hello"
+vibe scene lint index.html --project my-video --json --fix
 ```
 
-`vibe scene build` reads the STORYBOARD frontmatter + per-beat cues, dispatches
-TTS + image-gen per beat, composes scene HTML via the
-`compose-scenes-with-skills` pipeline, and renders to MP4. Idempotent: existing
-assets are reused, `--force` overrides, sha256-cached compose results.
+Run `vibe schema scene.<subcommand>` before using less common flags.
 
-Output is an editable scene project, not a sealed MP4. Re-run `vibe scene render`
-after editing any scene to refresh the final video.
+## STYLE And STORYBOARD Guidance
 
-## Hyperframes interop
+Never author scene HTML before `DESIGN.md` exists. Treat it as the hard gate
+for visual decisions:
 
-If `/hyperframes` and `/gsap` skills are installed, prefer them for
-scene-internal animation work — they encode the upstream framework rules
-directly. VibeFrame's `vibe scene lint` is the same in-process linter HF uses,
-so findings transfer 1:1.
+- palette and contrast
+- typography and hierarchy
+- layout density
+- animation timing and transition style
+- what to avoid
 
-If neither is installed, the **Key Rules** at the top of every scene project's
-`CLAUDE.md` (written by `vibe scene init`) cover the essentials:
+For `STORYBOARD.md`, prefer compact beat blocks:
 
-1. Every timed element needs `data-start`, `data-duration`, `data-track-index`.
-2. Timed elements **MUST** have `class="clip"`.
-3. Timelines must be paused and registered: `window.__timelines["<id>"] = gsap.timeline({ paused: true })`.
-4. `<video>` uses `muted`; route audio through a separate `<audio>` element.
-5. Sub-compositions reference scenes via `data-composition-src="compositions/<file>.html"`.
-6. No `Date.now()`, `Math.random()`, or network fetches — render must be deterministic.
+````markdown
+## Beat hook - First claim
 
-## When to use VibeFrame vs raw Hyperframes
+```yaml
+narration: "The first sentence the viewer hears."
+backdrop: "Specific visual prompt for the scene backdrop"
+duration: 5
+```
 
-| Task | Tool |
-|------|------|
-| Generate narration + image, then author scene | `vibe scene add` |
-| Generate a full scenes project from a STORYBOARD | `vibe scene build` (v0.60+) |
-| Hand-tweak a single scene's animation | edit `compositions/<file>.html` directly |
-| Render the project | `vibe scene render` *or* `npx hyperframes render` (equivalent) |
-| Lint | `vibe scene lint` *or* `npx hyperframes lint` (equivalent) |
+What the scene should show.
+````
 
-The `vibe` CLI adds asset generation, AI orchestration, and pipeline
-integration on top of Hyperframes' rendering primitives. Pick `npx hyperframes`
-for pure framework work; pick `vibe` when AI assets or pipelines are involved.
+## Lint Feedback Loop
 
-## Quality checklist before render
+```bash
+vibe scene lint index.html --project my-video --json --fix
+```
 
-- [ ] `vibe scene lint` exits 0 (or only warnings)
-- [ ] `vibe doctor` confirms a usable Chrome (required for render)
-- [ ] Root `data-duration` matches the sum of clip durations (auto-managed by
-      `vibe scene add` — only verify if you hand-edited)
-- [ ] Aspect ratio in `vibe.project.yaml` matches the destination platform
+Recommended loop:
 
-## Common failures & fixes
+1. Run lint with `--json --fix`.
+2. Fix any `error` findings in the referenced scene file.
+3. Re-run lint.
+4. Cap retries at 3; if errors persist, replace the scene with a simpler
+   `vibe scene add ... --style simple --force` draft and explain the tradeoff.
 
-- **`Root composition not found`** — run `vibe scene init` first or pass `--project <dir>`.
-- **`Could not determine canvas dimensions`** — `index.html` lost its `data-width`/`data-height`. Re-init or copy them from `vibe.project.yaml`.
-- **`host_missing_composition_id` lint error** — root clip refs lost their `data-composition-id`. `--fix` doesn't repair this; re-add the scene with `--force`.
-- **Render hangs at 0% on macOS** — Chrome detection failed. Run `vibe doctor`; install Chrome / set `CHROME_PATH`.
-- **Scene HTML produced by Claude fails lint repeatedly** — drop to a template preset (`--style simple`) and treat the AI output as a starting point for hand-edits, not a finished asset.
+Warnings can be acceptable for demos only when the final render is visually
+correct and deterministic.
+
+## Render Checklist
+
+- `vibe doctor` reports Chrome and FFmpeg as available.
+- `vibe scene lint` exits 0 or only acceptable warnings remain.
+- `index.html` references every `compositions/scene-*.html` file needed.
+- `vibe render my-video -o renders/final.mp4` writes the expected MP4.
+- Final `media info` or `ffprobe` confirms the intended duration, fps, and
+  codec shape.
+
+## Common Failures
+
+- `Root composition not found`: run `vibe build` once so the render scaffold is
+  created, or use `vibe init --profile full`.
+- `needs-author`: expected in `--mode agent`; author the listed scene files and
+  rerun build.
+- `OPENAI_API_KEY not set`: use `--skip-backdrop` for a local composition test,
+  or configure the key before generating backdrops.
+- Render hangs at 0%: run `vibe doctor`; install Chrome or set `CHROME_PATH`.

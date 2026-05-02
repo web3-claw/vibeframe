@@ -47,6 +47,7 @@ import {
   resolveComposer,
   composerEnvVar,
 } from "./composer-resolve.js";
+import { getApiKeyFromConfig } from "../../config/index.js";
 
 /** Effort level → token caps. Model is per-provider (see MODEL_SETTINGS_BY_PROVIDER). */
 export type ComposeEffort = "low" | "medium" | "high";
@@ -230,6 +231,20 @@ Requirements (non-negotiable):
   This is the #2 source of "text disappears mid-beat" bugs after \`.clip\` sizing.
 - Timed children inside the composition have \`class="clip"\` plus
   \`data-start\`, \`data-duration\`, \`data-track-index\`.
+- If the beat cues include \`backdrop\`, the build step has already generated
+  \`assets/backdrop-${ctx.beat.id}.png\`. Use that local file as the full-frame
+  visual backdrop. Do NOT replace it with abstract CSS, an external stock image,
+  Unsplash, a CDN URL, or a remote placeholder.
+- The exact backdrop path string is \`assets/backdrop-${ctx.beat.id}.png\`.
+  Do NOT prefix it with \`../\` or \`./\`: sub-composition fragments are mounted
+  from the project root \`index.html\`, so \`../assets/...\` resolves outside the
+  project and renders black.
+- Do not import external font or image URLs. Use the project DESIGN.md font
+  choice when explicit; otherwise use \`Inter\`, which is available in the
+  deterministic render font map.
+- If the beat cues include \`narration\`, do not embed an \`<audio>\` tag in the
+  scene fragment. The root timeline wires \`assets/narration-${ctx.beat.id}.wav\`
+  or \`assets/narration-${ctx.beat.id}.mp3\` separately.
 - **\`.clip\` elements get visibility control from the framework but NO
   sizing.** Always give \`.clip\` explicit fill via CSS:
   \`{ position: absolute; inset: 0; }\` (or equivalent
@@ -701,6 +716,30 @@ export interface ComposeScenesActionResult {
   error?: string;
 }
 
+const CONFIG_PROVIDER_BY_COMPOSER: Record<ComposerProvider, string> = {
+  claude: "anthropic",
+  openai: "openai",
+  gemini: "google",
+};
+
+async function resolveComposerConfigAware(
+  explicit: ComposerProvider | undefined,
+  cwd: string,
+): Promise<{ provider: ComposerProvider; apiKey: string }> {
+  if (explicit) {
+    const configKey = await getApiKeyFromConfig(CONFIG_PROVIDER_BY_COMPOSER[explicit], { cwd });
+    if (configKey) return { provider: explicit, apiKey: configKey };
+    return resolveComposer(explicit);
+  }
+
+  for (const candidate of ["claude", "gemini", "openai"] as const) {
+    const configKey = await getApiKeyFromConfig(CONFIG_PROVIDER_BY_COMPOSER[candidate], { cwd });
+    if (configKey) return { provider: candidate, apiKey: configKey };
+  }
+
+  return resolveComposer();
+}
+
 /**
  * Execute the action. Per-beat fanout via `Promise.allSettled` — all beats
  * compose in parallel, all errors surface together (rather than fail-fast,
@@ -748,7 +787,7 @@ export async function executeComposeScenesWithSkills(
   let provider: ComposerProvider;
   let apiKey: string;
   try {
-    const resolved = resolveComposer(params.composer);
+    const resolved = await resolveComposerConfigAware(params.composer, projectRoot);
     provider = resolved.provider;
     apiKey = resolved.apiKey;
   } catch {
