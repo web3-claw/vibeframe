@@ -11,6 +11,7 @@
  * This file owns the lower-level subcommands only:
  *   - add               — author one scene (template + assets)
  *   - lint              — in-process Hyperframes lint + --fix
+ *   - repair            — deterministic mechanical repairs
  *   - list-styles       — browse vendored visual identities
  *   - install-skill     — retroactive composition-rules install
  *   - compose-prompts   — emit per-beat plan for a host agent (no LLM call)
@@ -80,6 +81,7 @@ import {
   type InstallSkillHost,
 } from "./_shared/install-skill.js";
 import { getComposePrompts } from "./_shared/compose-prompts.js";
+import { executeSceneRepair } from "./_shared/scene-repair.js";
 
 function validateDuration(value: string): number {
   const n = parseFloat(value);
@@ -106,6 +108,7 @@ Examples:
       --visuals "studio desk, soft lighting"              # AI narration + image
   $ vibe scene lint                                       # Validate every scene against composition rules
   $ vibe scene lint --fix                                 # Auto-fix mechanical issues (e.g. missing class="clip")
+  $ vibe scene repair --project my-video --json           # Deterministic scene repairs
   $ vibe scene lint --json                                # Structured output for agent loops
   $ vibe scene list-styles                                     # Browse seed visual styles for DESIGN.md
 
@@ -972,6 +975,85 @@ sceneCommand
     if (!result.ok) process.exitCode = 1;
   });
 
+// ---------------------------------------------------------------------------
+// `vibe scene repair`
+// ---------------------------------------------------------------------------
+
+sceneCommand
+  .command("repair")
+  .description("Apply deterministic mechanical repairs to scene HTML")
+  .argument("[root]", "Root composition file relative to --project", "index.html")
+  .option("--project <dir>", "Project directory", ".")
+  .option("--dry-run", "Preview repairs without writing files")
+  .action(async (root: string, options) => {
+    const startedAt = Date.now();
+    const projectDir = resolve(options.project as string);
+    if (!(await rootExists(projectDir, root))) {
+      exitWithError(generalError(
+        `Root composition not found: ${resolve(projectDir, root)}`,
+        "Run `vibe build --stage sync` first, or pass --project <dir>.",
+      ));
+    }
+
+    const spinner = isJsonMode() ? null : ora(options.dryRun ? "Checking repairable scene issues..." : "Repairing scenes...").start();
+    let result;
+    try {
+      result = await executeSceneRepair({
+        projectDir,
+        rootRel: root,
+        dryRun: !!options.dryRun,
+      });
+    } catch (error) {
+      spinner?.fail("Scene repair failed");
+      const msg = error instanceof Error ? error.message : String(error);
+      exitWithError(generalError(`Scene repair failed: ${msg}`));
+    }
+
+    if (isJsonMode()) {
+      outputSuccess({
+        command: "scene repair",
+        startedAt,
+        data: { ...result },
+      });
+      if (result.status === "fail") process.exitCode = 1;
+      return;
+    }
+
+    const repairedCount = result.fixed.length;
+    const wouldFixCount = result.wouldFix.length;
+    if (result.status === "pass") {
+      spinner?.succeed(chalk.green(options.dryRun
+        ? `Repair check clean — ${wouldFixCount} repair(s) available`
+        : `Scene repair complete — ${repairedCount} file(s) changed`));
+    } else if (result.status === "warn") {
+      spinner?.warn(chalk.yellow(`Scene repair finished with ${result.remainingIssues.length} warning/info finding(s)`));
+    } else {
+      spinner?.fail(chalk.red(`Scene repair left ${result.remainingIssues.length} issue(s)`));
+    }
+
+    const repairs = options.dryRun ? result.wouldFix : result.fixed;
+    if (repairs.length > 0) {
+      console.log();
+      console.log(chalk.bold.cyan(options.dryRun ? "Would repair" : "Repaired"));
+      console.log(chalk.dim("-".repeat(60)));
+      for (const item of repairs) {
+        console.log(`  ${chalk.green("✔")} ${item.file} ${chalk.dim(item.codes.join(", "))}`);
+      }
+    }
+
+    if (result.remainingIssues.length > 0) {
+      console.log();
+      console.log(chalk.bold.cyan("Remaining issues"));
+      console.log(chalk.dim("-".repeat(60)));
+      for (const issue of result.remainingIssues) {
+        const tag = issue.severity === "error" ? chalk.red("error") : issue.severity === "warning" ? chalk.yellow("warn") : chalk.blue("info");
+        console.log(`  ${tag} ${chalk.dim(`[${issue.code}]`)} ${issue.file ?? ""} ${issue.message}`);
+      }
+    }
+
+    if (result.status === "fail") process.exitCode = 1;
+  });
+
 function severityTag(severity: "error" | "warning" | "info"): string {
   if (severity === "error") return chalk.red("✘ error  ");
   if (severity === "warning") return chalk.yellow("⚠ warn   ");
@@ -988,4 +1070,5 @@ applyTiers(sceneCommand, {
   "install-skill": "free",
   "lint": "free",
   "list-styles": "free",
+  "repair": "free",
 });

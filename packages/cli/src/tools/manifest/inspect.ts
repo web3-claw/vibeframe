@@ -7,6 +7,7 @@
  */
 
 import { z } from "zod";
+import { resolve } from "node:path";
 import { defineTool, type AnyTool } from "../define-tool.js";
 import {
   executeAnalyze,
@@ -14,6 +15,74 @@ import {
 } from "../../commands/ai-analyze.js";
 import { executeReview } from "../../commands/ai-review.js";
 import { executeSuggestEdit } from "../../commands/ai-suggest-edit.js";
+import { inspectProject } from "../../commands/_shared/scene-inspect.js";
+import { inspectRender } from "../../commands/_shared/render-inspect.js";
+
+// ── inspect_project ────────────────────────────────────────────────────────
+
+export const inspectProjectTool = defineTool({
+  name: "inspect_project",
+  category: "analyze",
+  cost: "free",
+  description:
+    "Local project inspection: checks STORYBOARD.md, DESIGN.md, config, build-report, scene lint, composition files, and referenced assets. Writes review-report.json by default.",
+  schema: z.object({
+    projectDir: z.string().optional().describe("Project directory. Defaults to the surface's cwd."),
+    outputPath: z.string().optional().describe("Optional review report path. Defaults to <project>/review-report.json."),
+    report: z.boolean().optional().describe("Write review-report.json. Default true."),
+  }),
+  async execute(args, ctx) {
+    const projectDir = args.projectDir ? resolve(ctx.workingDirectory, args.projectDir) : ctx.workingDirectory;
+    const result = await inspectProject({
+      projectDir,
+      outputPath: args.outputPath ? resolve(ctx.workingDirectory, args.outputPath) : undefined,
+      writeReport: args.report !== false,
+    });
+    return {
+      success: result.status !== "fail",
+      data: result as unknown as Record<string, unknown>,
+      error: result.status === "fail" ? `${result.issues.filter((issue) => issue.severity === "error").length} project inspection error(s)` : undefined,
+      humanLines: [
+        `${result.status === "pass" ? "✅" : result.status === "warn" ? "⚠️" : "❌"} Project inspection ${result.status} — score ${result.score}/100`,
+        ...(result.reportPath ? [`report: ${result.reportPath}`] : []),
+      ],
+    };
+  },
+});
+
+// ── inspect_render ─────────────────────────────────────────────────────────
+
+export const inspectRenderTool = defineTool({
+  name: "inspect_render",
+  category: "analyze",
+  cost: "free",
+  description:
+    "Cheap local render inspection: finds the rendered video, probes duration/dimensions/audio, scans black frames and long silence, and writes review-report.json by default.",
+  schema: z.object({
+    projectDir: z.string().optional().describe("Project directory. Defaults to the surface's cwd."),
+    videoPath: z.string().optional().describe("Rendered video path. Defaults to build-report outputPath or latest renders/* video."),
+    outputPath: z.string().optional().describe("Optional review report path. Defaults to <project>/review-report.json."),
+    report: z.boolean().optional().describe("Write review-report.json. Default true."),
+  }),
+  async execute(args, ctx) {
+    const projectDir = args.projectDir ? resolve(ctx.workingDirectory, args.projectDir) : ctx.workingDirectory;
+    const result = await inspectRender({
+      projectDir,
+      videoPath: args.videoPath ? resolve(ctx.workingDirectory, args.videoPath) : undefined,
+      outputPath: args.outputPath ? resolve(ctx.workingDirectory, args.outputPath) : undefined,
+      writeReport: args.report !== false,
+    });
+    return {
+      success: result.status !== "fail",
+      data: result as unknown as Record<string, unknown>,
+      error: result.status === "fail" ? `${result.issues.filter((issue) => issue.severity === "error").length} render inspection error(s)` : undefined,
+      humanLines: [
+        `${result.status === "pass" ? "✅" : result.status === "warn" ? "⚠️" : "❌"} Render inspection ${result.status} — score ${result.score}/100`,
+        ...(result.reportPath ? [`report: ${result.reportPath}`] : []),
+      ],
+    };
+  },
+});
 
 // ── inspect_media ───────────────────────────────────────────────────────────
 
@@ -149,6 +218,8 @@ export const analyzeSuggestTool = defineTool({
 });
 
 export const inspectTools: readonly AnyTool[] = [
+  inspectProjectTool as unknown as AnyTool,
+  inspectRenderTool as unknown as AnyTool,
   analyzeMediaTool as unknown as AnyTool,
   analyzeVideoTool as unknown as AnyTool,
   analyzeReviewTool as unknown as AnyTool,

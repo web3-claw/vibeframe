@@ -32,7 +32,9 @@ export const contextCommand = new Command("context")
         "plan",
         "build --dry-run",
         "build",
+        "inspect project",
         "render",
+        "inspect render --cheap",
       ],
       mentalModel: {
         storyboard: "intent layer; edit or mutate beat cues here",
@@ -47,8 +49,8 @@ export const contextCommand = new Command("context")
         "VibeFrame default",
       ],
       semanticFixes: "host-agent",
-      mechanicalFixes: "vibe scene lint --fix; scene repair is reserved for deterministic P1 repairs",
-      publicFlow: "vibe init --from <brief> -> edit STORYBOARD.md/DESIGN.md -> vibe storyboard validate -> vibe plan -> vibe build --dry-run --max-cost <usd> -> vibe build -> vibe render",
+      mechanicalFixes: "vibe scene repair; vibe scene lint --fix remains the lower-level primitive",
+      publicFlow: "vibe init --from <brief> -> edit STORYBOARD.md/DESIGN.md -> vibe storyboard validate -> vibe plan -> vibe build --dry-run --max-cost <usd> -> vibe build -> vibe inspect project -> vibe render -> vibe inspect render --cheap",
     };
 
     if (options.json) {
@@ -72,7 +74,8 @@ export const contextCommand = new Command("context")
 Source of truth: \`STORYBOARD.md\`, \`DESIGN.md\`, and \`vibe.config.json\`.
 \`STORYBOARD.md\` is the intent layer. Generated scene files under
 \`compositions/\` are artifact layer. Use \`vibe storyboard *\` for narrow
-cue edits; use \`vibe scene lint --fix\` for deterministic composition checks.
+cue edits; use \`vibe inspect project\`, \`vibe inspect render --cheap\`, and
+\`vibe scene repair\` for deterministic local review and mechanical fixes.
 Semantic creative fixes belong to the host agent.
 
 Canonical flow:
@@ -83,7 +86,9 @@ vibe storyboard validate my-video --json
 vibe plan my-video --json
 vibe build my-video --dry-run --max-cost 5 --json
 vibe build my-video --max-cost 5 --json
+vibe inspect project my-video --json
 vibe render my-video --json
+vibe inspect render my-video --cheap --json
 \`\`\`
 
 Provider precedence: CLI flag -> storyboard cue -> \`vibe.config.json\` ->

@@ -21,7 +21,9 @@ vibe init my-video --from "45-second launch video for an AI-native editor"
 vibe storyboard validate my-video
 vibe plan my-video
 vibe build my-video --max-cost 5
+vibe inspect project my-video
 vibe render my-video -o renders/final.mp4
+vibe inspect render my-video --cheap
 ```
 
 ## Demo
@@ -155,7 +157,10 @@ vibe storyboard validate my-video --json
 vibe plan my-video --json
 vibe build my-video --dry-run --max-cost 5 --json
 vibe build my-video --tts kokoro --max-cost 5 --json
+vibe inspect project my-video --json
 vibe render my-video -o renders/final.mp4 --quality standard
+vibe inspect render my-video --cheap --json
+vibe scene repair --project my-video --json
 ```
 
 Each storyboard beat can include YAML cues:

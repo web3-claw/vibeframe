@@ -162,7 +162,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
     it("should register the full manifest", () => {
       // Manifest is the single source of truth post-v0.67 PR2.
       const tools = registry.getAll();
-      expect(tools.length).toBe(92);
+      expect(tools.length).toBe(95);
     });
 
     it("should register all project tools (5)", () => {
@@ -580,17 +580,17 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
       expect(mediaTools.length).toBe(12);  // +audio_isolate/voice_clone/dub/duck (Phase B v0.64)
       expect(generateTools.length).toBe(14);  // +background, video_status/cancel/extend, music_status, narration
       expect(editTools.length).toBe(16);  // +grade, speed_ramp, reframe, interpolate, upscale, animated_caption, edit_fill_gaps, edit_motion_overlay
-      expect(inspectTools.length).toBe(4);  // v0.75: video, media, review, suggest (was analyze_*)
+      expect(inspectTools.length).toBe(6);  // +project, render local review-loop tools
       expect(remixTools.length).toBe(3);    // v0.75: highlights, auto_shorts, regenerate_scene (was pipeline_*)
       expect(runTools.length).toBe(0);      // v0.75: bare `run` is MCP-only (`surfaces: ["mcp"]`); not registered into the agent surface
       expect(exportTools.length).toBe(3);
       expect(batchTools.length).toBe(3);
-      expect(sceneTools.length).toBe(5);    // v0.75: init/build/render moved out (now project-flow); scene_* keeps add/lint/styles/install-skill/compose-prompts
+      expect(sceneTools.length).toBe(6);    // +repair deterministic scene repair
       expect(storyboardTools.length).toBe(5); // TO-BE: list/validate/get/set/move
       expect(projectFlowTools.length).toBe(4);  // v0.75+: init/plan/build/render top-level
       expect(guideTools.length).toBe(1);  // v0.91: universal guide equivalent
 
-      // 5+13+4+12+14+16+4+3+0+3+3+5+5+4+1 = 92.
+      // 5+13+4+12+14+16+6+3+0+3+3+6+5+4+1 = 95.
       // timeline_create/info are canonical; project_create/info remain
       // compatibility aliases until v1.0.
       const totalTools = projectTools.length +
@@ -608,7 +608,7 @@ describe("CLI ↔ Agent Tool Synchronization", () => {
           storyboardTools.length +
           projectFlowTools.length +
           guideTools.length;
-      expect(totalTools).toBe(92);
+      expect(totalTools).toBe(95);
     });
   });
 });

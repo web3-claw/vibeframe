@@ -64,6 +64,12 @@ generated-*.png
 generated-*.mp4
 kling-*.mp4
 
+# Project-local report files emitted by `vibe build` / `vibe inspect *`.
+# They're per-project artifacts, never committed at repo root or inside
+# packages/.
+build-report.json
+review-report.json
+
 # Media files in wrong locations
 packages/cli/*.mp3
 

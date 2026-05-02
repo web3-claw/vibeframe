@@ -34,6 +34,7 @@ import {
 } from "../../commands/_shared/install-skill.js";
 import { detectedAgentHosts } from "../../utils/agent-host-detect.js";
 import { getComposePrompts } from "../../commands/_shared/compose-prompts.js";
+import { executeSceneRepair } from "../../commands/_shared/scene-repair.js";
 
 const SCENE_PRESETS = [
   "simple",
@@ -303,6 +304,44 @@ export const sceneLintTool = defineTool({
 });
 
 // ---------------------------------------------------------------------------
+// scene_repair
+// ---------------------------------------------------------------------------
+
+const sceneRepairSchema = z.object({
+  projectDir: z.string().optional().describe("Project directory. Defaults to the surface's cwd."),
+  root: z.string().optional().describe("Root composition file relative to projectDir. Default 'index.html'."),
+  dryRun: z.boolean().optional().describe("Preview deterministic repairs without writing files."),
+});
+
+export const sceneRepairTool = defineTool({
+  name: "scene_repair",
+  category: "scene",
+  cost: "free",
+  description:
+    "Apply deterministic mechanical scene repairs. Currently uses the safe lint auto-fix allow-list and never performs semantic creative rewrites.",
+  schema: sceneRepairSchema,
+  async execute(args, ctx) {
+    const projectDir = args.projectDir
+      ? resolve(ctx.workingDirectory, args.projectDir)
+      : ctx.workingDirectory;
+    const result = await executeSceneRepair({
+      projectDir,
+      rootRel: args.root,
+      dryRun: args.dryRun,
+    });
+    return {
+      success: result.status !== "fail",
+      data: result as unknown as Record<string, unknown>,
+      error: result.status === "fail" ? `${result.remainingIssues.filter((issue) => issue.severity === "error").length} remaining scene repair error(s)` : undefined,
+      humanLines: [
+        `${result.status === "pass" ? "✅" : result.status === "warn" ? "⚠️" : "❌"} Scene repair ${result.status}`,
+        `fixed: ${result.fixed.length}; wouldFix: ${result.wouldFix.length}; remaining: ${result.remainingIssues.length}`,
+      ],
+    };
+  },
+});
+
+// ---------------------------------------------------------------------------
 // render
 // ---------------------------------------------------------------------------
 
@@ -557,6 +596,7 @@ export const sceneTools: readonly AnyTool[] = [
   sceneInitTool as unknown as AnyTool,
   sceneAddTool as unknown as AnyTool,
   sceneLintTool as unknown as AnyTool,
+  sceneRepairTool as unknown as AnyTool,
   sceneRenderTool as unknown as AnyTool,
   sceneBuildTool as unknown as AnyTool,
   sceneStylesTool as unknown as AnyTool,

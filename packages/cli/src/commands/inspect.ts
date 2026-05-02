@@ -7,6 +7,8 @@
  * as both group and verb in the old design.)
  *
  * Commands:
+ *   inspect project - Local project completeness and composition checks
+ *   inspect render  - Local rendered video checks
  *   inspect media   - Unified analysis for images, videos, and YouTube URLs (Gemini)
  *   inspect video   - Analyze video files or YouTube URLs with Gemini
  *   inspect review  - AI video quality review and auto-fix (Gemini)
@@ -26,10 +28,13 @@ import { requireApiKey } from "../utils/api-key.js";
 import { applySuggestion } from "./ai-helpers.js";
 import { executeAnalyze, executeGeminiVideo } from "./ai-analyze.js";
 import { registerReviewCommand } from "./ai-review.js";
-import { isJsonMode, outputSuccess, exitWithError, apiError } from "./output.js";
+import { isJsonMode, outputSuccess, exitWithError, apiError, generalError } from "./output.js";
 import { sanitizeLLMResponse } from "./sanitize.js";
 import { rejectControlChars } from "./validate.js";
 import { applyTier } from "./_shared/cost-tier.js";
+import { inspectProject } from "./_shared/scene-inspect.js";
+import { inspectRender } from "./_shared/render-inspect.js";
+import type { ReviewIssue, ReviewStatus } from "./_shared/review-report.js";
 
 export const inspectCommand = new Command("inspect")
   .description("Inspect media using AI (images, videos, YouTube URLs)")
@@ -37,6 +42,8 @@ export const inspectCommand = new Command("inspect")
     "after",
     `
 Examples:
+  $ vibe inspect project my-video --json
+  $ vibe inspect render my-video --cheap --json
   $ vibe inspect media image.png "Describe this image"
   $ vibe inspect media video.mp4 "Summarize this video"
   $ vibe inspect media "https://youtube.com/watch?v=..." "Key takeaways"
@@ -51,6 +58,77 @@ Use '--fields response,model' to limit output size.
 Run 'vibe schema inspect.<command>' for structured parameter info.
 `
   );
+
+// ── inspect project ───────────────────────────────────────────────────
+
+inspectCommand
+  .command("project")
+  .description("Inspect project completeness, storyboard validity, scene lint, and asset references")
+  .argument("[project-dir]", "VibeFrame project directory", ".")
+  .option("-o, --output <path>", "Write review report to this path (default: <project>/review-report.json)")
+  .option("--no-report", "Do not write review-report.json")
+  .action(async (projectDirArg: string, options) => {
+    const startedAt = Date.now();
+    try {
+      const result = await inspectProject({
+        projectDir: resolve(projectDirArg),
+        outputPath: options.output,
+        writeReport: options.report !== false,
+      });
+      if (isJsonMode()) {
+        outputSuccess({
+          command: "inspect project",
+          startedAt,
+          data: { ...result },
+        });
+        if (result.status === "fail") process.exitCode = 1;
+        return;
+      }
+
+      printInspectSummary("Project Inspection", result.status, result.score, result.issues, result.reportPath);
+      if (result.status === "fail") process.exitCode = 1;
+    } catch (error) {
+      exitWithError(generalError(`Project inspection failed: ${error instanceof Error ? error.message : String(error)}`));
+    }
+  });
+applyTier(inspectCommand.commands[inspectCommand.commands.length - 1], "free");
+
+// ── inspect render ────────────────────────────────────────────────────
+
+inspectCommand
+  .command("render")
+  .description("Inspect a rendered project video with local cheap checks")
+  .argument("[project-dir]", "VibeFrame project directory", ".")
+  .option("--cheap", "Run local checks only (default; no AI/API calls)")
+  .option("--video <path>", "Rendered video path. Defaults to build-report outputPath or latest renders/* video.")
+  .option("-o, --output <path>", "Write review report to this path (default: <project>/review-report.json)")
+  .option("--no-report", "Do not write review-report.json")
+  .action(async (projectDirArg: string, options) => {
+    const startedAt = Date.now();
+    try {
+      const result = await inspectRender({
+        projectDir: resolve(projectDirArg),
+        videoPath: options.video,
+        outputPath: options.output,
+        writeReport: options.report !== false,
+      });
+      if (isJsonMode()) {
+        outputSuccess({
+          command: "inspect render",
+          startedAt,
+          data: { ...result },
+        });
+        if (result.status === "fail") process.exitCode = 1;
+        return;
+      }
+
+      printInspectSummary("Render Inspection", result.status, result.score, result.issues, result.reportPath);
+      if (result.status === "fail") process.exitCode = 1;
+    } catch (error) {
+      exitWithError(generalError(`Render inspection failed: ${error instanceof Error ? error.message : String(error)}`));
+    }
+  });
+applyTier(inspectCommand.commands[inspectCommand.commands.length - 1], "free");
 
 // ── analyze media ──────────────────────────────────────────────────────
 
@@ -155,6 +233,33 @@ inspectCommand
     }
   });
 applyTier(inspectCommand.commands[inspectCommand.commands.length - 1], "low");
+
+function printInspectSummary(
+  title: string,
+  status: ReviewStatus,
+  score: number,
+  issues: ReviewIssue[],
+  reportPath?: string,
+): void {
+  const color = status === "pass" ? chalk.green : status === "warn" ? chalk.yellow : chalk.red;
+  console.log();
+  console.log(chalk.bold.cyan(title));
+  console.log(chalk.dim("-".repeat(60)));
+  console.log(`  Status: ${color(status)}  Score: ${score}/100`);
+  if (reportPath) console.log(`  Report: ${chalk.dim(reportPath)}`);
+  if (issues.length === 0) {
+    console.log();
+    console.log(chalk.green("  No issues found."));
+    return;
+  }
+  console.log();
+  for (const issue of issues) {
+    const tag = issue.severity === "error" ? chalk.red("error") : issue.severity === "warning" ? chalk.yellow("warn") : chalk.blue("info");
+    const loc = issue.file ? chalk.dim(` ${issue.file}`) : issue.scene ? chalk.dim(` ${issue.scene}`) : "";
+    console.log(`  ${tag} ${chalk.dim(`[${issue.code}]`)}${loc} ${issue.message}`);
+    if (issue.suggestedFix) console.log(`       ${chalk.dim(issue.suggestedFix)}`);
+  }
+}
 
 // ── analyze video ──────────────────────────────────────────────────────
 

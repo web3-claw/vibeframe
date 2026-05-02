@@ -18,7 +18,7 @@ and `DESIGN.md` are the source of truth; generated files under
 edits and direct Markdown edits for larger creative rewrites.
 
 ```
-init --from → storyboard validate → plan → build → render  ← storyboard-to-video
+init --from → storyboard validate → plan → build → inspect → render  ← storyboard-to-video
 generate / edit / inspect / remix                          ← one-shot media tools
 scene / timeline                                            ← lower-level authoring
 run / agent / schema / context                              ← automation + agents
@@ -55,7 +55,7 @@ Generated from the live `cost` field in `vibe schema --list`.
 
 | Tier           | Count | Examples                                                                                                                                                                                     | Per-call cost                                                                                     |
 | -------------- | ----: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| **Free**       |    37 | `generate.music-status` · `generate.thumbnail` · `generate.video-status` · `generate.video-cancel` · `edit.noise-reduce` · `edit.fade` · `edit.text-overlay` · `edit.interpolate` · +29 more | FFmpeg only, no API call                                                                          |
+| **Free**       |    40 | `generate.music-status` · `generate.thumbnail` · `generate.video-status` · `generate.video-cancel` · `edit.noise-reduce` · `edit.fade` · `edit.text-overlay` · `edit.interpolate` · +32 more | FFmpeg only, no API call                                                                          |
 | **Low**        |    20 | `generate.speech` · `generate.narration` · `generate.sound-effect` · `generate.music` · `edit.silence-cut` · `edit.caption` · `edit.translate-srt` · `edit.jump-cut` · +12 more              | $0.01–$0.10 per call                                                                              |
 | **High**       |    10 | `generate.image` · `generate.storyboard` · `generate.motion` · `generate.background` · `edit.reframe` · `edit.image` · `edit.upscale` · `audio.dub` · +2 more                                | $1–$5 per call                                                                                    |
 | **Very High**  |     4 | `generate.video` · `generate.video-extend` · `edit.fill-gaps` · `remix.regenerate-scene`                                                                                                     | $5–$50+ per call                                                                                  |
@@ -842,6 +842,32 @@ Cost tier: `low`
 - `fields` _(string)_ — Comma-separated fields to include in output (e.g., response,model)
 - `dryRun` _(boolean)_ — Preview parameters without executing
 
+#### `vibe inspect project`
+
+Inspect project completeness, storyboard validity, scene lint, and asset references
+
+Cost tier: `free`
+
+**Parameters:**
+
+- `project-dir` _(string)_ — VibeFrame project directory
+- `output` _(string)_ — Write review report to this path (default: <project>/review-report.json)
+- `noReport` _(boolean)_ — Do not write review-report.json
+
+#### `vibe inspect render`
+
+Inspect a rendered project video with local cheap checks
+
+Cost tier: `free`
+
+**Parameters:**
+
+- `project-dir` _(string)_ — VibeFrame project directory
+- `cheap` _(boolean)_ — Run local checks only (default; no AI/API calls)
+- `video` _(string)_ — Rendered video path. Defaults to build-report outputPath or latest renders/\* video.
+- `output` _(string)_ — Write review report to this path (default: <project>/review-report.json)
+- `noReport` _(boolean)_ — Do not write review-report.json
+
 #### `vibe inspect review`
 
 Review video quality using Gemini AI and optionally auto-fix issues
@@ -1141,6 +1167,18 @@ Cost tier: `free`
 **Parameters:**
 
 - `name` _(string)_ — Style name to inspect (omit to list all)
+
+#### `vibe scene repair`
+
+Apply deterministic mechanical repairs to scene HTML
+
+Cost tier: `free`
+
+**Parameters:**
+
+- `root` _(string)_ — Root composition file relative to --project
+- `project` _(string)_ _(default: `"."`)_ — Project directory
+- `dryRun` _(boolean)_ — Preview repairs without writing files
 
 ### `timeline`
 

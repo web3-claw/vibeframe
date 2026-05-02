@@ -1,0 +1,412 @@
+import { existsSync } from "node:fs";
+import { readdir, readFile, stat } from "node:fs/promises";
+import { basename, isAbsolute, join, relative, resolve } from "node:path";
+
+import { commandExists, execSafe } from "../../utils/exec-safe.js";
+import { readProjectConfig } from "./project-config.js";
+import {
+  defaultReviewReportPath,
+  scoreIssues,
+  statusFromIssues,
+  uniqueRetryWith,
+  writeReviewReport,
+  type ReviewIssue,
+  type ReviewStatus,
+} from "./review-report.js";
+
+export interface TimeRange {
+  start: number;
+  end: number;
+  duration: number;
+}
+
+export interface RenderInspectOptions {
+  projectDir: string;
+  videoPath?: string;
+  outputPath?: string;
+  writeReport?: boolean;
+}
+
+export interface RenderInspectResult {
+  schemaVersion: "1";
+  kind: "render";
+  project: string;
+  videoPath: string | null;
+  status: ReviewStatus;
+  score: number;
+  issues: ReviewIssue[];
+  checks: {
+    renderFound: boolean;
+    fileSizeBytes?: number;
+    durationSec?: number;
+    expectedDurationSec?: number;
+    durationDriftSec?: number;
+    width?: number;
+    height?: number;
+    expectedAspect?: string;
+    hasAudio?: boolean;
+    blackFrames: TimeRange[];
+    silences: TimeRange[];
+  };
+  retryWith: string[];
+  reportPath?: string;
+}
+
+interface FfprobeStream {
+  codec_type?: string;
+  width?: number;
+  height?: number;
+}
+
+interface FfprobeInfo {
+  streams?: FfprobeStream[];
+  format?: {
+    duration?: string;
+    size?: string;
+  };
+}
+
+const VIDEO_EXTENSIONS = new Set([".mp4", ".mov", ".webm", ".m4v"]);
+
+export function parseBlackdetectOutput(output: string): TimeRange[] {
+  const ranges: TimeRange[] = [];
+  const regex = /black_start:(-?\d+(?:\.\d+)?)\s+black_end:(-?\d+(?:\.\d+)?)\s+black_duration:(-?\d+(?:\.\d+)?)/g;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(output)) !== null) {
+    ranges.push({
+      start: Number.parseFloat(match[1]),
+      end: Number.parseFloat(match[2]),
+      duration: Number.parseFloat(match[3]),
+    });
+  }
+  return ranges;
+}
+
+export function parseSilencedetectOutput(output: string): TimeRange[] {
+  const starts: number[] = [];
+  const ranges: TimeRange[] = [];
+  const startRegex = /silence_start:\s*(-?\d+(?:\.\d+)?)/g;
+  const endRegex = /silence_end:\s*(-?\d+(?:\.\d+)?)\s+\|\s+silence_duration:\s*(-?\d+(?:\.\d+)?)/g;
+  let match: RegExpExecArray | null;
+  while ((match = startRegex.exec(output)) !== null) {
+    starts.push(Number.parseFloat(match[1]));
+  }
+  let index = 0;
+  while ((match = endRegex.exec(output)) !== null) {
+    if (index >= starts.length) continue;
+    ranges.push({
+      start: starts[index],
+      end: Number.parseFloat(match[1]),
+      duration: Number.parseFloat(match[2]),
+    });
+    index++;
+  }
+  return ranges;
+}
+
+export async function inspectRender(opts: RenderInspectOptions): Promise<RenderInspectResult> {
+  const projectDir = resolve(opts.projectDir);
+  const issues: ReviewIssue[] = [];
+  const retryWith: string[] = [];
+  const videoPath = await resolveRenderVideoPath(projectDir, opts.videoPath);
+  const checks: RenderInspectResult["checks"] = {
+    renderFound: videoPath !== null,
+    blackFrames: [],
+    silences: [],
+  };
+
+  if (!videoPath) {
+    issues.push({
+      severity: "error",
+      code: "RENDER_NOT_FOUND",
+      message: "No rendered video was found. Pass --video or render the project first.",
+      suggestedFix: "Run `vibe build --stage render --json` or `vibe render --json`.",
+    });
+    retryWith.push(`vibe build ${projectDir} --stage render --json`, `vibe render ${projectDir} --json`);
+    return maybeWriteRenderReport(projectDir, opts, {
+      schemaVersion: "1",
+      kind: "render",
+      project: projectDir,
+      videoPath: null,
+      status: "fail",
+      score: scoreIssues(issues),
+      issues,
+      checks,
+      retryWith: uniqueRetryWith(retryWith),
+    });
+  }
+
+  const fileStat = await stat(videoPath);
+  checks.fileSizeBytes = fileStat.size;
+  if (fileStat.size === 0) {
+    issues.push({
+      severity: "error",
+      code: "EMPTY_RENDER",
+      message: "Rendered video file is empty.",
+      file: displayPath(videoPath),
+      suggestedFix: "Render again with `vibe render --json`.",
+    });
+    retryWith.push(`vibe render ${projectDir} --json`);
+  }
+
+  const expectedDurationSec = await expectedDurationFromBuildReport(projectDir);
+  if (expectedDurationSec !== undefined) checks.expectedDurationSec = expectedDurationSec;
+
+  if (!commandExists("ffprobe")) {
+    issues.push({
+      severity: "error",
+      code: "FFPROBE_UNAVAILABLE",
+      message: "ffprobe is required for cheap render inspection.",
+      suggestedFix: "Install FFmpeg so ffprobe is available on PATH.",
+    });
+  } else {
+    try {
+      const probe = await ffprobe(videoPath);
+      const videoStream = probe.streams?.find((stream) => stream.codec_type === "video");
+      const audioStream = probe.streams?.find((stream) => stream.codec_type === "audio");
+      const durationSec = parseOptionalNumber(probe.format?.duration);
+      checks.durationSec = durationSec;
+      checks.width = videoStream?.width;
+      checks.height = videoStream?.height;
+      checks.hasAudio = audioStream !== undefined;
+
+      if (!videoStream) {
+        issues.push({
+          severity: "error",
+          code: "NO_VIDEO_STREAM",
+          message: "Rendered file has no video stream.",
+          file: displayPath(videoPath),
+        });
+      }
+
+      if (!audioStream) {
+        issues.push({
+          severity: "warning",
+          code: "NO_AUDIO_STREAM",
+          message: "Rendered file has no audio stream.",
+          file: displayPath(videoPath),
+          suggestedFix: "Check narration assets and rerun `vibe build --stage sync --json`.",
+        });
+        retryWith.push(`vibe build ${projectDir} --stage sync --json`);
+      }
+
+      if (durationSec !== undefined && expectedDurationSec !== undefined) {
+        const drift = Number((durationSec - expectedDurationSec).toFixed(3));
+        checks.durationDriftSec = drift;
+        if (Math.abs(drift) > Math.max(1, expectedDurationSec * 0.05)) {
+          issues.push({
+            severity: "warning",
+            code: "DURATION_DRIFT",
+            message: `Rendered duration differs from build-report duration by ${drift.toFixed(2)}s.`,
+            suggestedFix: "Rerun `vibe build --stage sync --json` before rendering.",
+          });
+          retryWith.push(`vibe build ${projectDir} --stage sync --json`, `vibe render ${projectDir} --json`);
+        }
+      }
+
+      const loadedConfig = await readProjectConfig(projectDir);
+      checks.expectedAspect = loadedConfig.config.aspect;
+      if (videoStream?.width && videoStream.height) {
+        const expectedRatio = aspectRatio(loadedConfig.config.aspect);
+        const actualRatio = videoStream.width / videoStream.height;
+        if (Math.abs(actualRatio - expectedRatio) > 0.08) {
+          issues.push({
+            severity: "warning",
+            code: "ASPECT_MISMATCH",
+            message: `Rendered dimensions ${videoStream.width}x${videoStream.height} do not match project aspect ${loadedConfig.config.aspect}.`,
+            suggestedFix: "Check `vibe.config.json` and render settings.",
+          });
+        }
+      }
+    } catch (error) {
+      issues.push({
+        severity: "error",
+        code: "FFPROBE_FAILED",
+        message: `ffprobe failed: ${error instanceof Error ? error.message : String(error)}`,
+        file: displayPath(videoPath),
+      });
+    }
+  }
+
+  if (commandExists("ffmpeg")) {
+    try {
+      checks.blackFrames = await detectBlackFrames(videoPath);
+      for (const range of checks.blackFrames) {
+        issues.push({
+          severity: "warning",
+          code: "BLACK_FRAME_SEGMENT",
+          message: `Black frame segment from ${range.start.toFixed(2)}s to ${range.end.toFixed(2)}s (${range.duration.toFixed(2)}s).`,
+          file: displayPath(videoPath),
+          suggestedFix: "Inspect scene backgrounds or rerender after repairing composition timing.",
+        });
+      }
+    } catch (error) {
+      issues.push({
+        severity: "info",
+        code: "BLACKDETECT_SKIPPED",
+        message: `Black-frame scan skipped: ${error instanceof Error ? error.message : String(error)}`,
+      });
+    }
+
+    if (checks.hasAudio !== false) {
+      try {
+        checks.silences = await detectLongSilences(videoPath);
+        for (const range of checks.silences) {
+          issues.push({
+            severity: "warning",
+            code: "LONG_SILENCE",
+            message: `Long silence from ${range.start.toFixed(2)}s to ${range.end.toFixed(2)}s (${range.duration.toFixed(2)}s).`,
+            file: displayPath(videoPath),
+            suggestedFix: "Check narration/music wiring and rerun `vibe build --stage sync --json`.",
+          });
+        }
+      } catch (error) {
+        issues.push({
+          severity: "info",
+          code: "SILENCEDETECT_SKIPPED",
+          message: `Silence scan skipped: ${error instanceof Error ? error.message : String(error)}`,
+        });
+      }
+    }
+  } else {
+    issues.push({
+      severity: "info",
+      code: "FFMPEG_UNAVAILABLE",
+      message: "ffmpeg is not available, so black-frame and silence scans were skipped.",
+      suggestedFix: "Install FFmpeg for full cheap render inspection.",
+    });
+  }
+
+  const status = statusFromIssues(issues);
+  const result: RenderInspectResult = {
+    schemaVersion: "1",
+    kind: "render",
+    project: projectDir,
+    videoPath,
+    status,
+    score: scoreIssues(issues),
+    issues,
+    checks,
+    retryWith: uniqueRetryWith(retryWith),
+  };
+  return maybeWriteRenderReport(projectDir, opts, result);
+}
+
+async function maybeWriteRenderReport(
+  projectDir: string,
+  opts: RenderInspectOptions,
+  result: RenderInspectResult,
+): Promise<RenderInspectResult> {
+  if (opts.writeReport === false) return result;
+  const reportPath = opts.outputPath ? resolve(process.cwd(), opts.outputPath) : defaultReviewReportPath(projectDir);
+  try {
+    const withPath = { ...result, reportPath };
+    await writeReviewReport(reportPath, withPath as unknown as Record<string, unknown>);
+    return withPath;
+  } catch {
+    return result;
+  }
+}
+
+async function resolveRenderVideoPath(projectDir: string, explicit?: string): Promise<string | null> {
+  if (explicit) {
+    const candidate = resolve(process.cwd(), explicit);
+    return existsSync(candidate) ? candidate : null;
+  }
+
+  const reportPath = join(projectDir, "build-report.json");
+  if (existsSync(reportPath)) {
+    try {
+      const report = JSON.parse(await readFile(reportPath, "utf-8")) as { outputPath?: unknown };
+      if (typeof report.outputPath === "string" && report.outputPath.length > 0) {
+        const candidate = isAbsolute(report.outputPath) ? report.outputPath : resolve(projectDir, report.outputPath);
+        if (existsSync(candidate)) return candidate;
+      }
+    } catch {
+      // Fall through to renders/ scan.
+    }
+  }
+
+  const rendersDir = join(projectDir, "renders");
+  if (!existsSync(rendersDir)) return null;
+  const entries = await readdir(rendersDir, { withFileTypes: true });
+  const candidates: Array<{ path: string; mtimeMs: number }> = [];
+  for (const entry of entries) {
+    if (!entry.isFile()) continue;
+    const ext = entry.name.slice(entry.name.lastIndexOf(".")).toLowerCase();
+    if (!VIDEO_EXTENSIONS.has(ext)) continue;
+    const full = join(rendersDir, entry.name);
+    const info = await stat(full);
+    candidates.push({ path: full, mtimeMs: info.mtimeMs });
+  }
+  candidates.sort((a, b) => b.mtimeMs - a.mtimeMs);
+  return candidates[0]?.path ?? null;
+}
+
+async function expectedDurationFromBuildReport(projectDir: string): Promise<number | undefined> {
+  const reportPath = join(projectDir, "build-report.json");
+  if (!existsSync(reportPath)) return undefined;
+  try {
+    const report = JSON.parse(await readFile(reportPath, "utf-8")) as {
+      beats?: Array<{ sceneDurationSec?: unknown }>;
+    };
+    const durations = report.beats?.map((beat) => parseOptionalNumber(beat.sceneDurationSec)).filter((n): n is number => n !== undefined) ?? [];
+    if (durations.length === 0) return undefined;
+    return Number(durations.reduce((sum, value) => sum + value, 0).toFixed(3));
+  } catch {
+    return undefined;
+  }
+}
+
+async function ffprobe(videoPath: string): Promise<FfprobeInfo> {
+  const { stdout } = await execSafe("ffprobe", [
+    "-v", "error",
+    "-print_format", "json",
+    "-show_format",
+    "-show_streams",
+    videoPath,
+  ]);
+  return JSON.parse(stdout) as FfprobeInfo;
+}
+
+async function detectBlackFrames(videoPath: string): Promise<TimeRange[]> {
+  const output = await ffmpegNull(videoPath, ["-vf", "blackdetect=d=0.5:pic_th=0.98", "-an"]);
+  return parseBlackdetectOutput(output);
+}
+
+async function detectLongSilences(videoPath: string): Promise<TimeRange[]> {
+  const output = await ffmpegNull(videoPath, ["-af", "silencedetect=noise=-35dB:d=1"]);
+  return parseSilencedetectOutput(output);
+}
+
+async function ffmpegNull(input: string, filterArgs: string[]): Promise<string> {
+  const { stdout, stderr } = await execSafe("ffmpeg", [
+    "-hide_banner",
+    "-i", input,
+    ...filterArgs,
+    "-f", "null",
+    "-",
+  ], { maxBuffer: 50 * 1024 * 1024 }).catch((err: NodeJS.ErrnoException & { stdout?: string; stderr?: string }) => {
+    if (err.stdout !== undefined || err.stderr !== undefined) {
+      return { stdout: err.stdout || "", stderr: err.stderr || "" };
+    }
+    throw err;
+  });
+  return stdout + stderr;
+}
+
+function parseOptionalNumber(value: unknown): number | undefined {
+  const n = typeof value === "number" ? value : Number.parseFloat(String(value ?? ""));
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function aspectRatio(aspect: string): number {
+  const [w, h] = aspect.split(":").map(Number);
+  if (!Number.isFinite(w) || !Number.isFinite(h) || h === 0) return 16 / 9;
+  return w / h;
+}
+
+function displayPath(path: string): string {
+  return relative(process.cwd(), path) || basename(path);
+}
+

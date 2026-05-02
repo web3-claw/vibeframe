@@ -94,7 +94,7 @@ and \`DESIGN.md\` are the source of truth; generated files under
 edits and direct Markdown edits for larger creative rewrites.
 
 \`\`\`
-init --from → storyboard validate → plan → build → render  ← storyboard-to-video
+init --from → storyboard validate → plan → build → inspect → render  ← storyboard-to-video
 generate / edit / inspect / remix                          ← one-shot media tools
 scene / timeline                                            ← lower-level authoring
 run / agent / schema / context                              ← automation + agents

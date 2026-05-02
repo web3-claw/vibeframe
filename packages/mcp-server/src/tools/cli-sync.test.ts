@@ -37,7 +37,7 @@ const CLI_TREE: Record<string, string[]> = {
   // exposes `init/_build/_render` MCP tools so external hosts keep
   // working — they delegate to the same shared executeXxx() functions.
   // v0.77: `styles` → `list-styles` (verb-first leaf consistency).
-  scene:    ["list-styles", "add", "lint", "install-skill", "compose-prompts"],
+  scene:    ["list-styles", "add", "lint", "install-skill", "compose-prompts", "repair"],
   generate: ["image", "video", "video-status", "video-cancel", "video-extend", "speech", "narration", "sound-effect", "music", "music-status", "storyboard", "motion", "thumbnail", "background"],
   edit:     ["silence-cut", "caption", "noise-reduce", "fade", "translate-srt", "jump-cut", "fill-gaps", "grade", "text-overlay", "motion-overlay", "speed-ramp", "reframe", "image", "interpolate", "upscale"],
   // v0.74: `voices` → `list-voices`, `voice-clone` → `clone-voice`
@@ -55,7 +55,7 @@ const CLI_TREE: Record<string, string[]> = {
   project:  ["create", "info", "set"],
   // `analyze` was renamed to `inspect` in v0.74 (see remix note above).
   // `analyze` and `az` remain as deprecated Commander aliases.
-  inspect:  ["media", "video", "review", "suggest"],
+  inspect:  ["media", "video", "review", "suggest", "project", "render"],
   // `vibe guide <topic>` is a top-level command with a positional
   // arg, not a real subcommand group. We model the topics as "subs" here
   // so each one ↔ manifest mapping is verifiable; the single backing
@@ -85,6 +85,7 @@ const CLI_TO_MANIFEST: Record<string, string | null> = {
   "scene lint":          "scene_lint",
   "scene install-skill": "scene_install_skill",
   "scene compose-prompts": "scene_compose_prompts",
+  "scene repair":          "scene_repair",
   // generate
   "generate image":         "generate_image",
   "generate video":         "generate_video",
@@ -156,6 +157,8 @@ const CLI_TO_MANIFEST: Record<string, string | null> = {
   "inspect video":   "inspect_video",
   "inspect review":  "inspect_review",
   "inspect suggest": "inspect_suggest",
+  "inspect project": "inspect_project",
+  "inspect render":  "inspect_render",
   // guide — all topics route through the single `guide`
   // manifest tool (the topic is a tool arg, not a separate tool)
   "guide motion":   "guide",

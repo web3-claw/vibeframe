@@ -2545,6 +2545,64 @@ exports[`CLI --describe schemas (drift detection) > vibe inspect media --describ
 }
 `;
 
+exports[`CLI --describe schemas (drift detection) > vibe inspect project --describe 1`] = `
+{
+  "cost": "free",
+  "description": "Inspect project completeness, storyboard validity, scene lint, and asset references",
+  "name": "inspect.project",
+  "parameters": {
+    "properties": {
+      "noReport": {
+        "description": "Do not write review-report.json",
+        "type": "boolean",
+      },
+      "output": {
+        "description": "Write review report to this path (default: <project>/review-report.json)",
+        "type": "string",
+      },
+      "project-dir": {
+        "description": "VibeFrame project directory",
+        "type": "string",
+      },
+    },
+    "type": "object",
+  },
+}
+`;
+
+exports[`CLI --describe schemas (drift detection) > vibe inspect render --describe 1`] = `
+{
+  "cost": "free",
+  "description": "Inspect a rendered project video with local cheap checks",
+  "name": "inspect.render",
+  "parameters": {
+    "properties": {
+      "cheap": {
+        "description": "Run local checks only (default; no AI/API calls)",
+        "type": "boolean",
+      },
+      "noReport": {
+        "description": "Do not write review-report.json",
+        "type": "boolean",
+      },
+      "output": {
+        "description": "Write review report to this path (default: <project>/review-report.json)",
+        "type": "string",
+      },
+      "project-dir": {
+        "description": "VibeFrame project directory",
+        "type": "string",
+      },
+      "video": {
+        "description": "Rendered video path. Defaults to build-report outputPath or latest renders/* video.",
+        "type": "string",
+      },
+    },
+    "type": "object",
+  },
+}
+`;
+
 exports[`CLI --describe schemas (drift detection) > vibe inspect review --describe 1`] = `
 {
   "cost": "low",
@@ -3358,6 +3416,32 @@ exports[`CLI --describe schemas (drift detection) > vibe scene list-styles --des
     "properties": {
       "name": {
         "description": "Style name to inspect (omit to list all)",
+        "type": "string",
+      },
+    },
+    "type": "object",
+  },
+}
+`;
+
+exports[`CLI --describe schemas (drift detection) > vibe scene repair --describe 1`] = `
+{
+  "cost": "free",
+  "description": "Apply deterministic mechanical repairs to scene HTML",
+  "name": "scene.repair",
+  "parameters": {
+    "properties": {
+      "dryRun": {
+        "description": "Preview repairs without writing files",
+        "type": "boolean",
+      },
+      "project": {
+        "default": ".",
+        "description": "Project directory",
+        "type": "string",
+      },
+      "root": {
+        "description": "Root composition file relative to --project",
         "type": "string",
       },
     },
