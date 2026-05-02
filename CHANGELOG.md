@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.97.0] - 2026-05-02
+
+### Added
+
+- `vibe init --from <brief>` cold-starts a project with drafted `STORYBOARD.md` and `DESIGN.md` *(cli)*
+- `vibe plan` reads `STORYBOARD.md` and reports beats, missing cues, providers, and an estimated cost *(cli)*
+- `vibe storyboard list/get/set/move/validate/revise` agent-safe mutation API for the storyboard intent layer *(cli)*
+- `vibe build --stage assets|compose|sync|render|all` and `--beat <id>` for staged and per-beat builds *(cli)*
+- `vibe build --max-cost <usd>` hard cap with `retryWith` on overrun *(cli)*
+- `vibe generate narration` as the product-facing TTS name (existing `generate speech` stays as a compat alias) *(cli)*
+
+### Changed
+
+- Stage-specific report sections in `build-report.json`
+- `vibe context` output refreshed to reflect the storyboard-vs-scene mental model and preferred command flow
+
+### Documentation
+
+- README, ROADMAP, `docs/cli-reference.md`, `docs/video-project-concepts.md`, and `packages/cli/CONTEXT.md` updated to match the FUNCTIONS-TOBE P0 surface
+
 ## [0.96.4] - 2026-05-02
 
 ### Fixed
