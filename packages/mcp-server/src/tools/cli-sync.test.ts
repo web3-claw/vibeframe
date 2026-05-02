@@ -38,7 +38,7 @@ const CLI_TREE: Record<string, string[]> = {
   // working — they delegate to the same shared executeXxx() functions.
   // v0.77: `styles` → `list-styles` (verb-first leaf consistency).
   scene:    ["list-styles", "add", "lint", "install-skill", "compose-prompts"],
-  generate: ["image", "video", "video-status", "video-cancel", "video-extend", "speech", "sound-effect", "music", "music-status", "storyboard", "motion", "thumbnail", "background"],
+  generate: ["image", "video", "video-status", "video-cancel", "video-extend", "speech", "narration", "sound-effect", "music", "music-status", "storyboard", "motion", "thumbnail", "background"],
   edit:     ["silence-cut", "caption", "noise-reduce", "fade", "translate-srt", "jump-cut", "fill-gaps", "grade", "text-overlay", "motion-overlay", "speed-ramp", "reframe", "image", "interpolate", "upscale"],
   // v0.74: `voices` → `list-voices`, `voice-clone` → `clone-voice`
   // (verb-first leaf consistency). Old names remain as Commander aliases.
@@ -61,6 +61,9 @@ const CLI_TREE: Record<string, string[]> = {
   // so each one ↔ manifest mapping is verifiable; the single backing
   // manifest tool (`guide`) handles them all by routing on `topic`.
   guide: ["motion", "scene", "pipeline", "architecture"],
+  // v0.97: storyboard mutation API for the intent layer.
+  // `revise` is CLI-only (LLM-driven; host agents handle it directly).
+  storyboard: ["list", "get", "set", "move", "validate", "revise"],
 };
 
 // Top-level CLI commands with no manifest equivalent — pure ergonomics
@@ -68,7 +71,7 @@ const CLI_TREE: Record<string, string[]> = {
 // "manifest-as-tool" mold.
 const CLI_ONLY_TOP_LEVEL = new Set([
   "setup", "init", "build", "render", "doctor", "demo", "agent", "run",
-  "batch", "schema", "context", "media", "help",
+  "batch", "schema", "context", "media", "help", "plan",
 ]);
 
 // CLI subcommands → expected manifest tool name (or null = intentionally
@@ -89,6 +92,7 @@ const CLI_TO_MANIFEST: Record<string, string | null> = {
   "generate video-cancel":  "generate_video_cancel",
   "generate video-extend":  "generate_video_extend",
   "generate speech":        "generate_speech",
+  "generate narration":     "generate_narration",
   "generate sound-effect":  "generate_sound_effect",
   "generate music":         "generate_music",
   "generate music-status":  "generate_music_status",
@@ -158,6 +162,13 @@ const CLI_TO_MANIFEST: Record<string, string | null> = {
   "guide scene":    "guide",
   "guide pipeline": "guide",
   "guide architecture": "guide",
+  // storyboard (v0.97 — `revise` is host-agent-driven, no manifest entry)
+  "storyboard list":     "storyboard_list",
+  "storyboard get":      "storyboard_get",
+  "storyboard set":      "storyboard_set",
+  "storyboard move":     "storyboard_move",
+  "storyboard validate": "storyboard_validate",
+  "storyboard revise":   null,
 };
 
 describe("CLI ↔ manifest sync", () => {
