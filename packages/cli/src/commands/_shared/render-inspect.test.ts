@@ -5,13 +5,17 @@ import { join, resolve } from "node:path";
 
 import {
   aiReviewSeverity,
+  blackFrameIssueForRange,
+  durationDriftIssue,
   inspectRender,
   mapAiReviewFeedbackToIssues,
   parseBlackdetectOutput,
+  parseFreezedetectOutput,
   parseSilencedetectOutput,
   previewInspectRender,
   resolveRenderVideoPath,
   scoreRenderReview,
+  staticFrameIssueForRange,
 } from "./render-inspect.js";
 import type { VideoReviewFeedback } from "../ai-edit.js";
 
@@ -42,6 +46,89 @@ describe("render inspect parsers", () => {
       { start: 2.1, end: 4.4, duration: 2.3 },
       { start: 8, end: 9.5, duration: 1.5 },
     ]);
+  });
+
+  it("parses ffmpeg freezedetect output", () => {
+    const out = `
+[freezedetect @ 0x123] lavfi.freezedetect.freeze_start: 1.25
+[freezedetect @ 0x123] lavfi.freezedetect.freeze_duration: 3.5
+[freezedetect @ 0x123] lavfi.freezedetect.freeze_end: 4.75
+[freezedetect @ 0x123] lavfi.freezedetect.freeze_start: 8
+[freezedetect @ 0x123] lavfi.freezedetect.freeze_end: 10.25
+`;
+    expect(parseFreezedetectOutput(out)).toEqual([
+      { start: 1.25, end: 4.75, duration: 3.5 },
+      { start: 8, end: 10.25, duration: 2.25 },
+    ]);
+  });
+
+  it("maps static frame ranges to beat-level host-agent issues", () => {
+    const issue = staticFrameIssueForRange(
+      { start: 0.25, end: 4.5, duration: 4.25 },
+      [
+        {
+          id: "hook",
+          start: 0,
+          end: 5,
+          sceneDurationSec: 5,
+          narrationDurationSec: 2,
+        },
+      ],
+      "/tmp/render.mp4"
+    );
+
+    expect(issue).toMatchObject({
+      severity: "error",
+      code: "STATIC_FRAME_SEGMENT",
+      beatId: "hook",
+      scene: "hook",
+      timeRange: { start: 0.25, end: 4.5, duration: 4.25 },
+      sceneDurationSec: 5,
+      narrationDurationSec: 2,
+      fixOwner: "host-agent",
+    });
+  });
+
+  it("maps black frame ranges to beat-level issues", () => {
+    const issue = blackFrameIssueForRange(
+      { start: 6, end: 9, duration: 3 },
+      [
+        { id: "hook", start: 0, end: 5, sceneDurationSec: 5 },
+        { id: "close", start: 5, end: 10, sceneDurationSec: 5, narrationDurationSec: 4 },
+      ],
+      "/tmp/render.mp4"
+    );
+
+    expect(issue).toMatchObject({
+      severity: "warning",
+      code: "BLACK_FRAME_SEGMENT",
+      beatId: "close",
+      scene: "close",
+      timeRange: { start: 6, end: 9, duration: 3 },
+      fixOwner: "host-agent",
+    });
+  });
+
+  it("maps duration drift to a report issue with timing context", () => {
+    const issue = durationDriftIssue({
+      durationSec: 8,
+      expectedDurationSec: 10,
+      driftSec: -2,
+      beats: [
+        { id: "hook", start: 0, end: 5, sceneDurationSec: 5 },
+        { id: "close", start: 5, end: 10, sceneDurationSec: 5, narrationDurationSec: 4 },
+      ],
+      videoPath: "/tmp/render.mp4",
+    });
+
+    expect(issue).toMatchObject({
+      severity: "warning",
+      code: "DURATION_DRIFT",
+      beatId: "close",
+      scene: "close",
+      timeRange: { start: 8, end: 10, duration: 2 },
+      fixOwner: "vibe",
+    });
   });
 
   it("maps AI review scores to issue severity", () => {
@@ -81,6 +168,42 @@ describe("render inspect parsers", () => {
         severity: "info",
         code: "AI_REVIEW_AUDIO_VISUAL_SYNC",
         message: "Audio-visual sync: Voiceover lands slightly late",
+        fixOwner: "host-agent",
+      }),
+    ]);
+  });
+
+  it("maps beat-level AI review findings to host-agent issues", () => {
+    const feedback: VideoReviewFeedback = {
+      overallScore: 6,
+      categories: {
+        pacing: { score: 8, issues: [], fixable: false },
+        color: { score: 8, issues: [], fixable: false },
+        textReadability: { score: 8, issues: [], fixable: false },
+        audioVisualSync: { score: 6, issues: [], fixable: true },
+        composition: { score: 8, issues: [], fixable: false },
+      },
+      beatIssues: [
+        {
+          beatId: "hook",
+          timeRange: { start: 2, end: 5 },
+          severity: "warning",
+          category: "audioVisualSync",
+          message: "Narration talks about the logo while the scene remains on a blank gradient.",
+          suggestedFix: "Show the logo during the narration or rewrite the narration.",
+        },
+      ],
+      autoFixable: [],
+      recommendations: [],
+    };
+
+    expect(mapAiReviewFeedbackToIssues(feedback, "/tmp/render.mp4")).toEqual([
+      expect.objectContaining({
+        severity: "warning",
+        code: "AI_REVIEW_AUDIO_VISUAL_SYNC",
+        beatId: "hook",
+        scene: "hook",
+        timeRange: { start: 2, end: 5, duration: 3 },
         fixOwner: "host-agent",
       }),
     ]);

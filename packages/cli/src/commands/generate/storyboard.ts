@@ -12,13 +12,7 @@ import ora from "ora";
 import { ClaudeProvider } from "@vibeframe/ai-providers";
 import { requireApiKey } from "../../utils/api-key.js";
 import { sanitizeLLMResponse } from "../sanitize.js";
-import {
-  isJsonMode,
-  outputSuccess,
-  exitWithError,
-  apiError,
-  usageError,
-} from "../output.js";
+import { isJsonMode, outputSuccess, exitWithError, apiError, usageError } from "../output.js";
 import { rejectControlChars, validateOutputPath } from "../validate.js";
 import { formatTime } from "../ai-helpers.js";
 
@@ -46,7 +40,7 @@ export interface ExecuteStoryboardResult {
 }
 
 export async function executeStoryboard(
-  options: ExecuteStoryboardOptions,
+  options: ExecuteStoryboardOptions
 ): Promise<ExecuteStoryboardResult> {
   const { content, duration, creativity = "low", output, apiKey } = options;
 
@@ -88,14 +82,18 @@ export async function executeStoryboard(
 
 export function registerStoryboardCommand(parent: Command): void {
   parent
-    .command("storyboard")
+    .command("storyboard", { hidden: true })
     .description("Generate video storyboard from content using Claude")
     .argument("<content>", "Content to analyze (text or file path)")
     .option("-k, --api-key <key>", "Anthropic API key (or set ANTHROPIC_API_KEY env)")
     .option("-o, --output <path>", "Output JSON file path")
     .option("-d, --duration <sec>", "Target total duration in seconds")
     .option("--file", "Treat content argument as file path")
-    .option("--creativity <level>", "Creativity level: low (default, consistent) or high (varied, unexpected)", "low")
+    .option(
+      "--creativity <level>",
+      "Creativity level: low (default, consistent) or high (varied, unexpected)",
+      "low"
+    )
     .option("--dry-run", "Preview parameters without executing")
     .action(async (content: string, options) => {
       const startedAt = Date.now();
@@ -133,15 +131,12 @@ export function registerStoryboardCommand(parent: Command): void {
           return;
         }
 
-        const apiKey = await requireApiKey(
-          "ANTHROPIC_API_KEY",
-          "Anthropic",
-          options.apiKey,
-        );
+        const apiKey = await requireApiKey("ANTHROPIC_API_KEY", "Anthropic", options.apiKey);
 
-        const spinnerText = creativity === "high"
-          ? "Analyzing content with high creativity..."
-          : "Analyzing content...";
+        const spinnerText =
+          creativity === "high"
+            ? "Analyzing content with high creativity..."
+            : "Analyzing content...";
         const spinner = ora(spinnerText).start();
 
         const claude = new ClaudeProvider();
@@ -150,7 +145,7 @@ export function registerStoryboardCommand(parent: Command): void {
         const segments = await claude.analyzeContent(
           textContent,
           options.duration ? parseFloat(options.duration) : undefined,
-          { creativity: creativity as "low" | "high" | undefined },
+          { creativity: creativity as "low" | "high" | undefined }
         );
 
         if (segments.length === 0) {
@@ -197,8 +192,8 @@ export function registerStoryboardCommand(parent: Command): void {
           console.log();
           console.log(
             chalk.yellow(
-              `[${seg.index + 1}] ${formatTime(seg.startTime)} - ${formatTime(seg.startTime + seg.duration)}`,
-            ),
+              `[${seg.index + 1}] ${formatTime(seg.startTime)} - ${formatTime(seg.startTime + seg.duration)}`
+            )
           );
           console.log(`  ${seg.description}`);
           console.log(chalk.dim(`  Visuals: ${seg.visuals}`));

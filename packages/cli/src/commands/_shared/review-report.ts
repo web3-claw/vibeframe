@@ -13,6 +13,14 @@ export interface ReviewIssue {
   file?: string;
   scene?: string;
   beatId?: string;
+  timeRange?: {
+    start: number;
+    end: number;
+    duration?: number;
+  };
+  sceneDurationSec?: number;
+  narrationDurationSec?: number;
+  audioCoverageRatio?: number;
   fixOwner?: ReviewFixOwner;
   suggestedFix?: string;
 }

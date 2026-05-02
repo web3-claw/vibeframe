@@ -206,6 +206,56 @@ afterEach(() => {
   delete process.env.VIBE_BUILD_MODE;
 });
 
+function readBuildReport(): Record<string, any> {
+  return JSON.parse(readFileSync(join(projectDir, "build-report.json"), "utf-8"));
+}
+
+function expectBuildReportContract(
+  report: Record<string, any>,
+  expected: Record<string, unknown> = {}
+): void {
+  expect(report).toMatchObject({
+    schemaVersion: "1",
+    kind: "build",
+    project: projectDir,
+    phase: expect.any(String),
+    status: expect.any(String),
+    currentStage: expect.any(String),
+    selectedStage: expect.any(String),
+    success: expect.any(Boolean),
+    estimatedCostUsd: expect.any(Number),
+    costUsd: expect.any(Number),
+    beats: expect.any(Array),
+    beatSummary: expect.any(Object),
+    jobs: expect.any(Array),
+    sceneRepair: expect.objectContaining({ ran: expect.any(Boolean) }),
+    stageReports: {
+      assets: expect.objectContaining({ status: expect.any(String) }),
+      compose: expect.objectContaining({ status: expect.any(String) }),
+      sync: expect.objectContaining({ status: expect.any(String) }),
+      render: expect.objectContaining({ status: expect.any(String) }),
+    },
+    warnings: expect.any(Array),
+    retryWith: expect.any(Array),
+    totalLatencyMs: expect.any(Number),
+    ...expected,
+  });
+
+  for (const beat of report.beats) {
+    expect(beat).toMatchObject({
+      id: expect.any(String),
+      startSec: expect.any(Number),
+      endSec: expect.any(Number),
+      sceneDurationSec: expect.any(Number),
+      narration: expect.objectContaining({ status: expect.any(String) }),
+      backdrop: expect.objectContaining({ status: expect.any(String) }),
+      video: expect.objectContaining({ status: expect.any(String) }),
+      music: expect.objectContaining({ status: expect.any(String) }),
+      composition: expect.objectContaining({ status: expect.any(String) }),
+    });
+  }
+}
+
 describe("executeSceneBuild", () => {
   it("dispatches narration + backdrop per beat with cues, then composes + renders", async () => {
     const r = await executeSceneBuild({ projectDir });
@@ -229,7 +279,14 @@ describe("executeSceneBuild", () => {
     expect(rootHtml).toContain('id="narration-hook"');
     expect(rootHtml).toContain('data-duration="3"');
 
-    const report = JSON.parse(readFileSync(join(projectDir, "build-report.json"), "utf-8"));
+    const report = readBuildReport();
+    expectBuildReportContract(report, {
+      phase: "done",
+      status: "done",
+      currentStage: "done",
+      selectedStage: "all",
+      success: true,
+    });
     expect(report.providerResolution).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ kind: "narration", resolved: "kokoro" }),
@@ -244,6 +301,16 @@ describe("executeSceneBuild", () => {
       status: "generated",
       sceneDurationSec: 3,
     });
+    expect(report.beats[0]).toMatchObject({
+      startSec: 0,
+      endSec: 3,
+      sceneDurationSec: 3,
+    });
+    expect(report.beats[1]).toMatchObject({
+      startSec: 3,
+      endSec: 6,
+      sceneDurationSec: 3,
+    });
     expect(report.beats[0].narration.cachePath).toContain(".vibeframe/cache/assets/narration-");
     expect(report.beats[0].backdrop).toMatchObject({
       prompt: "Abstract dark tech background",
@@ -256,6 +323,12 @@ describe("executeSceneBuild", () => {
       exists: true,
       status: "generated",
       cacheKey: "compose-hook-key",
+    });
+    expect(report.stageReports).toMatchObject({
+      assets: expect.objectContaining({ status: "done", costUsd: expect.any(Number) }),
+      compose: expect.objectContaining({ status: "done", costUsd: expect.any(Number) }),
+      sync: expect.objectContaining({ status: "done", costUsd: expect.any(Number) }),
+      render: expect.objectContaining({ status: "done", costUsd: expect.any(Number) }),
     });
   });
 
@@ -337,7 +410,13 @@ asset: "assets/frame.png"
     expect(resolveTtsProvider).not.toHaveBeenCalled();
     expect(OpenAIImageProvider).not.toHaveBeenCalled();
 
-    const report = JSON.parse(readFileSync(join(projectDir, "build-report.json"), "utf-8"));
+    const report = readBuildReport();
+    expectBuildReportContract(report, {
+      phase: "assets-only",
+      status: "ready",
+      selectedStage: "assets",
+      success: true,
+    });
     expect(report.providerResolution).toEqual([]);
     expect(report.beats[0].narration).toMatchObject({
       provider: "local",
@@ -387,7 +466,15 @@ backdrop: "../outside.png"
     expect(OpenAIImageProvider).not.toHaveBeenCalled();
     expect(executeComposeScenesWithSkills).not.toHaveBeenCalled();
 
-    const report = JSON.parse(readFileSync(join(projectDir, "build-report.json"), "utf-8"));
+    const report = readBuildReport();
+    expectBuildReportContract(report, {
+      success: false,
+      phase: "failed",
+      code: "ASSET_REFERENCE_INVALID",
+      status: "failed",
+      currentStage: "assets",
+      selectedStage: "all",
+    });
     expect(report).toMatchObject({
       success: false,
       phase: "failed",
@@ -408,6 +495,57 @@ backdrop: "../outside.png"
     expect(r.success).toBe(true);
     expect(r.outputPath).toBeUndefined();
     expect(executeSceneRender).not.toHaveBeenCalled();
+
+    const report = readBuildReport();
+    expectBuildReportContract(report, {
+      phase: "sync-only",
+      status: "ready",
+      currentStage: "render",
+      selectedStage: "sync",
+      success: true,
+    });
+    expect(report.stageReports.render.status).toBe("skipped");
+  });
+
+  it("writes a stable beat-only assets build-report contract", async () => {
+    const r = await executeSceneBuild({
+      projectDir,
+      beatId: "hook",
+      stage: "assets",
+      skipBackdrop: true,
+      skipVideo: true,
+      skipMusic: true,
+    });
+
+    expect(r.success).toBe(true);
+    expect(r.beats).toHaveLength(1);
+    expect(r.beats[0].beatId).toBe("hook");
+
+    const report = readBuildReport();
+    expectBuildReportContract(report, {
+      phase: "assets-only",
+      status: "ready",
+      selectedStage: "assets",
+      success: true,
+    });
+    expect(report.beats).toHaveLength(1);
+    expect(report.beats[0]).toMatchObject({
+      id: "hook",
+      startSec: 0,
+      endSec: 3,
+      sceneDurationSec: 3,
+      narration: expect.objectContaining({ status: "generated" }),
+      backdrop: expect.objectContaining({ status: "skipped" }),
+      video: expect.objectContaining({ status: "skipped" }),
+      music: expect.objectContaining({ status: "skipped" }),
+      composition: expect.objectContaining({ status: "skipped" }),
+    });
+    expect(report.stageReports).toMatchObject({
+      assets: expect.objectContaining({ status: "done" }),
+      compose: expect.objectContaining({ status: "skipped" }),
+      sync: expect.objectContaining({ status: "skipped" }),
+      render: expect.objectContaining({ status: "skipped" }),
+    });
   });
 
   it("repairs mechanical composition issues before rendering", async () => {
@@ -434,7 +572,14 @@ backdrop: "../outside.png"
     const repaired = readFileSync(join(projectDir, "compositions", "scene-hook.html"), "utf-8");
     expect(repaired).toContain('<div class="clip" data-start="0" data-duration="3"');
 
-    const report = JSON.parse(readFileSync(join(projectDir, "build-report.json"), "utf-8"));
+    const report = readBuildReport();
+    expectBuildReportContract(report, {
+      phase: "done",
+      status: "done",
+      currentStage: "done",
+      selectedStage: "all",
+      success: true,
+    });
     expect(report.sceneRepair.ran).toBe(true);
     expect(
       report.sceneRepair.fixed.some((item: { file: string }) =>
@@ -461,7 +606,7 @@ backdrop: "../outside.png"
     expect(r.success).toBe(false);
     expect(r.code).toBe("SCENE_REPAIR_FAILED");
     expect(r.sceneRepair?.status).toBe("fail");
-    expect(r.sceneRepair?.retryWith).toContain(`vibe scene repair --project ${projectDir} --json`);
+    expect(r.sceneRepair?.retryWith).toContain(`vibe scene repair ${projectDir} --json`);
     expect(executeComposeScenesWithSkills).not.toHaveBeenCalled();
     expect(executeSceneRender).not.toHaveBeenCalled();
   });
@@ -534,7 +679,14 @@ backdrop: "This should not dispatch."
     expect(executeComposeScenesWithSkills).not.toHaveBeenCalled();
     expect(executeSceneRender).not.toHaveBeenCalled();
 
-    const report = JSON.parse(readFileSync(join(projectDir, "build-report.json"), "utf-8"));
+    const report = readBuildReport();
+    expectBuildReportContract(report, {
+      success: false,
+      phase: "failed",
+      code: "STORYBOARD_VALIDATION_FAILED",
+      status: "failed",
+      currentStage: "assets",
+    });
     expect(report.code).toBe("STORYBOARD_VALIDATION_FAILED");
     expect(report.validation.ok).toBe(false);
     expect(report.retryWith).toEqual(r.retryWith);
@@ -557,7 +709,14 @@ backdrop: "This should not dispatch."
     );
     expect(r.beats).toHaveLength(2); // primitives still ran
 
-    const report = JSON.parse(readFileSync(join(projectDir, "build-report.json"), "utf-8"));
+    const report = readBuildReport();
+    expectBuildReportContract(report, {
+      success: false,
+      phase: "failed",
+      code: "COMPOSE_FAILED",
+      status: "failed",
+      currentStage: "compose",
+    });
     expect(report).toMatchObject({
       success: false,
       code: "COMPOSE_FAILED",
@@ -591,11 +750,42 @@ backdrop: "This should not dispatch."
     );
     expect(r.stageReports?.render.retryWith).toContain(`vibe render ${projectDir} --json`);
 
-    const report = JSON.parse(readFileSync(join(projectDir, "build-report.json"), "utf-8"));
+    const report = readBuildReport();
+    expectBuildReportContract(report, {
+      success: false,
+      phase: "failed",
+      code: "CHROME_UNAVAILABLE",
+      status: "failed",
+      currentStage: "render",
+    });
     expect(report).toMatchObject({
       success: false,
       code: "CHROME_UNAVAILABLE",
       currentStage: "render",
+    });
+  });
+
+  it("writes a stable render-only build-report contract", async () => {
+    const r = await executeSceneBuild({ projectDir, stage: "render" });
+
+    expect(r.success).toBe(true);
+    expect(executeComposeScenesWithSkills).not.toHaveBeenCalled();
+    expect(executeSceneRender).toHaveBeenCalledOnce();
+
+    const report = readBuildReport();
+    expectBuildReportContract(report, {
+      phase: "render-only",
+      status: "ready",
+      currentStage: "done",
+      selectedStage: "render",
+      success: true,
+    });
+    expect(report.outputPath).toBe(join(projectDir, "renders", "out.mp4"));
+    expect(report.stageReports).toMatchObject({
+      assets: expect.objectContaining({ status: "skipped" }),
+      compose: expect.objectContaining({ status: "skipped" }),
+      sync: expect.objectContaining({ status: "skipped" }),
+      render: expect.objectContaining({ status: "done" }),
     });
   });
 
@@ -659,7 +849,14 @@ music: "Minimal confident pulse."
     expect(executeComposeScenesWithSkills).not.toHaveBeenCalled();
     expect(executeSceneRender).not.toHaveBeenCalled();
 
-    const report = JSON.parse(readFileSync(join(projectDir, "build-report.json"), "utf-8"));
+    const report = readBuildReport();
+    expectBuildReportContract(report, {
+      phase: "pending-jobs",
+      status: "running",
+      currentStage: "assets",
+      selectedStage: "all",
+      success: true,
+    });
     expect(report.kind).toBe("build");
     expect(report.phase).toBe("pending-jobs");
     expect(report.status).toBe("running");

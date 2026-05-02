@@ -14,14 +14,7 @@ import { ElevenLabsProvider } from "@vibeframe/ai-providers";
 import { requireApiKey, hasApiKey } from "../../utils/api-key.js";
 import { hasTTY, prompt as promptText } from "../../utils/tty.js";
 import { getApiKeyFromConfig } from "../../config/index.js";
-import {
-  isJsonMode,
-  outputSuccess,
-  log,
-  exitWithError,
-  apiError,
-  usageError,
-} from "../output.js";
+import { isJsonMode, outputSuccess, log, exitWithError, apiError, usageError } from "../output.js";
 import { rejectControlChars, validateOutputPath } from "../validate.js";
 
 // ── Library: executeSpeech ──────────────────────────────────────────────
@@ -38,12 +31,10 @@ export interface ExecuteSpeechResult {
   error?: string;
 }
 
-export async function executeSpeech(
-  options: ExecuteSpeechOptions,
-): Promise<ExecuteSpeechResult> {
+export async function executeSpeech(options: ExecuteSpeechOptions): Promise<ExecuteSpeechResult> {
   try {
     const apiKey = hasApiKey("ELEVENLABS_API_KEY")
-      ? ((await getApiKeyFromConfig("elevenlabs")) || process.env.ELEVENLABS_API_KEY!)
+      ? (await getApiKeyFromConfig("elevenlabs")) || process.env.ELEVENLABS_API_KEY!
       : null;
     if (!apiKey)
       return {
@@ -78,7 +69,7 @@ export async function executeSpeech(
 
 export function registerSpeechCommand(parent: Command): void {
   parent
-    .command("speech")
+    .command("speech", { hidden: true })
     .alias("tts")
     .description("Generate speech from text using ElevenLabs")
     .argument("[text]", "Text to convert to speech (interactive if omitted)")
@@ -86,7 +77,11 @@ export function registerSpeechCommand(parent: Command): void {
     .option("-o, --output <path>", "Output audio file path", "output.mp3")
     .option("--voice <id>", "Voice ID (default: Rachel)", "21m00Tcm4TlvDq8ikWAM")
     .option("--list-voices", "List available voices")
-    .option("--fit-duration <seconds>", "Speed up audio to fit target duration (via FFmpeg atempo)", parseFloat)
+    .option(
+      "--fit-duration <seconds>",
+      "Speed up audio to fit target duration (via FFmpeg atempo)",
+      parseFloat
+    )
     .option("--dry-run", "Preview parameters without executing")
     .action(async (text: string | undefined, options) => {
       const startedAt = Date.now();
@@ -100,10 +95,7 @@ export function registerSpeechCommand(parent: Command): void {
             }
           } else {
             exitWithError(
-              usageError(
-                "Text argument is required.",
-                "Usage: vibe generate speech <text>",
-              ),
+              usageError("Text argument is required.", "Usage: vibe generate speech <text>")
             );
           }
         }
@@ -122,11 +114,7 @@ export function registerSpeechCommand(parent: Command): void {
           return;
         }
 
-        const apiKey = await requireApiKey(
-          "ELEVENLABS_API_KEY",
-          "ElevenLabs",
-          options.apiKey,
-        );
+        const apiKey = await requireApiKey("ELEVENLABS_API_KEY", "ElevenLabs", options.apiKey);
 
         const elevenlabs = new ElevenLabsProvider();
         await elevenlabs.initialize({ apiKey });
@@ -182,38 +170,40 @@ export function registerSpeechCommand(parent: Command): void {
             if (tempo > 2.0) {
               log(
                 chalk.yellow(
-                  `Warning: Audio is ${tempo.toFixed(1)}x longer than target — would sound unnatural. Skipping tempo adjustment.`,
-                ),
+                  `Warning: Audio is ${tempo.toFixed(1)}x longer than target — would sound unnatural. Skipping tempo adjustment.`
+                )
               );
             } else {
               const fitSpinner = ora(
-                `Adjusting tempo (${tempo.toFixed(3)}x) to fit ${options.fitDuration}s...`,
+                `Adjusting tempo (${tempo.toFixed(3)}x) to fit ${options.fitDuration}s...`
               ).start();
               const tempPath = outputPath.replace(/(\.\w+)$/, `.tempo$1`);
               try {
                 await execSafe("ffmpeg", [
-                  "-y", "-i", outputPath,
-                  "-filter:a", `atempo=${tempo.toFixed(4)}`,
-                  "-vn", tempPath,
+                  "-y",
+                  "-i",
+                  outputPath,
+                  "-filter:a",
+                  `atempo=${tempo.toFixed(4)}`,
+                  "-vn",
+                  tempPath,
                 ]);
                 const { rename } = await import("node:fs/promises");
                 await rename(tempPath, outputPath);
                 fitSpinner.succeed(
                   chalk.green(
-                    `Adjusted to fit ${options.fitDuration}s (${tempo.toFixed(3)}x speed)`,
-                  ),
+                    `Adjusted to fit ${options.fitDuration}s (${tempo.toFixed(3)}x speed)`
+                  )
                 );
               } catch {
-                fitSpinner.fail(
-                  chalk.yellow("Tempo adjustment failed — keeping original audio"),
-                );
+                fitSpinner.fail(chalk.yellow("Tempo adjustment failed — keeping original audio"));
               }
             }
           } else {
             log(
               chalk.dim(
-                `Audio (${actualDuration.toFixed(2)}s) already fits within ${options.fitDuration}s`,
-              ),
+                `Audio (${actualDuration.toFixed(2)}s) already fits within ${options.fitDuration}s`
+              )
             );
           }
         }
@@ -259,7 +249,9 @@ export function registerNarrationCommand(parent: Command): void {
             text = await promptText(chalk.cyan("What narration text? "));
             if (!text?.trim()) exitWithError(usageError("Text is required."));
           } else {
-            exitWithError(usageError("Text argument is required.", "Usage: vibe generate narration <text>"));
+            exitWithError(
+              usageError("Text argument is required.", "Usage: vibe generate narration <text>")
+            );
           }
         }
         rejectControlChars(text);

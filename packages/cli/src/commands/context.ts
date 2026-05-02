@@ -37,6 +37,8 @@ export const contextCommand = new Command("context")
         "inspect project",
         "render",
         "inspect render --cheap",
+        "scene repair or host-agent semantic edits from review-report.json",
+        "render again after repairs",
         "inspect render --ai when needed",
         "status project when async jobs are involved",
       ],
@@ -81,7 +83,7 @@ export const contextCommand = new Command("context")
       },
       machineStatusContract: {
         buildReport:
-          "kind/status/currentStage/beatSummary/jobs/sceneRepair/stageReports/warnings/retryWith plus nested per-beat asset metadata",
+          "kind/status/currentStage/beatSummary/jobs/sceneRepair/stageReports/warnings/retryWith plus beat timing and nested per-beat asset metadata",
         projectStatus: "kind/status/currentStage/beats/jobs.latest/build/review/warnings/retryWith",
         reviewSummary:
           "review.mode/issueCount/errorCount/warningCount/infoCount/fixOwners/sourceReports/retryWith",
@@ -95,7 +97,7 @@ export const contextCommand = new Command("context")
         "vibe storyboard revise for STORYBOARD.md; host-agent for composition code and DESIGN.md rewrites",
       mechanicalFixes: "vibe scene repair; vibe scene lint --fix remains the lower-level primitive",
       publicFlow:
-        "vibe init --from <brief> -> optional vibe storyboard revise --from <request> -> edit STORYBOARD.md/DESIGN.md -> vibe storyboard validate -> vibe plan -> vibe build --dry-run --max-cost <usd> -> vibe build -> vibe status project --refresh when build returns pending-jobs -> vibe inspect project -> vibe render -> vibe inspect render --cheap -> optional vibe inspect render --ai",
+        "vibe init --from <brief> -> optional vibe storyboard revise --from <request> -> edit STORYBOARD.md/DESIGN.md -> vibe storyboard validate -> vibe plan -> vibe build --dry-run --max-cost <usd> -> vibe build -> vibe status project --refresh when build returns pending-jobs -> vibe inspect project -> vibe render -> vibe inspect render --cheap -> vibe scene repair or host-agent semantic edits -> vibe render -> optional vibe inspect render --ai",
       beatLoop:
         "vibe build <project> --beat <id> --stage sync --json -> vibe inspect project <project> --beat <id> --json -> vibe render <project> --beat <id> --json -> vibe inspect render <project> --beat <id> --cheap --json",
     };
@@ -139,6 +141,9 @@ vibe status project my-video --refresh --json
 vibe inspect project my-video --json
 vibe render my-video --json
 vibe inspect render my-video --cheap --json
+vibe scene repair my-video --json
+codex "fix semantic issues from my-video/review-report.json"
+vibe render my-video --json
 vibe inspect render my-video --ai --json
 
 # Single-beat loop
@@ -179,6 +184,10 @@ review issue counts, \`fixOwners\`, \`sourceReports\`, and
 as \`kind:"review"\` with \`mode:"project"|"render"\`, \`summary\`,
 \`sourceReports\`, \`retryWith\`, and issue-level
 \`fixOwner:"vibe"|"host-agent"\`.
+\`inspect render --cheap\` checks duration drift, audio presence, black frames,
+long silence, and static-frame holds. Static or semantic beat issues are
+reported with \`beatId\`, \`timeRange\`, and host-agent ownership when
+VibeFrame cannot fix them deterministically.
 
 \`vibe schema --list\` includes \`surface\`, \`replacement\`, and \`note\`.
 Prefer \`vibe schema --list --surface public\` for the small product surface,

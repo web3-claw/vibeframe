@@ -3,10 +3,15 @@ import { mkdtemp, readFile, writeFile, access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { scaffoldSceneProject } from "./_shared/scene-project.js";
-import { executeSceneAdd } from "./scene.js";
+import { executeSceneAdd, resolveSceneRepairTarget } from "./scene.js";
 
 async function pathExists(p: string): Promise<boolean> {
-  try { await access(p); return true; } catch { return false; }
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function makeProject(label = "vibe-scene-add-test-"): Promise<string> {
@@ -56,13 +61,23 @@ describe("executeSceneAdd — offline (--no-audio --no-image)", () => {
     const projectDir = await makeProject();
 
     const a = await executeSceneAdd({
-      name: "intro", preset: "simple", duration: 3, projectDir, skipAudio: true, skipImage: true,
+      name: "intro",
+      preset: "simple",
+      duration: 3,
+      projectDir,
+      skipAudio: true,
+      skipImage: true,
     });
     expect(a.success).toBe(true);
     expect(a.start).toBe(0);
 
     const b = await executeSceneAdd({
-      name: "outro", preset: "simple", duration: 2, projectDir, skipAudio: true, skipImage: true,
+      name: "outro",
+      preset: "simple",
+      duration: 2,
+      projectDir,
+      skipAudio: true,
+      skipImage: true,
     });
     expect(b.success).toBe(true);
     // Crossfade architecture: second scene starts 0.4 s before the first
@@ -114,18 +129,34 @@ describe("executeSceneAdd — offline (--no-audio --no-image)", () => {
     const projectDir = await makeProject();
 
     const first = await executeSceneAdd({
-      name: "intro", preset: "simple", duration: 3, projectDir, skipAudio: true, skipImage: true,
+      name: "intro",
+      preset: "simple",
+      duration: 3,
+      projectDir,
+      skipAudio: true,
+      skipImage: true,
     });
     expect(first.success).toBe(true);
 
     const second = await executeSceneAdd({
-      name: "intro", preset: "simple", duration: 3, projectDir, skipAudio: true, skipImage: true,
+      name: "intro",
+      preset: "simple",
+      duration: 3,
+      projectDir,
+      skipAudio: true,
+      skipImage: true,
     });
     expect(second.success).toBe(false);
     expect(second.error).toMatch(/already exists/);
 
     const forced = await executeSceneAdd({
-      name: "intro", preset: "simple", duration: 3, projectDir, skipAudio: true, skipImage: true, force: true,
+      name: "intro",
+      preset: "simple",
+      duration: 3,
+      projectDir,
+      skipAudio: true,
+      skipImage: true,
+      force: true,
     });
     expect(forced.success).toBe(true);
   });
@@ -134,7 +165,12 @@ describe("executeSceneAdd — offline (--no-audio --no-image)", () => {
     const projectDir = await mkdtemp(join(tmpdir(), "vibe-scene-noroot-"));
 
     const result = await executeSceneAdd({
-      name: "x", preset: "simple", duration: 3, projectDir, skipAudio: true, skipImage: true,
+      name: "x",
+      preset: "simple",
+      duration: 3,
+      projectDir,
+      skipAudio: true,
+      skipImage: true,
     });
     expect(result.success).toBe(false);
     expect(result.error).toMatch(/Root composition not found/);
@@ -145,12 +181,37 @@ describe("executeSceneAdd — offline (--no-audio --no-image)", () => {
     await scaffoldSceneProject({ dir, name: "vert", aspect: "9:16", duration: 8 });
 
     const result = await executeSceneAdd({
-      name: "hook", preset: "simple", duration: 3, projectDir: dir, skipAudio: true, skipImage: true,
+      name: "hook",
+      preset: "simple",
+      duration: 3,
+      projectDir: dir,
+      skipAudio: true,
+      skipImage: true,
     });
     expect(result.success).toBe(true);
     const html = await readFile(resolve(dir, "compositions/scene-hook.html"), "utf-8");
     expect(html).toContain('data-width="1080"');
     expect(html).toContain('data-height="1920"');
+  });
+});
+
+describe("resolveSceneRepairTarget", () => {
+  it("treats a positional project directory as --project with index.html root", async () => {
+    const projectDir = await makeProject("vibe-scene-repair-target-");
+
+    await expect(resolveSceneRepairTarget(projectDir, ".")).resolves.toEqual({
+      projectDir: resolve(projectDir),
+      rootRel: "index.html",
+    });
+  });
+
+  it("preserves root HTML positional paths when --project is provided", async () => {
+    const projectDir = await makeProject("vibe-scene-repair-root-target-");
+
+    await expect(resolveSceneRepairTarget("custom-root.html", projectDir)).resolves.toEqual({
+      projectDir: resolve(projectDir),
+      rootRel: "custom-root.html",
+    });
   });
 });
 

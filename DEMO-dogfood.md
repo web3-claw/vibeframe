@@ -85,6 +85,14 @@ my-video/AGENTS.md
 `assets/`, `compositions/`, `build-report.json`, and `review-report.json`
 are generated or report artifacts.
 
+Run the project gate immediately. This catches placeholder storyboard/design
+fields before any provider spend. Missing root/composition findings are normal
+until the build stage creates render artifacts.
+
+```bash
+pnpm vibe inspect project my-video --json
+```
+
 ---
 
 ## 2. Author A Reproducible Four-Beat Storyboard
@@ -175,6 +183,7 @@ Validate and inspect the authored storyboard:
 pnpm vibe storyboard validate my-video --json
 pnpm vibe storyboard list my-video --json
 pnpm vibe storyboard get my-video setup --json
+pnpm vibe inspect project my-video --json
 ```
 
 ---
@@ -238,6 +247,20 @@ pnpm vibe build my-video \
   --json
 ```
 
+Expected build metadata:
+
+```text
+my-video/.vibeframe/assets/
+my-video/build-report.json
+```
+
+The asset metadata records cue/provider/cache keys so a later storyboard edit
+does not silently reuse stale narration or imagery.
+For paid video/music paths, `status project --refresh` also downloads completed
+async outputs, updates `build-report.json`, and writes the corresponding
+freshness metadata. The sync stage then wires ready narration and music into
+the root timeline.
+
 Poll the project state. This is especially useful when paid providers create
 async jobs:
 
@@ -254,7 +277,7 @@ pnpm vibe inspect project my-video --json
 Apply deterministic repairs:
 
 ```bash
-pnpm vibe scene repair --project my-video --json
+pnpm vibe scene repair my-video --json
 ```
 
 Render the final MP4:
@@ -276,6 +299,12 @@ pnpm vibe inspect render my-video \
   --json
 ```
 
+Check the machine-readable review summary:
+
+```bash
+node -e 'const r=require("./my-video/review-report.json"); console.log(JSON.stringify({status:r.status, score:r.score, summary:r.summary, retryWith:r.retryWith}, null, 2))'
+```
+
 Optional AI review:
 
 ```bash
@@ -285,12 +314,23 @@ pnpm vibe inspect render my-video \
   --json
 ```
 
+AI review is project-aware: it reads the storyboard, design file, beat timing,
+and build report so findings can land on `beatId`/`timeRange` whenever the
+model can identify the affected moment.
+
 Expected files:
 
 ```text
 my-video/build-report.json
 my-video/review-report.json
 my-video/renders/my-video-final.mp4
+```
+
+Acceptance checks for the current `FUNCTIONS-TOBE.md` direction:
+
+```bash
+node -e 'const b=require("./my-video/build-report.json"); console.log(JSON.stringify(b.beats.map(({id,startSec,endSec,sceneDurationSec,narration,composition}) => ({id,startSec,endSec,sceneDurationSec,narration:narration?.status,composition:composition?.status})), null, 2))'
+node -e 'const r=require("./my-video/review-report.json"); console.log(JSON.stringify({mode:r.mode,status:r.status,fixOwners:r.summary?.fixOwners,sourceReports:r.sourceReports}, null, 2))'
 ```
 
 Expected shape:
@@ -326,13 +366,30 @@ Rebuild one beat:
 ```bash
 pnpm vibe build my-video \
   --beat setup \
-  --stage sync \
+  --stage assets \
   --mode batch \
   --composer openai \
   --tts kokoro \
   --skip-backdrop \
   --skip-video \
   --skip-music \
+  --force \
+  --json
+
+pnpm vibe build my-video \
+  --beat setup \
+  --stage compose \
+  --mode batch \
+  --composer openai \
+  --tts kokoro \
+  --skip-backdrop \
+  --skip-video \
+  --skip-music \
+  --json
+
+pnpm vibe build my-video \
+  --beat setup \
+  --stage sync \
   --json
 
 pnpm vibe inspect project my-video --beat setup --json
@@ -511,24 +568,24 @@ pnpm -F @vibeframe/cli test -- \
 
 ## 9. Command Map
 
-| Goal | Command |
-| --- | --- |
-| Start a storyboard project | `pnpm vibe init my-video --from "..." --profile agent --json` |
-| Validate storyboard cues | `pnpm vibe storyboard validate my-video --json` |
-| Mutate one beat safely | `pnpm vibe storyboard set/get/move/list` |
-| Show cost and provider needs | `pnpm vibe plan my-video --max-cost 5 --json` |
-| Preview without spending | `pnpm vibe build my-video --dry-run --max-cost 5 --json` |
-| Build assets and compositions | `pnpm vibe build my-video --json` |
-| Poll project jobs/state | `pnpm vibe status project my-video --refresh --json` |
-| Inspect project artifacts | `pnpm vibe inspect project my-video --json` |
-| Repair deterministic scene issues | `pnpm vibe scene repair --project my-video --json` |
-| Render MP4 | `pnpm vibe render my-video --json` |
-| Inspect final MP4 | `pnpm vibe inspect render my-video --cheap --json` |
-| Run a YAML workflow | `pnpm vibe run workflow.yaml` |
-| Generate a standalone image/video | `pnpm vibe generate image ...`, `pnpm vibe generate video ...` |
-| Edit an existing media file | `pnpm vibe edit ...`, `pnpm vibe remix ...`, `pnpm vibe audio ...` |
-| Print integration context for agents | `pnpm vibe context` |
-| List public commands | `pnpm vibe schema --list --surface public --json` |
+| Goal                                 | Command                                                            |
+| ------------------------------------ | ------------------------------------------------------------------ |
+| Start a storyboard project           | `pnpm vibe init my-video --from "..." --profile agent --json`      |
+| Validate storyboard cues             | `pnpm vibe storyboard validate my-video --json`                    |
+| Mutate one beat safely               | `pnpm vibe storyboard set/get/move/list`                           |
+| Show cost and provider needs         | `pnpm vibe plan my-video --max-cost 5 --json`                      |
+| Preview without spending             | `pnpm vibe build my-video --dry-run --max-cost 5 --json`           |
+| Build assets and compositions        | `pnpm vibe build my-video --json`                                  |
+| Poll project jobs/state              | `pnpm vibe status project my-video --refresh --json`               |
+| Inspect project artifacts            | `pnpm vibe inspect project my-video --json`                        |
+| Repair deterministic scene issues    | `pnpm vibe scene repair my-video --json`                           |
+| Render MP4                           | `pnpm vibe render my-video --json`                                 |
+| Inspect final MP4                    | `pnpm vibe inspect render my-video --cheap --json`                 |
+| Run a YAML workflow                  | `pnpm vibe run workflow.yaml`                                      |
+| Generate a standalone image/video    | `pnpm vibe generate image ...`, `pnpm vibe generate video ...`     |
+| Edit an existing media file          | `pnpm vibe edit ...`, `pnpm vibe remix ...`, `pnpm vibe audio ...` |
+| Print integration context for agents | `pnpm vibe context`                                                |
+| List public commands                 | `pnpm vibe schema --list --surface public --json`                  |
 
 Advanced namespace:
 
@@ -550,6 +607,5 @@ assets/demos/quickstart-claude-code.tape
 assets/demos/dogfood-claude-code.tape
 ```
 
-The existing quickstart MP4 is a media primitive demo. The dogfood tape should
-be regenerated when we want a fresh recording of the storyboard-first project
-loop.
+Both tapes now target the storyboard-first project loop. Regenerate the MP4s
+when you want fresh recordings of the current CLI behavior.

@@ -1,15 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Terminal,
-  Github,
-  ArrowRight,
-  Video,
-  FileText,
-  ClipboardList,
-  Hammer,
-} from "lucide-react";
+import { Terminal, Github, ArrowRight, Video, FileText, ClipboardList, Hammer } from "lucide-react";
 import { ThemeToggle } from "../../components/theme-toggle";
 
 export default function DemoPage() {
@@ -30,7 +22,10 @@ export default function DemoPage() {
             </Link>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors hidden sm:inline">
+            <Link
+              href="/"
+              className="text-muted-foreground hover:text-foreground transition-colors hidden sm:inline"
+            >
               Home
             </Link>
             <Link href="/demo" className="text-foreground font-medium">
@@ -57,13 +52,21 @@ export default function DemoPage() {
               <span>North-star workflow</span>
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 animate-fade-in-up">
-              The storyboard<br />
+              The storyboard
+              <br />
               <span className="text-primary">project loop.</span>
             </h1>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8 animate-fade-in-up delay-100">
-              A host agent drafts <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded text-sm">STORYBOARD.md</code> and <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded text-sm">DESIGN.md</code>,
-              dry-runs the build, generates assets, inspects reports, repairs
-              deterministic issues, and renders the final MP4.
+              A host agent drafts{" "}
+              <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded text-sm">
+                STORYBOARD.md
+              </code>{" "}
+              and{" "}
+              <code className="text-primary bg-primary/10 px-1.5 py-0.5 rounded text-sm">
+                DESIGN.md
+              </code>
+              , dry-runs the build, generates assets, inspects reports, repairs deterministic
+              issues, and renders the final MP4.
             </p>
           </div>
 
@@ -71,7 +74,7 @@ export default function DemoPage() {
             <CommandCard
               icon={<FileText className="w-5 h-5" />}
               title="Draft Project"
-              command='vibe init launch --from brief.md --json'
+              command="vibe init launch --from brief.md --json"
               color="from-blue-500 to-cyan-500"
             />
             <CommandCard
@@ -89,7 +92,7 @@ export default function DemoPage() {
             <CommandCard
               icon={<Video className="w-5 h-5" />}
               title="Inspect, Repair, Render"
-              command="vibe inspect project launch --json && vibe scene repair --project launch --json && vibe render launch --json"
+              command="vibe status project launch --refresh --json && vibe inspect project launch --json && vibe scene repair launch --json && vibe render launch --json && vibe inspect render launch --cheap --json"
               color="from-purple-500 to-pink-500"
             />
           </div>
@@ -102,15 +105,17 @@ export default function DemoPage() {
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/5 px-4 py-1.5 text-sm text-cyan-400 mb-6 animate-fade-in">
               <Video className="w-4 h-4" />
-              <span>Media primitive demo · recorded from <code className="font-mono text-xs">DEMO-quickstart.md</code></span>
+              <span>
+                Media primitive demo · recorded from{" "}
+                <code className="font-mono text-xs">DEMO-quickstart.md</code>
+              </span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
               Lower-level tools still work directly.
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
-              This existing recording shows Claude Code using image generation,
-              image-to-video, inspection, and motion-overlay editing outside
-              the full storyboard project loop.
+              This existing recording shows Claude Code using image generation, image-to-video,
+              inspection, and motion-overlay editing outside the full storyboard project loop.
             </p>
           </div>
           <div className="rounded-xl overflow-hidden border border-border/50 shadow-2xl bg-black">
@@ -137,13 +142,13 @@ export default function DemoPage() {
               <span>Reproducible surfaces · run any tape locally</span>
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6 animate-fade-in-up">
-              Reproduce the flows<br />
+              Reproduce the flows
+              <br />
               <span className="text-primary">from your terminal.</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-12 animate-fade-in-up delay-100">
-              Plain CLI, optional built-in agent, or a host agent — same
-              project files and command contracts. Each surface below ships a
-              VHS tape; install{" "}
+              Plain CLI, optional built-in agent, or a host agent — same project files and command
+              contracts. Each surface below ships a VHS tape; install{" "}
               <a
                 href="https://github.com/charmbracelet/vhs"
                 target="_blank"
@@ -193,12 +198,10 @@ export default function DemoPage() {
               <Terminal className="w-4 h-4" />
               <span>CLI Workflow</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              The sequence agents repeat
-            </h2>
+            <h2 className="text-3xl sm:text-4xl font-bold mb-4">The sequence agents repeat</h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              The full project pipeline is a set of shell commands with JSON
-              output, reports, and deterministic repair paths.
+              The full project pipeline is a set of shell commands with JSON output, reports, and
+              deterministic repair paths.
             </p>
           </div>
 
@@ -224,7 +227,7 @@ export default function DemoPage() {
             <CommandCard
               icon={<Video className="w-5 h-5" />}
               title="Inspect and Render"
-              command="vibe inspect project my-video --json && vibe render my-video --json"
+              command="vibe inspect project my-video --json && vibe render my-video --json && vibe inspect render my-video --cheap --json"
               color="from-green-500 to-emerald-500"
             />
           </div>
@@ -234,9 +237,7 @@ export default function DemoPage() {
       {/* CTA */}
       <section className="py-20 px-4">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-            Create from a storyboard
-          </h2>
+          <h2 className="text-3xl sm:text-4xl font-bold mb-4">Create from a storyboard</h2>
           <p className="text-muted-foreground text-lg mb-8">
             Open source. MIT licensed. One install command.
           </p>
@@ -244,7 +245,9 @@ export default function DemoPage() {
           <div className="bg-secondary rounded-xl p-1 max-w-xl mx-auto mb-8 shadow-xl border border-border/50">
             <div className="flex items-center gap-2 px-4 py-3 bg-background rounded-lg font-mono text-xs sm:text-sm">
               <span className="text-primary">$</span>
-              <span className="text-foreground whitespace-nowrap">curl -fsSL https://vibeframe.ai/install.sh | bash</span>
+              <span className="text-foreground whitespace-nowrap">
+                curl -fsSL https://vibeframe.ai/install.sh | bash
+              </span>
             </div>
           </div>
 
@@ -270,13 +273,25 @@ export default function DemoPage() {
             <span>VibeFrame</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <Link href="https://github.com/vericontext/vibeframe" target="_blank" className="hover:text-foreground transition-colors">
+            <Link
+              href="https://github.com/vericontext/vibeframe"
+              target="_blank"
+              className="hover:text-foreground transition-colors"
+            >
               GitHub
             </Link>
-            <Link href="https://github.com/vericontext/vibeframe/blob/main/ROADMAP.md" target="_blank" className="hover:text-foreground transition-colors">
+            <Link
+              href="https://github.com/vericontext/vibeframe/blob/main/ROADMAP.md"
+              target="_blank"
+              className="hover:text-foreground transition-colors"
+            >
               Roadmap
             </Link>
-            <Link href="https://github.com/vericontext/vibeframe/blob/main/LICENSE" target="_blank" className="hover:text-foreground transition-colors">
+            <Link
+              href="https://github.com/vericontext/vibeframe/blob/main/LICENSE"
+              target="_blank"
+              className="hover:text-foreground transition-colors"
+            >
               MIT License
             </Link>
           </div>
@@ -286,11 +301,23 @@ export default function DemoPage() {
   );
 }
 
-function CommandCard({ icon, title, command, color }: { icon: React.ReactNode; title: string; command: string; color: string }) {
+function CommandCard({
+  icon,
+  title,
+  command,
+  color,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  command: string;
+  color: string;
+}) {
   return (
     <div className="group bg-secondary/30 border border-border/50 rounded-xl p-5 hover:border-primary/30 transition-all">
       <div className="flex items-center gap-3 mb-3">
-        <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform`}>
+        <div
+          className={`w-9 h-9 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform`}
+        >
           {icon}
         </div>
         <span className="font-semibold">{title}</span>

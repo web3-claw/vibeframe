@@ -88,6 +88,51 @@ describe("schema product surface taxonomy", () => {
   });
 });
 
+describe("CLI help product surface taxonomy", () => {
+  it("keeps legacy/internal commands out of root cost examples", () => {
+    const help = runCli("--help");
+    const footer = help.slice(help.indexOf("Cost tiers"));
+    expect(footer).toContain("generate.narration");
+    expect(footer).not.toContain("generate.speech");
+    expect(footer).not.toContain("generate.storyboard");
+    expect(footer).not.toContain("generate.music-status");
+    expect(footer).not.toContain("generate.video-cancel");
+    expect(footer).not.toContain("scene.compose-prompts");
+  });
+
+  it("keeps generate help focused on public primitives with legacy replacements", () => {
+    const help = runCli("generate --help");
+    expect(help).toContain("narration|voiceover");
+    expect(help).not.toMatch(/\n\s+speech\|tts\b/);
+    expect(help).not.toMatch(/\n\s+storyboard\s+\[options\]/);
+    expect(help).not.toMatch(/\n\s+background\s+\[options\]/);
+    expect(help).toContain("generate speech       Legacy alias; use 'vibe generate narration'");
+    expect(help).toContain("generate storyboard   Legacy primitive; use 'vibe init --from'");
+  });
+
+  it("keeps inspect help focused on project/render/media with replacements", () => {
+    const help = runCli("inspect --help");
+    expect(help).toContain("project [options]");
+    expect(help).toContain("render [options]");
+    expect(help).toContain("media [options]");
+    expect(help).not.toMatch(/\n\s+video\s+\[options\]/);
+    expect(help).not.toMatch(/\n\s+review\s+\[options\]/);
+    expect(help).toContain("inspect video    Legacy alias; use 'vibe inspect media'");
+    expect(help).toContain("inspect review   Legacy render review; use 'vibe inspect render --ai'");
+  });
+
+  it("keeps remix help focused on repurposing and points regeneration to build", () => {
+    const help = runCli("remix --help");
+    expect(help).toContain("highlights [options]");
+    expect(help).toContain("auto-shorts|shorts");
+    expect(help).toContain("animated-caption [options]");
+    expect(help).not.toMatch(/\n\s+regenerate-scene\s+\[options\]/);
+    expect(help).toContain(
+      "remix regenerate-scene  Use 'vibe build <project> --beat <id> --force --json'"
+    );
+  });
+});
+
 /** Replace varying fields so snapshots are deterministic. */
 function normalizeEnvelope(json: Record<string, unknown>): Record<string, unknown> {
   const clone = JSON.parse(JSON.stringify(json)) as Record<string, unknown>;

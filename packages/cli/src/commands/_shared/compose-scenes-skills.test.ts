@@ -440,6 +440,22 @@ describe("composeBeatWithRetry", () => {
     expect(retryArgs.userPrompt).toContain("Previous attempt failed lint");
   });
 
+  it("retries with feedback when first shot has no text content", async () => {
+    const callLLM = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new ComposeBeatError("no-text-block", "OpenAI response had no text content.")
+      )
+      .mockResolvedValueOnce({ text: fenced(validHtml), inputTokens: 1, outputTokens: 1 });
+
+    const r = await composeBeatWithRetry({ ...baseCtx, cacheDir }, { callLLM });
+
+    expect(r.lintAttempts).toBe(2);
+    expect(r.lint.errorCount).toBe(0);
+    expect(callLLM).toHaveBeenCalledTimes(2);
+    expect(callLLM.mock.calls[1][0].userPrompt).toContain("Previous attempt failed before lint");
+  });
+
   it("throws lint-failed-after-retry when both attempts fail", async () => {
     const callLLM = mockCallLLM({ text: fenced(invalidHtml) });
 

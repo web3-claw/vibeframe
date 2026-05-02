@@ -15,9 +15,9 @@ brief
 -> render MP4
 ```
 
-The current recorded quickstart video still demonstrates lower-level media
-primitives. Those commands remain useful, but they are now secondary to the
-project loop below.
+The quickstart recording should follow this storyboard-first project loop.
+Lower-level media primitives remain documented later as compatibility tools,
+but they are no longer the primary first-run path.
 
 For the longer repo dogfood run, see [DEMO-dogfood.md](DEMO-dogfood.md).
 
@@ -49,12 +49,12 @@ vibe schema --list --surface public --json
 
 Recommended keys for the full paid path:
 
-| Key | Used for |
-| --- | --- |
-| `OPENAI_API_KEY` | image generation and optional batch composition |
-| `FAL_API_KEY` | Seedance image/video generation |
-| `GOOGLE_API_KEY` | render review and media understanding |
-| `IMGBB_API_KEY` or S3 upload config | temporary image URL for image-to-video |
+| Key                                 | Used for                                        |
+| ----------------------------------- | ----------------------------------------------- |
+| `OPENAI_API_KEY`                    | image generation and optional batch composition |
+| `FAL_API_KEY`                       | Seedance image/video generation                 |
+| `GOOGLE_API_KEY`                    | render review and media understanding           |
+| `IMGBB_API_KEY` or S3 upload config | temporary image URL for image-to-video          |
 
 The main quickstart below uses Kokoro narration and can skip generated
 backdrops/video/music for a low-cost first pass.
@@ -97,16 +97,28 @@ apex-story/vibe.config.json
 apex-story/AGENTS.md
 ```
 
+Gate the generated intent before spending. A clean draft should not contain
+starter placeholder cues such as `from the brief`, `_hex_`, or
+`_anti-pattern`. At this point `MISSING_ROOT_COMPOSITION` and
+`MISSING_COMPOSITION` findings are expected because build has not run yet.
+
+```bash
+vibe inspect project apex-story --json
+```
+
 ---
 
-## 2. Author The Intent Files
+## 2. Review Or Author The Intent Files
 
 Agents can directly edit Markdown for larger creative changes. For narrow cue
-edits, prefer `vibe storyboard set/get/move/list`.
+edits, prefer `vibe storyboard set/get/move/list`. The `init --from` command
+should already produce concrete narration, backdrop, and motion cues. If you
+want this demo to be byte-for-byte stable, replace the files with the version
+below.
 
-Replace `apex-story/DESIGN.md` with:
+Optional stable `apex-story/DESIGN.md`:
 
-````markdown
+```markdown
 # Design
 
 ## Style
@@ -128,9 +140,9 @@ Inter or system sans-serif. Medium weight, generous spacing, short labels.
 ## Motion
 
 Slow camera drift, soft fades, subtle parallax, no bounce or elastic motion.
-````
+```
 
-Replace `apex-story/STORYBOARD.md` with:
+Optional stable `apex-story/STORYBOARD.md`:
 
 ````markdown
 # Apex Story
@@ -211,6 +223,10 @@ vibe plan apex-story \
   --json
 ```
 
+This low-cost path skips generated backdrops, video, and music. It is a
+composition and narration smoke test. Use the paid asset path later when you
+want richer visual media.
+
 Preview the build before creating assets or compositions:
 
 ```bash
@@ -248,6 +264,13 @@ vibe build apex-story \
   --json
 ```
 
+The build writes asset freshness metadata under `.vibeframe/assets/`. If a
+storyboard cue changes later, `vibe plan` and `vibe build` can distinguish a
+fresh canonical asset from stale narration or imagery.
+In paid paths, completed async video/music jobs are folded back into
+`build-report.json` by `vibe status project --refresh`, and the sync stage
+wires ready narration and music into the root timeline.
+
 If the build starts async provider jobs in a paid path, poll the project:
 
 ```bash
@@ -263,7 +286,7 @@ vibe inspect project apex-story --json
 Apply deterministic mechanical repairs:
 
 ```bash
-vibe scene repair --project apex-story --json
+vibe scene repair apex-story --json
 ```
 
 Render the final MP4:
@@ -285,6 +308,14 @@ vibe inspect render apex-story \
   --json
 ```
 
+Check the report summary. Static holds, long silence, missing audio, duration
+drift, and semantic AI findings should include `fixOwner` and, when possible,
+`beatId`/`timeRange`:
+
+```bash
+node -e 'const r=require("./apex-story/review-report.json"); console.log(JSON.stringify({status:r.status, score:r.score, summary:r.summary, retryWith:r.retryWith}, null, 2))'
+```
+
 Optional AI review:
 
 ```bash
@@ -294,6 +325,12 @@ vibe inspect render apex-story \
   --json
 ```
 
+AI render review uses `STORYBOARD.md`, `DESIGN.md`, beat timing, and
+`build-report.json` as context. When possible, `review-report.json` issues
+include `beatId`, `timeRange`, `fixOwner`, and `suggestedFix`.
+Cheap render review also flags long static holds, black frames, duration drift,
+missing audio, and long silence before you spend on AI critique.
+
 Expected files:
 
 ```text
@@ -301,6 +338,16 @@ apex-story/build-report.json
 apex-story/review-report.json
 apex-story/compositions/
 apex-story/renders/storyboard-demo.mp4
+```
+
+Expected local review issue codes, when problems exist:
+
+```text
+STATIC_FRAME_SEGMENT
+LONG_SILENCE
+DURATION_DRIFT
+NO_AUDIO_STREAM
+BLACK_FRAME_SEGMENT
 ```
 
 If `review-report.json` contains semantic issues, ask the host agent to fix
@@ -313,7 +360,18 @@ codex "fix issues from apex-story/review-report.json"
 Then rerun:
 
 ```bash
-vibe scene repair --project apex-story --json
+vibe build apex-story \
+  --stage all \
+  --mode batch \
+  --composer openai \
+  --tts kokoro \
+  --skip-backdrop \
+  --skip-video \
+  --skip-music \
+  --force \
+  --skip-render \
+  --json
+vibe scene repair apex-story --json
 vibe render apex-story -o renders/storyboard-demo.mp4 --json
 vibe inspect render apex-story --video renders/storyboard-demo.mp4 --cheap --json
 ```
@@ -333,6 +391,8 @@ vibe storyboard validate apex-story --json
 Rebuild and inspect just that beat:
 
 ```bash
+vibe build apex-story --beat hook --stage assets --skip-backdrop --skip-video --skip-music --force --json
+vibe build apex-story --beat hook --stage compose --mode batch --composer openai --json
 vibe build apex-story --beat hook --stage sync --json
 vibe inspect project apex-story --beat hook --json
 vibe render apex-story --beat hook --json
@@ -344,8 +404,7 @@ vibe inspect render apex-story --beat hook --cheap --json
 ## 6. Paid Asset Path
 
 The low-cost path above skips generated backdrops, videos, and music. To
-exercise the full asset orchestration path, remove the skip flags and choose
-providers:
+exercise the full asset orchestration path, raise the cap and choose providers:
 
 ```bash
 vibe build apex-story \
@@ -355,11 +414,11 @@ vibe build apex-story \
   --image-provider openai \
   --video-provider seedance \
   --music-provider elevenlabs \
-  --max-cost 5 \
+  --max-cost 25 \
   --json
 ```
 
-If the estimate exceeds your cap, keep the generated-image path only:
+If you only want generated still backdrops, keep video and music skipped:
 
 ```bash
 vibe build apex-story \
@@ -369,7 +428,7 @@ vibe build apex-story \
   --image-provider openai \
   --skip-video \
   --skip-music \
-  --max-cost 5 \
+  --max-cost 15 \
   --json
 ```
 
@@ -447,17 +506,17 @@ JSON reports, and render location should stay stable.
 
 ## Which Command Should The Agent Choose?
 
-| User intent | Correct route |
-| --- | --- |
-| "Make a multi-scene video from this brief" | `vibe init --from` -> edit `STORYBOARD.md` / `DESIGN.md` -> `vibe plan` -> `vibe build` -> `vibe render` |
-| "Change one beat cue" | `vibe storyboard set/get/move/list` |
-| "Preview cost before spending" | `vibe plan --max-cost ...`, `vibe build --dry-run --max-cost ...` |
-| "Check project artifacts" | `vibe inspect project` |
-| "Fix mechanical scene issues" | `vibe scene repair --project ...` |
-| "Review the final MP4" | `vibe inspect render --cheap` or `vibe inspect render --ai` |
-| "Make one image/video/narration/music asset" | `vibe generate ...` |
-| "Change an existing media file" | `vibe edit ...`, `vibe remix ...`, `vibe audio ...` |
-| "Make this repeatable" | `vibe run pipeline.yaml` |
+| User intent                                  | Correct route                                                                                            |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| "Make a multi-scene video from this brief"   | `vibe init --from` -> edit `STORYBOARD.md` / `DESIGN.md` -> `vibe plan` -> `vibe build` -> `vibe render` |
+| "Change one beat cue"                        | `vibe storyboard set/get/move/list`                                                                      |
+| "Preview cost before spending"               | `vibe plan --max-cost ...`, `vibe build --dry-run --max-cost ...`                                        |
+| "Check project artifacts"                    | `vibe inspect project`                                                                                   |
+| "Fix mechanical scene issues"                | `vibe scene repair <project>`                                                                            |
+| "Review the final MP4"                       | `vibe inspect render --cheap` or `vibe inspect render --ai`                                              |
+| "Make one image/video/narration/music asset" | `vibe generate ...`                                                                                      |
+| "Change an existing media file"              | `vibe edit ...`, `vibe remix ...`, `vibe audio ...`                                                      |
+| "Make this repeatable"                       | `vibe run pipeline.yaml`                                                                                 |
 
 When unsure:
 

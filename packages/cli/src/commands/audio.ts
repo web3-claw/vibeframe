@@ -20,22 +20,26 @@ import { readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import chalk from "chalk";
 import ora from "ora";
-import {
-  WhisperProvider,
-  ElevenLabsProvider,
-  ClaudeProvider,
-} from "@vibeframe/ai-providers";
+import { WhisperProvider, ElevenLabsProvider, ClaudeProvider } from "@vibeframe/ai-providers";
 import { getApiKey, requireApiKey } from "../utils/api-key.js";
 import { execSafe, commandExists, execSafeSync } from "../utils/exec-safe.js";
 import { detectFormat, formatTranscript } from "../utils/subtitle.js";
 import { applyTiers } from "./_shared/cost-tier.js";
 import { formatTime } from "./ai-helpers.js";
-import { isJsonMode, outputSuccess, exitWithError, notFoundError, usageError, apiError, generalError } from "./output.js";
+import {
+  isJsonMode,
+  outputSuccess,
+  exitWithError,
+  notFoundError,
+  usageError,
+  apiError,
+  generalError,
+} from "./output.js";
 import { rejectControlChars, validateOutputPath } from "./validate.js";
 
 export const audioCommand = new Command("audio")
   .alias("au")
-  .description("Audio operations (transcribe, TTS, voice clone, ducking)")
+  .description("Audio operations (transcribe, dub, duck, isolate, voice clone)")
   .addHelpText(
     "after",
     `
@@ -47,6 +51,9 @@ Examples:
   $ vibe audio clone-voice sample.mp3 --name "my-voice"
   $ vibe audio dub video.mp4 -l ko -o dubbed.mp4
   $ vibe audio duck music.mp3 --voice narration.mp3 -o ducked.mp3
+
+Consent:
+  clone-voice requires explicit user permission for the sampled voice.
 
 API Keys:
   OPENAI_API_KEY      transcribe (Whisper)
@@ -166,7 +173,12 @@ audioCommand
           command: "audio list-voices",
           startedAt,
           data: {
-            voices: voices.map(v => ({ name: v.name, voiceId: v.voice_id, category: v.category, labels: v.labels })),
+            voices: voices.map((v) => ({
+              name: v.name,
+              voiceId: v.voice_id,
+              category: v.category,
+              labels: v.labels,
+            })),
           },
         });
         return;
@@ -261,12 +273,12 @@ audioCommand
 
 audioCommand
   .command("clone-voice")
-  .description("Clone a voice from audio samples using ElevenLabs")
+  .description("Clone a voice from audio samples using ElevenLabs (requires explicit consent)")
   .argument("[samples...]", "Audio sample files (1-25 files)")
   .option("-k, --api-key <key>", "ElevenLabs API key (or set ELEVENLABS_API_KEY env)")
   .option("--name <name>", "Voice name (required)")
   .option("-d, --description <desc>", "Voice description")
-  .option("--labels <json>", "Labels as JSON (e.g., '{\"accent\": \"american\"}')")
+  .option("--labels <json>", 'Labels as JSON (e.g., \'{"accent": "american"}\')')
   .option("--remove-noise", "Remove background noise from samples")
   .option("--list", "List all available voices")
   .option("--dry-run", "Preview parameters without executing")
@@ -396,7 +408,14 @@ audioCommand
           command: "audio dub",
           startedAt,
           dryRun: true,
-          data: { params: { mediaPath, targetLanguage: options.language, sourceLanguage: options.source, voice: options.voice } },
+          data: {
+            params: {
+              mediaPath,
+              targetLanguage: options.language,
+              sourceLanguage: options.source,
+              voice: options.voice,
+            },
+          },
         });
         return;
       }
@@ -436,7 +455,9 @@ audioCommand
           audioPath = tempAudioPath;
         } catch {
           spinner.fail("Failed to extract audio from video");
-          exitWithError(generalError("Failed to extract audio from video", "Ensure FFmpeg is installed."));
+          exitWithError(
+            generalError("Failed to extract audio from video", "Ensure FFmpeg is installed.")
+          );
         }
       }
 
@@ -466,13 +487,27 @@ audioCommand
 
       // Language names for better translation context
       const languageNames: Record<string, string> = {
-        en: "English", es: "Spanish", fr: "French", de: "German",
-        it: "Italian", pt: "Portuguese", ja: "Japanese", ko: "Korean",
-        zh: "Chinese", ar: "Arabic", ru: "Russian", hi: "Hindi",
+        en: "English",
+        es: "Spanish",
+        fr: "French",
+        de: "German",
+        it: "Italian",
+        pt: "Portuguese",
+        ja: "Japanese",
+        ko: "Korean",
+        zh: "Chinese",
+        ar: "Arabic",
+        ru: "Russian",
+        hi: "Hindi",
       };
       const targetLangName = languageNames[options.language] || options.language;
 
-      let translatedSegments: Array<{ index: number; text: string; startTime: number; endTime: number }> = [];
+      let translatedSegments: Array<{
+        index: number;
+        text: string;
+        startTime: number;
+        endTime: number;
+      }> = [];
 
       try {
         const storyboard = await claude.analyzeContent(
@@ -510,7 +545,9 @@ audioCommand
       console.log();
       console.log(chalk.bold.cyan("Dubbing Analysis"));
       console.log(chalk.dim("─".repeat(60)));
-      console.log(`Source language: ${transcriptResult.detectedLanguage || options.source || "auto"}`);
+      console.log(
+        `Source language: ${transcriptResult.detectedLanguage || options.source || "auto"}`
+      );
       console.log(`Target language: ${targetLangName}`);
       console.log(`Segments: ${segments.length}`);
       console.log();
@@ -520,7 +557,9 @@ audioCommand
         const seg = segments[i];
         const time = `[${formatTime(seg.startTime)} - ${formatTime(seg.endTime)}]`;
         console.log(`${chalk.dim(time)} ${seg.text}`);
-        console.log(`${chalk.dim("           →")} ${chalk.green(translatedSegments[i]?.text || seg.text)}`);
+        console.log(
+          `${chalk.dim("           →")} ${chalk.green(translatedSegments[i]?.text || seg.text)}`
+        );
         console.log();
       }
 
@@ -649,7 +688,9 @@ audioCommand
           command: "audio duck",
           startedAt,
           dryRun: true,
-          data: { params: { musicPath, voicePath: options.voice, threshold, ratio, attack, release } },
+          data: {
+            params: { musicPath, voicePath: options.voice, threshold, ratio, attack, release },
+          },
         });
         return;
       }
@@ -664,7 +705,12 @@ audioCommand
 
       // Check FFmpeg availability
       if (!commandExists("ffmpeg")) {
-        exitWithError(generalError("FFmpeg not found", "Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"));
+        exitWithError(
+          generalError(
+            "FFmpeg not found",
+            "Install with: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"
+          )
+        );
       }
 
       const spinner = ora("Processing audio ducking...").start();
@@ -686,7 +732,18 @@ audioCommand
       // FFmpeg sidechain compress filter
       const filterComplex = `[0:a][1:a]sidechaincompress=threshold=${thresholdLinear}:ratio=${ratio}:attack=${attack}:release=${release}[out]`;
 
-      await execSafe("ffmpeg", ["-i", absMusic, "-i", absVoice, "-filter_complex", filterComplex, "-map", "[out]", outputPath, "-y"]);
+      await execSafe("ffmpeg", [
+        "-i",
+        absMusic,
+        "-i",
+        absVoice,
+        "-filter_complex",
+        filterComplex,
+        "-map",
+        "[out]",
+        outputPath,
+        "-y",
+      ]);
 
       spinner.succeed(chalk.green("Audio ducking complete"));
 
@@ -694,7 +751,13 @@ audioCommand
         outputSuccess({
           command: "audio duck",
           startedAt,
-          data: { musicPath: absMusic, voicePath: options.voice, threshold: thresholdDb, ratio, outputPath },
+          data: {
+            musicPath: absMusic,
+            voicePath: options.voice,
+            threshold: thresholdDb,
+            ratio,
+            outputPath,
+          },
         });
         return;
       }
@@ -717,10 +780,10 @@ audioCommand
 
 // Cost-tier annotations for schema/help output.
 applyTiers(audioCommand, {
-  "transcribe": "low",
+  transcribe: "low",
   "list-voices": "low",
-  "isolate": "low",
+  isolate: "low",
   "clone-voice": "low",
-  "dub": "high",
-  "duck": "free",
+  dub: "high",
+  duck: "free",
 });

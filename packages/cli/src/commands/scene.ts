@@ -23,28 +23,17 @@ import { mkdir, readFile, writeFile, access, copyFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import chalk from "chalk";
 import ora from "ora";
-import {
-  GeminiProvider,
-  OpenAIImageProvider,
-  WhisperProvider,
-} from "@vibeframe/ai-providers";
+import { GeminiProvider, OpenAIImageProvider, WhisperProvider } from "@vibeframe/ai-providers";
 import {
   resolveTtsProvider,
   TtsKeyMissingError,
   parseTtsProviderName,
   type TtsProviderName,
 } from "./_shared/tts-resolve.js";
-import {
-  aspectToDims,
-  type VibeProjectConfig,
-} from "./_shared/scene-project.js";
+import { aspectToDims, type VibeProjectConfig } from "./_shared/scene-project.js";
 import { readProjectConfig } from "./_shared/project-config.js";
 import { applyTiers } from "./_shared/cost-tier.js";
-import {
-  getVisualStyle,
-  listVisualStyles,
-  visualStyleNames,
-} from "./_shared/visual-styles.js";
+import { getVisualStyle, listVisualStyles, visualStyleNames } from "./_shared/visual-styles.js";
 import {
   emitSceneHtml,
   insertClipIntoRoot,
@@ -55,23 +44,13 @@ import {
   SCENE_OVERLAP_SECONDS,
   type ScenePreset,
 } from "./_shared/scene-html-emit.js";
-import {
-  runProjectLint,
-  rootExists,
-  type ProjectLintResult,
-} from "./_shared/scene-lint.js";
+import { runProjectLint, rootExists, type ProjectLintResult } from "./_shared/scene-lint.js";
 // `executeSceneRender` and `executeSceneBuild` are no longer wired into
 // the `scene` Commander group in v0.75 — the canonical entry points are
 // `vibe render` and `vibe build` (top-level). The execute functions
 // themselves live in _shared/ and are still consumed by the top-level
 // commands and the manifest tools.
-import {
-  exitWithError,
-  generalError,
-  usageError,
-  outputSuccess,
-  isJsonMode,
-} from "./output.js";
+import { exitWithError, generalError, usageError, outputSuccess, isJsonMode } from "./output.js";
 import { getApiKey } from "../utils/api-key.js";
 import { getAudioDuration } from "../utils/audio.js";
 import { detectedAgentHosts } from "../utils/agent-host-detect.js";
@@ -86,7 +65,12 @@ import { executeSceneRepair } from "./_shared/scene-repair.js";
 function validateDuration(value: string): number {
   const n = parseFloat(value);
   if (!Number.isFinite(n) || n <= 0 || n > 3600) {
-    exitWithError(usageError(`Invalid duration: ${value}`, "Duration must be a positive number of seconds (≤3600)"));
+    exitWithError(
+      usageError(
+        `Invalid duration: ${value}`,
+        "Duration must be a positive number of seconds (≤3600)"
+      )
+    );
   }
   return n;
 }
@@ -99,8 +83,12 @@ function validatePreset(value: string): ScenePreset {
 }
 
 export const sceneCommand = new Command("scene")
-  .description("Lower-level scene authoring (add, lint, list-styles). For project flow use `vibe init` / `vibe build` / `vibe render`.")
-  .addHelpText("after", `
+  .description(
+    "Lower-level scene authoring (add, lint, list-styles). For project flow use `vibe init` / `vibe build` / `vibe render`."
+  )
+  .addHelpText(
+    "after",
+    `
 Examples:
   $ vibe scene add intro --style announcement \\
       --headline "Welcome to VibeFrame"                   # Headline-only scene
@@ -108,6 +96,7 @@ Examples:
       --visuals "studio desk, soft lighting"              # AI narration + image
   $ vibe scene lint                                       # Validate every scene against composition rules
   $ vibe scene lint --fix                                 # Auto-fix mechanical issues (e.g. missing class="clip")
+  $ vibe scene repair my-video --json                     # Deterministic project scene repairs
   $ vibe scene repair --project my-video --json           # Deterministic scene repairs
   $ vibe scene lint --json                                # Structured output for agent loops
   $ vibe scene list-styles                                     # Browse seed visual styles for DESIGN.md
@@ -115,8 +104,8 @@ Examples:
 For the project flow (init / build / render), use the top-level commands.
 The \`scene init\`, \`scene build\`, and \`scene render\` legacy aliases
 are still callable but hidden from this help — they will be removed in v1.0.
-Run 'vibe schema scene.<command>' for structured parameter info.`);
-
+Run 'vibe schema scene.<command>' for structured parameter info.`
+  );
 
 // ---------------------------------------------------------------------------
 // `vibe scene install-skill` — drop the Hyperframes skill into a project
@@ -130,7 +119,9 @@ type InstallSkillHostFlag = (typeof VALID_INSTALL_SKILL_HOSTS)[number];
 
 sceneCommand
   .command("install-skill")
-  .description("Install the Hyperframes skill into a scene project so the host agent can read it (Phase H1)")
+  .description(
+    "Install the Hyperframes skill into a scene project so the host agent can read it (Phase H1)"
+  )
   .argument("[project-dir]", "Project directory containing STORYBOARD.md / DESIGN.md", ".")
   .option("--host <id>", `Host layout target: ${VALID_INSTALL_SKILL_HOSTS.join(" | ")}`, "auto")
   .option("--force", "Overwrite existing skill files (default: skip-on-exist)")
@@ -139,7 +130,9 @@ sceneCommand
     const startedAt = Date.now();
     const hostFlag = (options.host as InstallSkillHostFlag) ?? "auto";
     if (!VALID_INSTALL_SKILL_HOSTS.includes(hostFlag)) {
-      exitWithError(usageError(`Invalid --host: ${hostFlag}`, `Valid: ${VALID_INSTALL_SKILL_HOSTS.join(", ")}`));
+      exitWithError(
+        usageError(`Invalid --host: ${hostFlag}`, `Valid: ${VALID_INSTALL_SKILL_HOSTS.join(", ")}`)
+      );
     }
 
     const projectDir = resolve(projectDirArg);
@@ -178,21 +171,31 @@ sceneCommand
     console.log(chalk.bold.cyan("Hyperframes skill install"));
     console.log(chalk.dim("─".repeat(60)));
     console.log(chalk.dim(`Project:   ${projectDir}`));
-    console.log(chalk.dim(`Host:      ${hostFlag}${hostFlag === "auto" ? ` (resolved → ${hosts.join(", ") || "universal-only"})` : ""}`));
+    console.log(
+      chalk.dim(
+        `Host:      ${hostFlag}${hostFlag === "auto" ? ` (resolved → ${hosts.join(", ") || "universal-only"})` : ""}`
+      )
+    );
     console.log(chalk.dim(`Bundle:    ${result.bundleVersion}`));
     console.log();
 
     for (const f of result.files) {
       const icon =
-        f.status === "wrote" ? chalk.green("+")
-        : f.status === "skipped-exists" ? chalk.dim("·")
-        : f.status === "would-write" ? chalk.cyan("~")
-        : chalk.dim("·");
+        f.status === "wrote"
+          ? chalk.green("+")
+          : f.status === "skipped-exists"
+            ? chalk.dim("·")
+            : f.status === "would-write"
+              ? chalk.cyan("~")
+              : chalk.dim("·");
       const note =
-        f.status === "skipped-exists" ? chalk.dim(" (kept existing — pass --force to overwrite)")
-        : f.status === "would-write" ? chalk.dim(" (would write)")
-        : f.status === "would-skip-exists" ? chalk.dim(" (would skip — exists)")
-        : "";
+        f.status === "skipped-exists"
+          ? chalk.dim(" (kept existing — pass --force to overwrite)")
+          : f.status === "would-write"
+            ? chalk.dim(" (would write)")
+            : f.status === "would-skip-exists"
+              ? chalk.dim(" (would skip — exists)")
+              : "";
       console.log(`  ${icon} ${f.path}${note}`);
     }
 
@@ -212,7 +215,9 @@ sceneCommand
 
 sceneCommand
   .command("compose-prompts")
-  .description("Emit the per-beat compose plan for the host agent to author HTML itself (Phase H2 — no LLM call)")
+  .description(
+    "Emit the per-beat compose plan for the host agent to author HTML itself (Phase H2 — no LLM call)"
+  )
   .argument("[project-dir]", "Project directory containing STORYBOARD.md / DESIGN.md", ".")
   .option("--beat <id>", "Restrict the plan to a single beat by id (e.g. 'hook', '1')")
   .action(async (projectDirArg: string, options) => {
@@ -251,7 +256,9 @@ sceneCommand
     console.log(chalk.dim(`Project:    ${projectDir}`));
     console.log(chalk.dim(`Skill ref:  ${result.skillReference ?? chalk.yellow("not installed")}`));
     console.log(chalk.dim(`Design ref: ${result.designReference}`));
-    console.log(chalk.dim(`Beats:      ${result.beats.length}${options.beat ? " (filtered)" : ""}`));
+    console.log(
+      chalk.dim(`Beats:      ${result.beats.length}${options.beat ? " (filtered)" : ""}`)
+    );
     console.log(chalk.dim(`Bundle:     ${result.bundleVersion}`));
     console.log();
 
@@ -275,7 +282,11 @@ sceneCommand
     console.log(chalk.dim("─".repeat(60)));
     for (const line of result.instructions) console.log(`  ${line}`);
     console.log();
-    console.log(chalk.dim("Re-run with --json to get the full per-beat userPrompt + cues for direct consumption."));
+    console.log(
+      chalk.dim(
+        "Re-run with --json to get the full per-beat userPrompt + cues for direct consumption."
+      )
+    );
   });
 
 // ---------------------------------------------------------------------------
@@ -314,23 +325,21 @@ sceneCommand
       console.log(chalk.dim("─".repeat(60)));
       for (const s of all) {
         console.log(
-          `  ${chalk.bold(s.name.padEnd(18))} ${chalk.dim(s.mood.padEnd(24))} ${chalk.dim(s.bestFor)}`,
+          `  ${chalk.bold(s.name.padEnd(18))} ${chalk.dim(s.mood.padEnd(24))} ${chalk.dim(s.bestFor)}`
         );
       }
       console.log();
       console.log(chalk.dim("Show details: "), chalk.cyan('vibe scene list-styles "<name>"'));
-      console.log(chalk.dim("Seed DESIGN.md:"), chalk.cyan('vibe scene init <dir> --visual-style "<name>"'));
+      console.log(
+        chalk.dim("Seed DESIGN.md:"),
+        chalk.cyan('vibe scene init <dir> --visual-style "<name>"')
+      );
       return;
     }
 
     const style = getVisualStyle(name);
     if (!style) {
-      exitWithError(
-        usageError(
-          `Unknown visual style: ${name}`,
-          `Valid: ${visualStyleNames()}.`,
-        ),
-      );
+      exitWithError(usageError(`Unknown visual style: ${name}`, `Valid: ${visualStyleNames()}.`));
       return;
     }
 
@@ -359,7 +368,10 @@ sceneCommand
     console.log(chalk.bold("Avoid:"));
     for (const a of style.avoid) console.log(`  ${chalk.red("•")} ${a}`);
     console.log();
-    console.log(chalk.dim("Seed DESIGN.md:"), chalk.cyan(`vibe scene init <dir> --visual-style "${style.name}"`));
+    console.log(
+      chalk.dim("Seed DESIGN.md:"),
+      chalk.cyan(`vibe scene init <dir> --visual-style "${style.name}"`)
+    );
   });
 
 // ---------------------------------------------------------------------------
@@ -371,20 +383,39 @@ sceneCommand
   .description("Add a new scene to a project: AI narration + image + per-scene HTML")
   .argument("<name>", "Scene name (slugified into the composition id)")
   .option("--style <preset>", `Style preset: ${SCENE_PRESETS.join(", ")}`, "simple")
-  .option("--narration <text>", "Narration text (or path to a .txt file). Drives TTS + scene duration.")
-  .option("--narration-file <path>", "Existing narration audio file (.wav/.mp3). Skips TTS — useful with hyperframes tts, Mac say, or other external tools.")
+  .option(
+    "--narration <text>",
+    "Narration text (or path to a .txt file). Drives TTS + scene duration."
+  )
+  .option(
+    "--narration-file <path>",
+    "Existing narration audio file (.wav/.mp3). Skips TTS — useful with hyperframes tts, Mac say, or other external tools."
+  )
   .option("-d, --duration <sec>", "Explicit scene duration in seconds (overrides narration audio)")
-  .option("--visuals <prompt>", "Image prompt — generates assets/scene-<id>.png via the configured image provider")
+  .option(
+    "--visuals <prompt>",
+    "Image prompt — generates assets/scene-<id>.png via the configured image provider"
+  )
   .option("--headline <text>", "Visible headline (defaults to the humanised scene name)")
   .option("--kicker <text>", "Small label above the headline (explainer / product-shot)")
   .option("--insert-into <path>", "Root composition file to update", "index.html")
   .option("--project <dir>", "Project directory", ".")
   .option("--image-provider <name>", "Image provider: gemini, openai", "gemini")
-  .option("--tts <provider>", "TTS provider: auto, elevenlabs, kokoro (default auto — picks ElevenLabs when key set, else Kokoro local)", "auto")
+  .option(
+    "--tts <provider>",
+    "TTS provider: auto, elevenlabs, kokoro (default auto — picks ElevenLabs when key set, else Kokoro local)",
+    "auto"
+  )
   .option("--voice <id>", "Voice id (ElevenLabs name/id, or Kokoro id like af_heart, am_michael)")
-  .option("--no-audio", "Skip TTS even when --narration is provided (useful for tests/agent dry runs)")
+  .option(
+    "--no-audio",
+    "Skip TTS even when --narration is provided (useful for tests/agent dry runs)"
+  )
   .option("--no-image", "Skip image generation even when --visuals is provided")
-  .option("--no-transcribe", "Skip Whisper word-level transcribe step (no transcript-<id>.json emitted)")
+  .option(
+    "--no-transcribe",
+    "Skip Whisper word-level transcribe step (no transcript-<id>.json emitted)"
+  )
   .option("--transcribe-language <code>", "BCP-47 language code passed to Whisper (e.g. en, ko)")
   .option("--force", "Overwrite an existing compositions/scene-<id>.html")
   .option("--dry-run", "Preview parameters without writing files or calling APIs")
@@ -419,7 +450,7 @@ sceneCommand
             insertInto: options.insertInto,
             imageProvider: options.imageProvider,
             tts,
-            audio: options.audio,   // commander sets `audio: false` when --no-audio is passed
+            audio: options.audio, // commander sets `audio: false` when --no-audio is passed
             image: options.image,
           },
         },
@@ -568,7 +599,12 @@ export interface SceneAddResult {
 }
 
 async function pathExists(p: string): Promise<boolean> {
-  try { await access(p); return true; } catch { return false; }
+  try {
+    await access(p);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function loadVibeProjectConfig(projectDir: string): Promise<VibeProjectConfig | null> {
@@ -604,7 +640,10 @@ async function resolveNarrationText(value: string | undefined): Promise<string |
 }
 
 /** Map a project aspect to the OpenAI image API size string. */
-function openAiSizeForAspect(width: number, height: number): "1024x1024" | "1536x1024" | "1024x1536" {
+function openAiSizeForAspect(
+  width: number,
+  height: number
+): "1024x1024" | "1536x1024" | "1024x1536" {
   if (width === height) return "1024x1024";
   return width > height ? "1536x1024" : "1024x1536";
 }
@@ -696,7 +735,7 @@ export async function executeSceneAdd(opts: SceneAddOptions): Promise<SceneAddRe
     opts.onProgress?.(
       resolution.provider === "kokoro"
         ? "Generating narration with Kokoro (local — first run downloads ~330MB)..."
-        : "Generating narration with ElevenLabs...",
+        : "Generating narration with ElevenLabs..."
     );
     const tts = await resolution.call(narrationText, {
       voice: opts.voice,
@@ -733,7 +772,7 @@ export async function executeSceneAdd(opts: SceneAddOptions): Promise<SceneAddRe
     const whisperKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
     if (!whisperKey) {
       opts.onProgress?.(
-        "Skipping transcribe (OPENAI_API_KEY not set — narration plays but word-sync unavailable)",
+        "Skipping transcribe (OPENAI_API_KEY not set — narration plays but word-sync unavailable)"
       );
     } else {
       opts.onProgress?.("Transcribing narration (Whisper word-level)...");
@@ -751,7 +790,11 @@ export async function executeSceneAdd(opts: SceneAddOptions): Promise<SceneAddRe
           const transcriptAbs = resolve(projectDir, transcriptRelPath);
           await writeFile(transcriptAbs, JSON.stringify(transcript.words, null, 2), "utf-8");
           transcriptWordCount = transcript.words.length;
-          transcriptWords = transcript.words.map((w) => ({ text: w.text, start: w.start, end: w.end }));
+          transcriptWords = transcript.words.map((w) => ({
+            text: w.text,
+            start: w.start,
+            end: w.end,
+          }));
         } else if (transcript.status === "failed") {
           opts.onProgress?.(`Transcribe failed: ${transcript.error ?? "unknown error"}`);
         }
@@ -776,7 +819,9 @@ export async function executeSceneAdd(opts: SceneAddOptions): Promise<SceneAddRe
     if (provider === "openai") {
       const openaiKey = await getApiKey("OPENAI_API_KEY", "OpenAI");
       if (!openaiKey) {
-        return errResult("OpenAI API key required for --visuals --image-provider openai. Set OPENAI_API_KEY or pass --no-image.");
+        return errResult(
+          "OpenAI API key required for --visuals --image-provider openai. Set OPENAI_API_KEY or pass --no-image."
+        );
       }
       const openai = new OpenAIImageProvider();
       await openai.initialize({ apiKey: openaiKey });
@@ -804,11 +849,17 @@ export async function executeSceneAdd(opts: SceneAddOptions): Promise<SceneAddRe
     } else {
       const googleKey = await getApiKey("GOOGLE_API_KEY", "Google");
       if (!googleKey) {
-        return errResult("Google API key required for Gemini image generation. Set GOOGLE_API_KEY or pass --no-image.");
+        return errResult(
+          "Google API key required for Gemini image generation. Set GOOGLE_API_KEY or pass --no-image."
+        );
       }
       const gemini = new GeminiProvider();
       await gemini.initialize({ apiKey: googleKey });
-      const aspectRatio = aspectStringFromDims(dims.width, dims.height) as "1:1" | "16:9" | "9:16" | "4:5";
+      const aspectRatio = aspectStringFromDims(dims.width, dims.height) as
+        | "1:1"
+        | "16:9"
+        | "9:16"
+        | "4:5";
       const imageResult = await gemini.generateImage(opts.visuals, { aspectRatio });
       if (!imageResult.success || !imageResult.images?.[0]?.base64) {
         return errResult(`Gemini image generation failed: ${imageResult.error ?? "unknown error"}`);
@@ -833,9 +884,10 @@ export async function executeSceneAdd(opts: SceneAddOptions): Promise<SceneAddRe
   const fallback = cfg?.defaultSceneDuration ?? 5;
   const NARRATION_TAIL_BUFFER = 0.5;
   const userDur = opts.duration;
-  const audioMinDur = narrationDuration !== undefined
-    ? narrationDuration + SCENE_OVERLAP_SECONDS + NARRATION_TAIL_BUFFER
-    : undefined;
+  const audioMinDur =
+    narrationDuration !== undefined
+      ? narrationDuration + SCENE_OVERLAP_SECONDS + NARRATION_TAIL_BUFFER
+      : undefined;
   let duration: number;
   if (userDur !== undefined && audioMinDur !== undefined) {
     duration = Math.max(userDur, audioMinDur);
@@ -891,9 +943,11 @@ export async function executeSceneAdd(opts: SceneAddOptions): Promise<SceneAddRe
     duration,
     scenePath: relative(process.cwd(), scenePath) || scenePath,
     rootPath: relative(process.cwd(), rootPath) || rootPath,
-    audioPath: audioAbsPath ? (relative(process.cwd(), audioAbsPath) || audioAbsPath) : undefined,
-    imagePath: imageAbsPath ? (relative(process.cwd(), imageAbsPath) || imageAbsPath) : undefined,
-    transcriptPath: transcriptAbsPath ? (relative(process.cwd(), transcriptAbsPath) || transcriptAbsPath) : undefined,
+    audioPath: audioAbsPath ? relative(process.cwd(), audioAbsPath) || audioAbsPath : undefined,
+    imagePath: imageAbsPath ? relative(process.cwd(), imageAbsPath) || imageAbsPath : undefined,
+    transcriptPath: transcriptAbsPath
+      ? relative(process.cwd(), transcriptAbsPath) || transcriptAbsPath
+      : undefined,
     transcriptWordCount,
   };
 }
@@ -907,15 +961,17 @@ sceneCommand
   .description("Validate scene HTML against composition rules (in-process, no Chrome required)")
   .argument("[root]", "Root composition file relative to --project", "index.html")
   .option("--project <dir>", "Project directory", ".")
-  .option("--fix", "Apply mechanical auto-fixes (currently: missing class=\"clip\")")
+  .option("--fix", 'Apply mechanical auto-fixes (currently: missing class="clip")')
   .action(async (root: string, options) => {
     const startedAt = Date.now();
     const projectDir = resolve(options.project as string);
     if (!(await rootExists(projectDir, root))) {
-      exitWithError(generalError(
-        `Root composition not found: ${resolve(projectDir, root)}`,
-        "Run `vibe scene init` first, or pass --project <dir>.",
-      ));
+      exitWithError(
+        generalError(
+          `Root composition not found: ${resolve(projectDir, root)}`,
+          "Run `vibe scene init` first, or pass --project <dir>."
+        )
+      );
     }
 
     const spinner = isJsonMode() ? null : ora("Linting scenes...").start();
@@ -941,13 +997,17 @@ sceneCommand
     if (result.ok && result.warningCount === 0 && result.infoCount === 0) {
       spinner?.succeed(chalk.green(`Lint clean — ${result.files.length} file(s) checked`));
     } else if (result.ok) {
-      spinner?.warn(chalk.yellow(
-        `${result.warningCount} warning(s), ${result.infoCount} info — ${result.errorCount} error(s)`,
-      ));
+      spinner?.warn(
+        chalk.yellow(
+          `${result.warningCount} warning(s), ${result.infoCount} info — ${result.errorCount} error(s)`
+        )
+      );
     } else {
-      spinner?.fail(chalk.red(
-        `${result.errorCount} error(s), ${result.warningCount} warning(s), ${result.infoCount} info`,
-      ));
+      spinner?.fail(
+        chalk.red(
+          `${result.errorCount} error(s), ${result.warningCount} warning(s), ${result.infoCount} info`
+        )
+      );
     }
 
     for (const file of result.files) {
@@ -957,7 +1017,11 @@ sceneCommand
       console.log(chalk.dim("─".repeat(60)));
       for (const f of file.findings) {
         const tag = severityTag(f.severity);
-        const loc = f.elementId ? chalk.dim(` #${f.elementId}`) : f.selector ? chalk.dim(` ${f.selector}`) : "";
+        const loc = f.elementId
+          ? chalk.dim(` #${f.elementId}`)
+          : f.selector
+            ? chalk.dim(` ${f.selector}`)
+            : "";
         console.log(`  ${tag} ${chalk.dim(`[${f.code}]`)}${loc}  ${f.message}`);
         if (f.fixHint) console.log(`     ${chalk.dim("→ " + f.fixHint)}`);
       }
@@ -982,25 +1046,33 @@ sceneCommand
 sceneCommand
   .command("repair")
   .description("Apply deterministic mechanical repairs to scene HTML")
-  .argument("[root]", "Root composition file relative to --project", "index.html")
+  .argument(
+    "[root]",
+    "Project directory, or root composition file relative to --project",
+    "index.html"
+  )
   .option("--project <dir>", "Project directory", ".")
   .option("--dry-run", "Preview repairs without writing files")
   .action(async (root: string, options) => {
     const startedAt = Date.now();
-    const projectDir = resolve(options.project as string);
-    if (!(await rootExists(projectDir, root))) {
-      exitWithError(generalError(
-        `Root composition not found: ${resolve(projectDir, root)}`,
-        "Run `vibe build --stage sync` first, or pass --project <dir>.",
-      ));
+    const target = await resolveSceneRepairTarget(root, options.project as string);
+    if (!(await rootExists(target.projectDir, target.rootRel))) {
+      exitWithError(
+        generalError(
+          `Root composition not found: ${resolve(target.projectDir, target.rootRel)}`,
+          "Run `vibe build --stage sync` first, pass a project directory, or pass --project <dir> with a root HTML path."
+        )
+      );
     }
 
-    const spinner = isJsonMode() ? null : ora(options.dryRun ? "Checking repairable scene issues..." : "Repairing scenes...").start();
+    const spinner = isJsonMode()
+      ? null
+      : ora(options.dryRun ? "Checking repairable scene issues..." : "Repairing scenes...").start();
     let result;
     try {
       result = await executeSceneRepair({
-        projectDir,
-        rootRel: root,
+        projectDir: target.projectDir,
+        rootRel: target.rootRel,
         dryRun: !!options.dryRun,
       });
     } catch (error) {
@@ -1022,11 +1094,19 @@ sceneCommand
     const repairedCount = result.fixed.length;
     const wouldFixCount = result.wouldFix.length;
     if (result.status === "pass") {
-      spinner?.succeed(chalk.green(options.dryRun
-        ? `Repair check clean — ${wouldFixCount} repair(s) available`
-        : `Scene repair complete — ${repairedCount} file(s) changed`));
+      spinner?.succeed(
+        chalk.green(
+          options.dryRun
+            ? `Repair check clean — ${wouldFixCount} repair(s) available`
+            : `Scene repair complete — ${repairedCount} file(s) changed`
+        )
+      );
     } else if (result.status === "warn") {
-      spinner?.warn(chalk.yellow(`Scene repair finished with ${result.remainingIssues.length} warning/info finding(s)`));
+      spinner?.warn(
+        chalk.yellow(
+          `Scene repair finished with ${result.remainingIssues.length} warning/info finding(s)`
+        )
+      );
     } else {
       spinner?.fail(chalk.red(`Scene repair left ${result.remainingIssues.length} issue(s)`));
     }
@@ -1046,13 +1126,38 @@ sceneCommand
       console.log(chalk.bold.cyan("Remaining issues"));
       console.log(chalk.dim("-".repeat(60)));
       for (const issue of result.remainingIssues) {
-        const tag = issue.severity === "error" ? chalk.red("error") : issue.severity === "warning" ? chalk.yellow("warn") : chalk.blue("info");
-        console.log(`  ${tag} ${chalk.dim(`[${issue.code}]`)} ${issue.file ?? ""} ${issue.message}`);
+        const tag =
+          issue.severity === "error"
+            ? chalk.red("error")
+            : issue.severity === "warning"
+              ? chalk.yellow("warn")
+              : chalk.blue("info");
+        console.log(
+          `  ${tag} ${chalk.dim(`[${issue.code}]`)} ${issue.file ?? ""} ${issue.message}`
+        );
       }
     }
 
     if (result.status === "fail") process.exitCode = 1;
   });
+
+export async function resolveSceneRepairTarget(
+  rootArg = "index.html",
+  projectArg = "."
+): Promise<{ projectDir: string; rootRel: string }> {
+  const root = rootArg || "index.html";
+  const project = projectArg || ".";
+  const defaultProject = project === ".";
+  if (
+    defaultProject &&
+    root !== "index.html" &&
+    !root.toLowerCase().endsWith(".html") &&
+    existsSync(resolve(root, "index.html"))
+  ) {
+    return { projectDir: resolve(root), rootRel: "index.html" };
+  }
+  return { projectDir: resolve(project), rootRel: root };
+}
 
 function severityTag(severity: "error" | "warning" | "info"): string {
   if (severity === "error") return chalk.red("✘ error  ");
@@ -1065,10 +1170,10 @@ function severityTag(severity: "error" | "warning" | "info"): string {
 // but the default invocation (no narration) is free. Tag baseline as
 // `free`; users hitting TTS opt in explicitly.
 applyTiers(sceneCommand, {
-  "add": "free",
+  add: "free",
   "compose-prompts": "free",
   "install-skill": "free",
-  "lint": "free",
+  lint: "free",
   "list-styles": "free",
-  "repair": "free",
+  repair: "free",
 });

@@ -10,7 +10,6 @@
  * processes media you already have.
  *
  * Commands:
- *   remix regenerate-scene - Regenerate specific scene(s) against an existing storyboard
  *   remix highlights       - Extract highlights from long-form content
  *   remix auto-shorts      - Generate short-form clips from long-form video
  *   remix animated-caption - Add word-by-word animated captions
@@ -26,13 +25,19 @@ import ora from "ora";
 import { registerScriptPipelineCommands } from "./ai-script-pipeline-cli.js";
 import { registerHighlightsCommands } from "./ai-highlights.js";
 import { executeAnimatedCaption, type AnimatedCaptionStyle } from "./ai-animated-caption.js";
-import { isJsonMode, outputSuccess, exitWithError, notFoundError, usageError, apiError, generalError } from "./output.js";
+import {
+  isJsonMode,
+  outputSuccess,
+  exitWithError,
+  notFoundError,
+  usageError,
+  apiError,
+  generalError,
+} from "./output.js";
 import { applyTiers } from "./_shared/cost-tier.js";
 
 export const remixCommand = new Command("remix")
-  .description(
-    "Transform existing media (highlights, auto-shorts, animated captions, regenerate-scene)"
-  )
+  .description("Repurpose existing media (highlights, auto-shorts, animated captions)")
   .addHelpText(
     "after",
     `
@@ -59,7 +64,10 @@ Cost tiers:
   highlights:          $   Low (~$0.05)
   auto-shorts:         $$  Medium (~$0.10-$1)
   animated-caption:    $   Low (~$0.01)
-  regenerate-scene:    $$$ High (per-scene re-run; depends on provider)
+
+Legacy:
+  remix regenerate-scene  Use 'vibe build <project> --beat <id> --force --json'
+                          for storyboard project regeneration.
 
 Use '--dry-run' to preview parameters before execution.
 Run 'vibe schema remix.<command>' for structured parameter info.
@@ -76,7 +84,14 @@ registerHighlightsCommands(remixCommand);
 
 // ── pipeline animated-caption ────────────────────────────────────────────
 
-const ANIMATED_CAPTION_STYLES = ["highlight", "bounce", "pop-in", "neon", "karaoke-sweep", "typewriter"];
+const ANIMATED_CAPTION_STYLES = [
+  "highlight",
+  "bounce",
+  "pop-in",
+  "neon",
+  "karaoke-sweep",
+  "typewriter",
+];
 
 remixCommand
   .command("animated-caption")
@@ -109,7 +124,7 @@ Styles:
   typewriter           Words appear one by one (ASS/FFmpeg, fast)
 
 Required API Key: OPENAI_API_KEY (Whisper transcription)
-`,
+`
   )
   .action(async (videoPath: string, options) => {
     const startedAt = Date.now();
@@ -121,7 +136,12 @@ Required API Key: OPENAI_API_KEY (Whisper transcription)
 
       // Validate style
       if (!ANIMATED_CAPTION_STYLES.includes(options.style)) {
-        exitWithError(usageError(`Invalid style: ${options.style}`, `Valid styles: ${ANIMATED_CAPTION_STYLES.join(", ")}`));
+        exitWithError(
+          usageError(
+            `Invalid style: ${options.style}`,
+            `Valid styles: ${ANIMATED_CAPTION_STYLES.join(", ")}`
+          )
+        );
       }
 
       const outputFile = options.output || videoPath.replace(/(\.\w+)$/, "-captioned$1");
@@ -212,7 +232,7 @@ Required API Key: OPENAI_API_KEY (Whisper transcription)
 // Cost-tier annotations for schema/help output.
 applyTiers(remixCommand, {
   "regenerate-scene": "very-high",
-  "highlights": "high",
+  highlights: "high",
   "auto-shorts": "high",
   "animated-caption": "low",
 });

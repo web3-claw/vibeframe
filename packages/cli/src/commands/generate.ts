@@ -50,9 +50,15 @@ function tierLast(parent: Command, tier: CostTier): void {
 // Re-export for backward compat (pipeline/executor.ts and other consumers
 // import these from `./generate.js`).
 export { executeSoundEffect } from "./generate/sound-effect.js";
-export type { ExecuteSoundEffectOptions, ExecuteSoundEffectResult } from "./generate/sound-effect.js";
+export type {
+  ExecuteSoundEffectOptions,
+  ExecuteSoundEffectResult,
+} from "./generate/sound-effect.js";
 export { executeMusicStatus } from "./generate/music-status.js";
-export type { ExecuteMusicStatusOptions, ExecuteMusicStatusResult } from "./generate/music-status.js";
+export type {
+  ExecuteMusicStatusOptions,
+  ExecuteMusicStatusResult,
+} from "./generate/music-status.js";
 export { executeBackground } from "./generate/background.js";
 export type { ExecuteBackgroundOptions, ExecuteBackgroundResult } from "./generate/background.js";
 export { executeStoryboard } from "./generate/storyboard.js";
@@ -66,9 +72,7 @@ export type { ExecuteMusicOptions, ExecuteMusicResult } from "./generate/music.j
 
 export const generateCommand = new Command("generate")
   .alias("gen")
-  .description(
-    "Generate assets using AI (images, videos, speech, music, motion)"
-  )
+  .description("Generate standalone assets (image, video, narration, music, SFX)")
   .addHelpText(
     "after",
     `
@@ -79,9 +83,16 @@ Examples:
   $ vibe generate video "city timelapse" -o city.mp4 -p seedance  # Seedance via fal.ai
   $ vibe generate video "city timelapse" -o city.mp4 -p kling     # Kling
   $ vibe generate video "epic scene" -i frame.png -o out.mp4 -p runway  # Image-to-video
-  $ vibe generate speech "Hello world" -o hello.mp3
+  $ vibe generate narration "Hello world" -o narration.mp3
   $ vibe generate music "upbeat jazz" -o jazz.mp3 -d 30
   $ vibe generate motion "animated product logo reveal" --render -o logo-reveal.mp4
+
+Advanced and legacy:
+  generate speech       Legacy alias; use 'vibe generate narration'
+  generate storyboard   Legacy primitive; use 'vibe init --from' or 'vibe storyboard revise'
+  generate background   Legacy primitive; use 'vibe generate image' or 'vibe build --stage assets'
+  generate motion       Advanced standalone motion; project scenes use 'vibe build --stage compose'
+  *-status              Provider polling primitive; use 'vibe status job <job-id> --json'
 
 API Keys (per provider):
   GOOGLE_API_KEY     Image (default), Veo video
@@ -90,10 +101,11 @@ API Keys (per provider):
   XAI_API_KEY        Grok image/video
   KLING_API_KEY      Kling video (-p kling)
   RUNWAY_API_SECRET  Runway video (-p runway)
-  ELEVENLABS_API_KEY Speech, sound effects, music
+  ELEVENLABS_API_KEY Narration, speech alias, sound effects, music
   ANTHROPIC_API_KEY  Storyboard, motion graphics
 
 Run 'vibe setup --show' to check API key status.
+Run 'vibe schema --list --surface public' for the first-run asset surface.
 Run 'vibe schema generate.<command>' for structured parameter info.
 `
   );
@@ -136,7 +148,6 @@ tierLast(generateCommand, "low");
 
 registerMusicCommand(generateCommand);
 tierLast(generateCommand, "low");
-
 
 // ============================================================================
 // 6. Music Status → moved to commands/generate/music-status.ts (v0.69 Phase 2)

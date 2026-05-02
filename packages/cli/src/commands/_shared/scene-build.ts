@@ -57,6 +57,13 @@ import {
   normalizeVideoDuration,
   videoCacheDescriptor,
 } from "./build-cache.js";
+import {
+  assetMetadataPath,
+  isFreshCanonicalAsset,
+  readAssetMetadata,
+  writeAssetMetadata,
+  type AssetFreshness,
+} from "./build-asset-metadata.js";
 import { executeVideoGenerate } from "../ai-video.js";
 import { executeMusic } from "../generate/music.js";
 import { createAndWriteJobRecord, type JobRecord } from "./status-jobs.js";
@@ -110,6 +117,8 @@ export interface BeatBuildOutcome {
   narrationProvider?: string;
   narrationCachePath?: string;
   narrationCacheKey?: string;
+  narrationMetadataPath?: string;
+  narrationFreshness?: AssetFreshness;
   narrationSourcePath?: string;
   backdropStatus: PrimitiveStatus;
   backdropPath?: string;
@@ -118,6 +127,8 @@ export interface BeatBuildOutcome {
   backdropProvider?: string;
   backdropCachePath?: string;
   backdropCacheKey?: string;
+  backdropMetadataPath?: string;
+  backdropFreshness?: AssetFreshness;
   backdropSourcePath?: string;
   videoStatus: PrimitiveStatus;
   videoPath?: string;
@@ -127,6 +138,8 @@ export interface BeatBuildOutcome {
   videoProvider?: string;
   videoCachePath?: string;
   videoCacheKey?: string;
+  videoMetadataPath?: string;
+  videoFreshness?: AssetFreshness;
   videoSourcePath?: string;
   musicStatus: PrimitiveStatus;
   musicPath?: string;
@@ -136,6 +149,8 @@ export interface BeatBuildOutcome {
   musicProvider?: string;
   musicCachePath?: string;
   musicCacheKey?: string;
+  musicMetadataPath?: string;
+  musicFreshness?: AssetFreshness;
   musicSourcePath?: string;
   musicDurationSec?: number;
 }
@@ -708,7 +723,7 @@ export async function executeSceneBuild(opts: SceneBuildOptions): Promise<SceneB
         error: "Scene repair failed after compose stage.",
         message: "Scene repair failed after compose stage.",
         suggestion:
-          "Run `vibe scene repair --project <project> --json`, then edit remaining scene HTML findings.",
+          "Run `vibe scene repair <project> --json`, then edit remaining scene HTML findings.",
         recoverable: true,
         beats: beatOutcomes,
         composeData,
@@ -786,7 +801,7 @@ export async function executeSceneBuild(opts: SceneBuildOptions): Promise<SceneB
         error: "Scene repair failed after sync stage.",
         message: "Scene repair failed after sync stage.",
         suggestion:
-          "Run `vibe scene repair --project <project> --json`, then edit remaining scene HTML findings.",
+          "Run `vibe scene repair <project> --json`, then edit remaining scene HTML findings.",
         recoverable: true,
         beats: beatOutcomes,
         composeData,
@@ -949,6 +964,8 @@ async function buildBeatPrimitives(
       narrationProvider: narration.provider,
       narrationCachePath: narration.cachePath,
       narrationCacheKey: narration.cacheKey,
+      narrationMetadataPath: narration.metadataPath,
+      narrationFreshness: narration.freshness,
       narrationSourcePath: narration.sourcePath,
       backdropStatus: backdrop.status,
       backdropPath: backdrop.path,
@@ -957,6 +974,8 @@ async function buildBeatPrimitives(
       backdropProvider: backdrop.provider,
       backdropCachePath: backdrop.cachePath,
       backdropCacheKey: backdrop.cacheKey,
+      backdropMetadataPath: backdrop.metadataPath,
+      backdropFreshness: backdrop.freshness,
       backdropSourcePath: backdrop.sourcePath,
       videoStatus: video.status,
       videoPath: video.path,
@@ -966,6 +985,8 @@ async function buildBeatPrimitives(
       videoProvider: video.provider,
       videoCachePath: video.cachePath,
       videoCacheKey: video.cacheKey,
+      videoMetadataPath: video.metadataPath,
+      videoFreshness: video.freshness,
       videoSourcePath: video.sourcePath,
       musicStatus: music.status,
       musicPath: music.path,
@@ -975,6 +996,8 @@ async function buildBeatPrimitives(
       musicProvider: music.provider,
       musicCachePath: music.cachePath,
       musicCacheKey: music.cacheKey,
+      musicMetadataPath: music.metadataPath,
+      musicFreshness: music.freshness,
       musicSourcePath: music.sourcePath,
       musicDurationSec: music.durationSec,
     },
@@ -991,6 +1014,8 @@ interface PrimitiveOutcome {
   provider?: string;
   cachePath?: string;
   cacheKey?: string;
+  metadataPath?: string;
+  freshness?: AssetFreshness;
   sourcePath?: string;
 }
 
@@ -1012,6 +1037,7 @@ async function referencePrimitiveOutcome(
     path: reference.relPath,
     sourcePath,
     provider: "local",
+    freshness: "referenced",
     durationSec:
       kind === "narration" || kind === "music"
         ? await safeAudioDuration(reference.absPath)
@@ -1058,18 +1084,28 @@ async function dispatchNarration(beat: Beat, ctx: BeatDispatchContext): Promise<
   const reference = assetReferenceForBeat(ctx.projectDir, "narration", beat);
   if (reference) return referencePrimitiveOutcome("narration", beat, ctx, reference);
 
-  const text = beat.cues?.narration;
+  const text = stringOrUndefined(beat.cues?.narration);
   if (!text) return { status: "no-cue" };
+  const metadataPath = assetMetadataPath("narration", beat.id);
+  const voice = ctx.voice ?? stringOrUndefined(beat.cues?.voice);
 
-  // Idempotent check: any existing narration audio for this beat (mp3 or wav).
-  for (const ext of ["mp3", "wav"] as const) {
-    const rel = `assets/narration-${beat.id}.${ext}`;
-    if (existsSync(join(ctx.projectDir, rel)) && !ctx.force) {
-      ctx.onProgress({ type: "narration-cached", beatId: beat.id, path: rel });
+  const existingRel = firstExisting(ctx.projectDir, [
+    `assets/narration-${beat.id}.mp3`,
+    `assets/narration-${beat.id}.wav`,
+  ]);
+  if (existingRel && !ctx.force) {
+    const metadata = readAssetMetadata(ctx.projectDir, "narration", beat.id);
+    if (!metadata || (metadata.cue === text && (!voice || metadata.options?.voice === voice))) {
+      ctx.onProgress({ type: "narration-cached", beatId: beat.id, path: existingRel });
       return {
         status: "cached",
-        path: rel,
-        durationSec: await safeAudioDuration(join(ctx.projectDir, rel)),
+        path: existingRel,
+        durationSec: await safeAudioDuration(join(ctx.projectDir, existingRel)),
+        provider: metadata?.provider,
+        cachePath: metadata?.cachePath,
+        cacheKey: metadata?.cacheKey,
+        metadataPath,
+        freshness: metadata ? "fresh" : "unknown",
       };
     }
   }
@@ -1087,15 +1123,51 @@ async function dispatchNarration(beat: Beat, ctx: BeatDispatchContext): Promise<
     beatId: beat.id,
     cue: text,
     provider: resolution.provider,
-    voice: ctx.voice ?? beat.cues?.voice,
+    voice,
     ext: resolution.audioExtension,
   });
   const cacheAbs = join(ctx.projectDir, cache.path);
   const rel = `assets/narration-${beat.id}.${resolution.audioExtension}`;
   const abs = join(ctx.projectDir, rel);
+  if (
+    existingRel &&
+    !ctx.force &&
+    isFreshCanonicalAsset({
+      projectDir: ctx.projectDir,
+      kind: "narration",
+      beatId: beat.id,
+      cue: text,
+      provider: resolution.provider,
+      options: { voice },
+      cacheKey: cache.key,
+    })
+  ) {
+    ctx.onProgress({ type: "narration-cached", beatId: beat.id, path: existingRel });
+    return {
+      status: "cached",
+      path: existingRel,
+      durationSec: await safeAudioDuration(join(ctx.projectDir, existingRel)),
+      provider: resolution.provider,
+      cachePath: cache.path,
+      cacheKey: cache.key,
+      metadataPath,
+      freshness: "fresh",
+    };
+  }
   if (existsSync(cacheAbs) && !ctx.force) {
     await mkdir(dirname(abs), { recursive: true });
     await copyFile(cacheAbs, abs);
+    await writeAssetMetadata({
+      projectDir: ctx.projectDir,
+      kind: "narration",
+      beatId: beat.id,
+      cue: text,
+      provider: resolution.provider,
+      options: { voice },
+      cacheKey: cache.key,
+      canonicalPath: rel,
+      cachePath: cache.path,
+    });
     ctx.onProgress({ type: "narration-cached", beatId: beat.id, path: rel });
     return {
       status: "cached",
@@ -1104,10 +1176,12 @@ async function dispatchNarration(beat: Beat, ctx: BeatDispatchContext): Promise<
       provider: resolution.provider,
       cachePath: cache.path,
       cacheKey: cache.key,
+      metadataPath,
+      freshness: "fresh",
     };
   }
 
-  const result = await resolution.call(text, { voice: ctx.voice });
+  const result = await resolution.call(text, { voice });
   if (!result.success || !result.audioBuffer) {
     const error = result.error ?? "unknown TTS failure";
     ctx.onProgress({ type: "narration-failed", beatId: beat.id, error });
@@ -1118,6 +1192,17 @@ async function dispatchNarration(beat: Beat, ctx: BeatDispatchContext): Promise<
   await writeFile(abs, result.audioBuffer);
   await mkdir(dirname(cacheAbs), { recursive: true });
   await writeFile(cacheAbs, result.audioBuffer);
+  await writeAssetMetadata({
+    projectDir: ctx.projectDir,
+    kind: "narration",
+    beatId: beat.id,
+    cue: text,
+    provider: resolution.provider,
+    options: { voice },
+    cacheKey: cache.key,
+    canonicalPath: rel,
+    cachePath: cache.path,
+  });
   ctx.onProgress({
     type: "narration-generated",
     beatId: beat.id,
@@ -1131,6 +1216,8 @@ async function dispatchNarration(beat: Beat, ctx: BeatDispatchContext): Promise<
     provider: resolution.provider,
     cachePath: cache.path,
     cacheKey: cache.key,
+    metadataPath,
+    freshness: "fresh",
   };
 }
 
@@ -1138,7 +1225,7 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
   const reference = assetReferenceForBeat(ctx.projectDir, "backdrop", beat);
   if (reference) return referencePrimitiveOutcome("backdrop", beat, ctx, reference);
 
-  const prompt = beat.cues?.backdrop;
+  const prompt = stringOrUndefined(beat.cues?.backdrop);
   if (!prompt) return { status: "no-cue" };
 
   if (ctx.imageProvider !== "openai") {
@@ -1149,10 +1236,6 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
 
   const rel = `assets/backdrop-${beat.id}.png`;
   const abs = join(ctx.projectDir, rel);
-  if (existsSync(abs) && !ctx.force) {
-    ctx.onProgress({ type: "backdrop-cached", beatId: beat.id, path: rel });
-    return { status: "cached", path: rel, provider: ctx.imageProvider };
-  }
   const cache = backdropCacheDescriptor({
     beatId: beat.id,
     cue: prompt,
@@ -1160,10 +1243,48 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
     quality: ctx.imageQuality,
     size: ctx.imageSize ?? "1536x1024",
   });
+  const metadataPath = assetMetadataPath("backdrop", beat.id);
+  if (existsSync(abs) && !ctx.force) {
+    const metadata = readAssetMetadata(ctx.projectDir, "backdrop", beat.id);
+    if (
+      !metadata ||
+      isFreshCanonicalAsset({
+        projectDir: ctx.projectDir,
+        kind: "backdrop",
+        beatId: beat.id,
+        cue: prompt,
+        provider: ctx.imageProvider,
+        options: { quality: ctx.imageQuality, size: ctx.imageSize ?? "1536x1024" },
+        cacheKey: cache.key,
+      })
+    ) {
+      ctx.onProgress({ type: "backdrop-cached", beatId: beat.id, path: rel });
+      return {
+        status: "cached",
+        path: rel,
+        provider: metadata?.provider ?? ctx.imageProvider,
+        cachePath: metadata?.cachePath ?? cache.path,
+        cacheKey: metadata?.cacheKey ?? cache.key,
+        metadataPath,
+        freshness: metadata ? "fresh" : "unknown",
+      };
+    }
+  }
   const cacheAbs = join(ctx.projectDir, cache.path);
   if (existsSync(cacheAbs) && !ctx.force) {
     await mkdir(dirname(abs), { recursive: true });
     await copyFile(cacheAbs, abs);
+    await writeAssetMetadata({
+      projectDir: ctx.projectDir,
+      kind: "backdrop",
+      beatId: beat.id,
+      cue: prompt,
+      provider: ctx.imageProvider,
+      options: { quality: ctx.imageQuality, size: ctx.imageSize ?? "1536x1024" },
+      cacheKey: cache.key,
+      canonicalPath: rel,
+      cachePath: cache.path,
+    });
     ctx.onProgress({ type: "backdrop-cached", beatId: beat.id, path: rel });
     return {
       status: "cached",
@@ -1171,6 +1292,8 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
       provider: ctx.imageProvider,
       cachePath: cache.path,
       cacheKey: cache.key,
+      metadataPath,
+      freshness: "fresh",
     };
   }
 
@@ -1203,6 +1326,17 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
   await writeFile(abs, buffer);
   await mkdir(dirname(cacheAbs), { recursive: true });
   await writeFile(cacheAbs, buffer);
+  await writeAssetMetadata({
+    projectDir: ctx.projectDir,
+    kind: "backdrop",
+    beatId: beat.id,
+    cue: prompt,
+    provider: "openai",
+    options: { quality: ctx.imageQuality, size: ctx.imageSize ?? "1536x1024" },
+    cacheKey: cache.key,
+    canonicalPath: rel,
+    cachePath: cache.path,
+  });
   ctx.onProgress({
     type: "backdrop-generated",
     beatId: beat.id,
@@ -1215,6 +1349,8 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
     provider: "openai",
     cachePath: cache.path,
     cacheKey: cache.key,
+    metadataPath,
+    freshness: "fresh",
   };
 }
 
@@ -1227,21 +1363,54 @@ async function dispatchVideo(beat: Beat, ctx: BeatDispatchContext): Promise<Prim
 
   const rel = `assets/video-${beat.id}.mp4`;
   const abs = join(ctx.projectDir, rel);
-  if (existsSync(abs) && !ctx.force) {
-    ctx.onProgress({ type: "video-cached", beatId: beat.id, path: rel });
-    return { status: "cached", path: rel, provider: ctx.videoProvider };
-  }
-
   const cache = videoCacheDescriptor({
     beatId: beat.id,
     cue: prompt,
     provider: ctx.videoProvider,
     duration: normalizeVideoDuration(beat.duration),
   });
+  const metadataPath = assetMetadataPath("video", beat.id);
+  if (existsSync(abs) && !ctx.force) {
+    const metadata = readAssetMetadata(ctx.projectDir, "video", beat.id);
+    if (
+      !metadata ||
+      isFreshCanonicalAsset({
+        projectDir: ctx.projectDir,
+        kind: "video",
+        beatId: beat.id,
+        cue: prompt,
+        provider: ctx.videoProvider,
+        options: { duration: normalizeVideoDuration(beat.duration), ratio: "16:9" },
+        cacheKey: cache.key,
+      })
+    ) {
+      ctx.onProgress({ type: "video-cached", beatId: beat.id, path: rel });
+      return {
+        status: "cached",
+        path: rel,
+        provider: metadata?.provider ?? ctx.videoProvider,
+        cachePath: metadata?.cachePath ?? cache.path,
+        cacheKey: metadata?.cacheKey ?? cache.key,
+        metadataPath,
+        freshness: metadata ? "fresh" : "unknown",
+      };
+    }
+  }
   const cacheAbs = join(ctx.projectDir, cache.path);
   if (existsSync(cacheAbs) && !ctx.force) {
     await mkdir(dirname(abs), { recursive: true });
     await copyFile(cacheAbs, abs);
+    await writeAssetMetadata({
+      projectDir: ctx.projectDir,
+      kind: "video",
+      beatId: beat.id,
+      cue: prompt,
+      provider: ctx.videoProvider,
+      options: { duration: normalizeVideoDuration(beat.duration), ratio: "16:9" },
+      cacheKey: cache.key,
+      canonicalPath: rel,
+      cachePath: cache.path,
+    });
     ctx.onProgress({ type: "video-cached", beatId: beat.id, path: rel });
     return {
       status: "cached",
@@ -1249,6 +1418,8 @@ async function dispatchVideo(beat: Beat, ctx: BeatDispatchContext): Promise<Prim
       provider: ctx.videoProvider,
       cachePath: cache.path,
       cacheKey: cache.key,
+      metadataPath,
+      freshness: "fresh",
     };
   }
 
@@ -1271,6 +1442,17 @@ async function dispatchVideo(beat: Beat, ctx: BeatDispatchContext): Promise<Prim
   if (result.status === "completed" && existsSync(abs)) {
     await mkdir(dirname(cacheAbs), { recursive: true });
     await copyFile(abs, cacheAbs);
+    await writeAssetMetadata({
+      projectDir: ctx.projectDir,
+      kind: "video",
+      beatId: beat.id,
+      cue: prompt,
+      provider: result.provider ?? ctx.videoProvider,
+      options: { duration: normalizeVideoDuration(beat.duration), ratio: "16:9" },
+      cacheKey: cache.key,
+      canonicalPath: rel,
+      cachePath: cache.path,
+    });
     ctx.onProgress({
       type: "video-generated",
       beatId: beat.id,
@@ -1283,6 +1465,8 @@ async function dispatchVideo(beat: Beat, ctx: BeatDispatchContext): Promise<Prim
       provider: result.provider ?? ctx.videoProvider,
       cachePath: cache.path,
       cacheKey: cache.key,
+      metadataPath,
+      freshness: "fresh",
     };
   }
 
@@ -1300,6 +1484,12 @@ async function dispatchVideo(beat: Beat, ctx: BeatDispatchContext): Promise<Prim
     beatId: beat.id,
     outputPath: abs,
     cachePath: cacheAbs,
+    assetKind: "video",
+    assetCue: prompt,
+    assetOptions: { duration: normalizeVideoDuration(beat.duration), ratio: "16:9" },
+    cacheKey: cache.key,
+    canonicalPath: rel,
+    metadataPath,
   });
   ctx.onProgress({ type: "video-pending", beatId: beat.id, jobId: job.id, provider: job.provider });
   return {
@@ -1309,6 +1499,7 @@ async function dispatchVideo(beat: Beat, ctx: BeatDispatchContext): Promise<Prim
     provider: job.provider,
     cachePath: cache.path,
     cacheKey: cache.key,
+    metadataPath,
   };
 }
 
@@ -1321,11 +1512,6 @@ async function dispatchMusic(beat: Beat, ctx: BeatDispatchContext): Promise<Prim
 
   const rel = `assets/music-${beat.id}.mp3`;
   const abs = join(ctx.projectDir, rel);
-  if (existsSync(abs) && !ctx.force) {
-    ctx.onProgress({ type: "music-cached", beatId: beat.id, path: rel });
-    return { status: "cached", path: rel, provider: ctx.musicProvider };
-  }
-
   const duration = normalizeMusicDuration(beat.duration);
   const cache = musicCacheDescriptor({
     beatId: beat.id,
@@ -1333,10 +1519,49 @@ async function dispatchMusic(beat: Beat, ctx: BeatDispatchContext): Promise<Prim
     provider: ctx.musicProvider,
     duration,
   });
+  const metadataPath = assetMetadataPath("music", beat.id);
+  if (existsSync(abs) && !ctx.force) {
+    const metadata = readAssetMetadata(ctx.projectDir, "music", beat.id);
+    if (
+      !metadata ||
+      isFreshCanonicalAsset({
+        projectDir: ctx.projectDir,
+        kind: "music",
+        beatId: beat.id,
+        cue: prompt,
+        provider: ctx.musicProvider,
+        options: { duration },
+        cacheKey: cache.key,
+      })
+    ) {
+      ctx.onProgress({ type: "music-cached", beatId: beat.id, path: rel });
+      return {
+        status: "cached",
+        path: rel,
+        provider: metadata?.provider ?? ctx.musicProvider,
+        durationSec: await safeAudioDuration(abs),
+        cachePath: metadata?.cachePath ?? cache.path,
+        cacheKey: metadata?.cacheKey ?? cache.key,
+        metadataPath,
+        freshness: metadata ? "fresh" : "unknown",
+      };
+    }
+  }
   const cacheAbs = join(ctx.projectDir, cache.path);
   if (existsSync(cacheAbs) && !ctx.force) {
     await mkdir(dirname(abs), { recursive: true });
     await copyFile(cacheAbs, abs);
+    await writeAssetMetadata({
+      projectDir: ctx.projectDir,
+      kind: "music",
+      beatId: beat.id,
+      cue: prompt,
+      provider: ctx.musicProvider,
+      options: { duration },
+      cacheKey: cache.key,
+      canonicalPath: rel,
+      cachePath: cache.path,
+    });
     ctx.onProgress({ type: "music-cached", beatId: beat.id, path: rel });
     return {
       status: "cached",
@@ -1344,6 +1569,8 @@ async function dispatchMusic(beat: Beat, ctx: BeatDispatchContext): Promise<Prim
       provider: ctx.musicProvider,
       cachePath: cache.path,
       cacheKey: cache.key,
+      metadataPath,
+      freshness: "fresh",
     };
   }
 
@@ -1374,6 +1601,12 @@ async function dispatchMusic(beat: Beat, ctx: BeatDispatchContext): Promise<Prim
       beatId: beat.id,
       outputPath: abs,
       cachePath: cacheAbs,
+      assetKind: "music",
+      assetCue: prompt,
+      assetOptions: { duration },
+      cacheKey: cache.key,
+      canonicalPath: rel,
+      metadataPath,
     });
     ctx.onProgress({
       type: "music-pending",
@@ -1388,6 +1621,7 @@ async function dispatchMusic(beat: Beat, ctx: BeatDispatchContext): Promise<Prim
       provider: job.provider,
       cachePath: cache.path,
       cacheKey: cache.key,
+      metadataPath,
     };
   }
 
@@ -1401,6 +1635,17 @@ async function dispatchMusic(beat: Beat, ctx: BeatDispatchContext): Promise<Prim
 
   await mkdir(dirname(cacheAbs), { recursive: true });
   await copyFile(abs, cacheAbs);
+  await writeAssetMetadata({
+    projectDir: ctx.projectDir,
+    kind: "music",
+    beatId: beat.id,
+    cue: prompt,
+    provider: result.provider ?? ctx.musicProvider,
+    options: { duration },
+    cacheKey: cache.key,
+    canonicalPath: rel,
+    cachePath: cache.path,
+  });
   ctx.onProgress({
     type: "music-generated",
     beatId: beat.id,
@@ -1414,6 +1659,8 @@ async function dispatchMusic(beat: Beat, ctx: BeatDispatchContext): Promise<Prim
     provider: result.provider ?? ctx.musicProvider,
     cachePath: cache.path,
     cacheKey: cache.key,
+    metadataPath,
+    freshness: "fresh",
   };
 }
 
@@ -1542,10 +1789,7 @@ async function runBuildSceneRepair(
   const retryWith = unique([
     ...result.retryWith,
     ...(result.status === "fail"
-      ? [
-          `vibe scene repair --project ${projectDir} --json`,
-          `vibe scene lint --project ${projectDir} --json`,
-        ]
+      ? [`vibe scene repair ${projectDir} --json`, `vibe scene lint --project ${projectDir} --json`]
       : []),
   ]);
   return {
@@ -1803,6 +2047,7 @@ async function finalizeBuildResult(
 }
 
 function toBuildReport(projectDir: string, result: SceneBuildResult): Record<string, unknown> {
+  let beatCursor = 0;
   return {
     schemaVersion: "1",
     kind: "build",
@@ -1824,8 +2069,15 @@ function toBuildReport(projectDir: string, result: SceneBuildResult): Record<str
     costUsd: result.costUsd ?? 0,
     beats: result.beats.map((beat) => {
       const composition = buildReportComposition(projectDir, result, beat.beatId);
+      const sceneDurationSec = normalizeReportDuration(beat.sceneDurationSec);
+      const startSec = Number(beatCursor.toFixed(3));
+      const endSec = Number((beatCursor + sceneDurationSec).toFixed(3));
+      beatCursor = endSec;
       return {
         id: beat.beatId,
+        startSec,
+        endSec,
+        sceneDurationSec,
         narration: {
           text: beat.narrationText,
           voice: beat.narrationVoice,
@@ -1833,11 +2085,13 @@ function toBuildReport(projectDir: string, result: SceneBuildResult): Record<str
           path: beat.narrationPath,
           sourcePath: beat.narrationSourcePath,
           durationSec: beat.narrationDurationSec,
-          sceneDurationSec: beat.sceneDurationSec,
+          sceneDurationSec,
           status: beat.narrationStatus,
           error: beat.narrationError,
           cachePath: beat.narrationCachePath,
           cacheKey: beat.narrationCacheKey,
+          metadataPath: beat.narrationMetadataPath,
+          freshness: beat.narrationFreshness,
         },
         backdrop: {
           prompt: beat.backdropPrompt,
@@ -1848,6 +2102,8 @@ function toBuildReport(projectDir: string, result: SceneBuildResult): Record<str
           error: beat.backdropError,
           cachePath: beat.backdropCachePath,
           cacheKey: beat.backdropCacheKey,
+          metadataPath: beat.backdropMetadataPath,
+          freshness: beat.backdropFreshness,
         },
         video: {
           prompt: beat.videoPrompt,
@@ -1859,6 +2115,8 @@ function toBuildReport(projectDir: string, result: SceneBuildResult): Record<str
           error: beat.videoError,
           cachePath: beat.videoCachePath,
           cacheKey: beat.videoCacheKey,
+          metadataPath: beat.videoMetadataPath,
+          freshness: beat.videoFreshness,
         },
         music: {
           prompt: beat.musicPrompt,
@@ -1871,11 +2129,12 @@ function toBuildReport(projectDir: string, result: SceneBuildResult): Record<str
           error: beat.musicError,
           cachePath: beat.musicCachePath,
           cacheKey: beat.musicCacheKey,
+          metadataPath: beat.musicMetadataPath,
+          freshness: beat.musicFreshness,
         },
         composition,
         narrationPath: beat.narrationPath,
         narrationDurationSec: beat.narrationDurationSec,
-        sceneDurationSec: beat.sceneDurationSec,
         backdropPath: beat.backdropPath,
         videoPath: beat.videoPath,
         musicPath: beat.musicPath,
@@ -1902,6 +2161,10 @@ function toBuildReport(projectDir: string, result: SceneBuildResult): Record<str
       providerTaskType: job.providerTaskType,
       beatId: job.beatId,
       outputPath: job.outputPath,
+      cachePath: job.cachePath,
+      cacheKey: job.cacheKey,
+      canonicalPath: job.canonicalPath,
+      metadataPath: job.metadataPath,
       retryWith: job.retryWith,
     })),
     outputPath: result.outputPath,
@@ -1911,6 +2174,10 @@ function toBuildReport(projectDir: string, result: SceneBuildResult): Record<str
     retryWith: result.retryWith ?? [],
     totalLatencyMs: result.totalLatencyMs,
   };
+}
+
+function normalizeReportDuration(value: number | undefined): number {
+  return Number((value ?? 0).toFixed(3));
 }
 
 type ComposeWrittenEntry = NonNullable<ComposeScenesActionResult["data"]>["written"][number];
@@ -2033,6 +2300,7 @@ function rootSyncBeatsFromOutcomes(
       id: beat.id,
       duration: beat.duration,
       narrationPath: outcome?.narrationPath,
+      musicPath: outcome?.musicPath,
       sceneDurationSec:
         outcome?.narrationDurationSec !== undefined || outcome?.sceneDurationSec !== beat.duration
           ? outcome?.sceneDurationSec

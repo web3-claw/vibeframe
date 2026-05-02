@@ -31,7 +31,7 @@ vibe status project my-video --refresh --json
 vibe inspect project my-video --json
 vibe render my-video -o renders/final.mp4 --json
 vibe inspect render my-video --cheap --json
-vibe scene repair --project my-video --json
+vibe scene repair my-video --json
 ```
 
 ## Demo
@@ -65,18 +65,18 @@ For the full copy-paste quickstart, see [DEMO-quickstart.md](DEMO-quickstart.md)
 
 ## 30-Second Map
 
-| You want to...                                                        | Use                                                                      |
-| --------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| Start a storyboard-driven video project                               | `vibe init --from ...`, then edit `STORYBOARD.md` and `DESIGN.md`        |
-| Validate, cost, and explain the project plan                           | `vibe storyboard validate`, `vibe plan`, `vibe build --dry-run`          |
-| Generate assets, compose scenes, and sync timing                       | `vibe build`, `vibe status project`                                      |
-| Review quality and produce the final MP4                               | `vibe inspect project`, `vibe render`, `vibe inspect render`             |
-| Apply deterministic scene fixes after review                           | `vibe scene repair`                                                      |
-| Generate a standalone image, video, narration, music, or motion asset  | `vibe generate ...`                                                      |
-| Change an existing media file                                          | `vibe edit ...`, `vibe remix ...`, `vibe audio ...`                      |
-| Run a repeatable multi-step workflow                                   | `vibe run pipeline.yaml`                                                 |
-| Script low-level timeline edits or bulk imports                        | `vibe timeline ...`, `vibe batch ...`                                    |
-| Decide which path fits                                                 | `vibe guide motion`, `vibe guide scene`, `vibe guide pipeline`           |
+| You want to...                                                        | Use                                                               |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Start a storyboard-driven video project                               | `vibe init --from ...`, then edit `STORYBOARD.md` and `DESIGN.md` |
+| Validate, cost, and explain the project plan                          | `vibe storyboard validate`, `vibe plan`, `vibe build --dry-run`   |
+| Generate assets, compose scenes, and sync timing                      | `vibe build`, `vibe status project`                               |
+| Review quality and produce the final MP4                              | `vibe inspect project`, `vibe render`, `vibe inspect render`      |
+| Apply deterministic scene fixes after review                          | `vibe scene repair`                                               |
+| Generate a standalone image, video, narration, music, or motion asset | `vibe generate ...`                                               |
+| Change an existing media file                                         | `vibe edit ...`, `vibe remix ...`, `vibe audio ...`               |
+| Run a repeatable multi-step workflow                                  | `vibe run pipeline.yaml`                                          |
+| Script low-level timeline edits or bulk imports                       | `vibe timeline ...`, `vibe batch ...`                             |
+| Decide which path fits                                                | `vibe guide motion`, `vibe guide scene`, `vibe guide pipeline`    |
 
 ## Requirements
 
@@ -136,7 +136,7 @@ vibe status project my-video --refresh --json
 vibe inspect project my-video --json
 vibe render my-video -o renders/final.mp4 --quality standard --json
 vibe inspect render my-video --cheap --json
-vibe scene repair --project my-video --json
+vibe scene repair my-video --json
 
 # Focus a single beat during iteration
 vibe build my-video --beat hook --stage sync --json
@@ -170,6 +170,11 @@ the intent layer, `DESIGN.md` is the visual system, `vibe.config.json` stores
 provider/model defaults, and files under `assets/` and `compositions/` are
 generated artifacts. `build-report.json` records build results and costs;
 `review-report.json` records inspection findings and suggested fixes.
+When paid video or music providers return async jobs, `vibe status project
+--refresh` downloads completed outputs, updates `build-report.json`, and
+writes freshness metadata under `.vibeframe/assets/`. The sync stage wires
+ready narration and music into the root timeline, so render inspection can map
+audio/visual issues back to the affected beat.
 
 ### Edit Existing Media
 
@@ -252,14 +257,17 @@ guidance files, not a separate VibeFrame chat surface.
 -> vibe plan launch --json
 -> vibe build launch --dry-run --max-cost 5 --json
 -> vibe build launch --max-cost 5 --json
+-> vibe status project launch --refresh --json
 -> vibe inspect project launch --json
 -> vibe render launch --json
+-> vibe inspect render launch --cheap --json
 
 "Fix quality issues from the render review"
 -> read review-report.json
--> vibe scene repair --project launch --json
+-> vibe scene repair launch --json
 -> edit STORYBOARD.md or composition artifacts only where needed
 -> vibe render launch --json
+-> vibe inspect render launch --cheap --json
 ```
 
 `vibe init` creates project guidance files for common hosts, including Claude
@@ -396,6 +404,10 @@ vibe schema --list --filter very-high  # narrow to a cost tier
 vibe schema <command> --json  # JSON Schema for one command
 vibe context                  # agent quickstart (rules, envelope shape, conventions)
 ```
+
+Schema entries include a `surface` field. Treat `public` as the first-run
+product path, `agent` as host-agent automation, and `advanced`/`legacy` as
+compatible power primitives with replacements where applicable.
 
 ## Development
 

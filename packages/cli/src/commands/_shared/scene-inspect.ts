@@ -3,6 +3,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, isAbsolute, join, relative, resolve } from "node:path";
 
 import { validateStoryboardMarkdown } from "./storyboard-edit.js";
+import type { Beat } from "./storyboard-parse.js";
 import { readProjectConfig } from "./project-config.js";
 import { runProjectLint } from "./scene-lint.js";
 import { createProjectRootSyncPlan } from "./root-sync.js";
@@ -62,6 +63,8 @@ export interface ProjectInspectResult {
     assets: {
       checked: number;
       missing: string[];
+      stale: string[];
+      unknownFreshness: string[];
     };
     rootSync: {
       ok: boolean | null;
@@ -83,7 +86,7 @@ export async function inspectProject(opts: ProjectInspectOptions): Promise<Proje
     compositions: { expected: 0, found: 0, missing: [] },
     lint: { ok: null, errorCount: 0, warningCount: 0, infoCount: 0 },
     buildReport: { exists: false },
-    assets: { checked: 0, missing: [] },
+    assets: { checked: 0, missing: [], stale: [], unknownFreshness: [] },
     rootSync: { ok: null, issueCount: 0, issues: [] },
   };
 
@@ -116,6 +119,7 @@ export async function inspectProject(opts: ProjectInspectOptions): Promise<Proje
 
   let beatIds: string[] = [];
   let inspectedBeatIds: string[] = [];
+  let storyboardBeats: Beat[] = [];
   if (!checks.files.storyboard) {
     issues.push({
       severity: "error",
@@ -127,6 +131,7 @@ export async function inspectProject(opts: ProjectInspectOptions): Promise<Proje
   } else {
     const storyboard = await readFile(coreFiles.storyboard, "utf-8");
     const validation = validateStoryboardMarkdown(storyboard);
+    storyboardBeats = validation.beats;
     beatIds = validation.beats.map((beat) => beat.id);
     inspectedBeatIds = opts.beatId ? beatIds.filter((beatId) => beatId === opts.beatId) : beatIds;
     checks.storyboard = { ok: validation.ok, beatCount: validation.beats.length };
@@ -140,6 +145,13 @@ export async function inspectProject(opts: ProjectInspectOptions): Promise<Proje
         suggestedFix:
           "Run `vibe storyboard validate --json` and edit STORYBOARD.md or use `vibe storyboard set`.",
       });
+    }
+    const placeholderIssues = storyboardPlaceholderIssues(storyboard);
+    for (const issue of placeholderIssues) {
+      issues.push(issue);
+      retryWith.push(
+        `vibe storyboard revise ${projectDir} --from "<make cues concrete>" --dry-run --json`
+      );
     }
     if (!validation.ok) retryWith.push(`vibe storyboard validate ${projectDir} --json`);
     if (opts.beatId && inspectedBeatIds.length === 0) {
@@ -160,6 +172,11 @@ export async function inspectProject(opts: ProjectInspectOptions): Promise<Proje
       message: "DESIGN.md is missing.",
       suggestedFix: "Create DESIGN.md or rerun `vibe init --from` in a new project.",
     });
+  } else {
+    const design = await readFile(coreFiles.design, "utf-8");
+    for (const issue of designPlaceholderIssues(design)) {
+      issues.push(issue);
+    }
   }
 
   if (!checks.files.config) {
@@ -229,7 +246,8 @@ export async function inspectProject(opts: ProjectInspectOptions): Promise<Proje
       opts.beatId,
       checks,
       issues,
-      retryWith
+      retryWith,
+      storyboardBeats
     );
   }
 
@@ -245,7 +263,7 @@ export async function inspectProject(opts: ProjectInspectOptions): Promise<Proje
         issues.push(...rootSync.issues);
         if (rootSync.issues.some((issue) => issue.fixOwner === "vibe")) {
           retryWith.push(
-            `vibe scene repair --project ${projectDir} --json`,
+            `vibe scene repair ${projectDir} --json`,
             `vibe build ${projectDir} --stage sync --json`
           );
         }
@@ -290,8 +308,7 @@ export async function inspectProject(opts: ProjectInspectOptions): Promise<Proje
           });
         }
       }
-      if (lintCounts.errorCount > 0)
-        retryWith.push(`vibe scene repair --project ${projectDir} --json`);
+      if (lintCounts.errorCount > 0) retryWith.push(`vibe scene repair ${projectDir} --json`);
     } catch (error) {
       issues.push({
         severity: "error",
@@ -331,6 +348,63 @@ function makeProjectResult(
     checks,
     retryWith: uniqueRetryWith(retryWith),
   };
+}
+
+function storyboardPlaceholderIssues(storyboard: string): ReviewIssue[] {
+  const patterns: Array<[RegExp, string]> = [
+    [
+      /Open with the viewer's problem/i,
+      "Storyboard narration still contains the starter hook placeholder.",
+    ],
+    [
+      /clearest promise from the brief/i,
+      "Storyboard narration still refers to the brief instead of the actual video promise.",
+    ],
+    [
+      /Show the mechanism that makes the promise believable/i,
+      "Storyboard narration still contains the starter proof placeholder.",
+    ],
+    [
+      /Close with the action or idea the viewer should remember/i,
+      "Storyboard narration still contains the starter close placeholder.",
+    ],
+    [
+      /for:\s*\d+[- ]?second/i,
+      "Storyboard backdrop cues still contain the raw generated template shape.",
+    ],
+  ];
+  return patterns
+    .filter(([pattern]) => pattern.test(storyboard))
+    .map(([, message]) => ({
+      severity: "warning" as const,
+      code: "STORYBOARD_PLACEHOLDER_CUE",
+      message,
+      file: "STORYBOARD.md",
+      fixOwner: "host-agent" as const,
+      suggestedFix:
+        "Revise STORYBOARD.md so narration, backdrop, and motion cues describe the actual video.",
+    }));
+}
+
+function designPlaceholderIssues(design: string): ReviewIssue[] {
+  const patterns: Array<[RegExp, string]> = [
+    [/_hex_/, "DESIGN.md still contains placeholder palette entries."],
+    [/_anti-pattern \d_/, "DESIGN.md still contains placeholder anti-pattern entries."],
+    [/_One family, two weights/i, "DESIGN.md still contains placeholder typography guidance."],
+    [/_Grid\? Centered\? Layered\?/i, "DESIGN.md still contains placeholder composition guidance."],
+    [/_How fast\? Snappy or fluid\?/i, "DESIGN.md still contains placeholder motion guidance."],
+  ];
+  return patterns
+    .filter(([pattern]) => pattern.test(design))
+    .map(([, message]) => ({
+      severity: "warning" as const,
+      code: "DESIGN_PLACEHOLDER_FIELD",
+      message,
+      file: "DESIGN.md",
+      fixOwner: "host-agent" as const,
+      suggestedFix:
+        "Fill DESIGN.md or rerun `vibe init --from ... --visual-style <name>` in a clean project.",
+    }));
 }
 
 async function maybeWriteProjectReport(
@@ -379,7 +453,8 @@ async function inspectBuildReport(
   beatId: string | undefined,
   checks: ProjectInspectResult["checks"],
   issues: ReviewIssue[],
-  retryWith: string[]
+  retryWith: string[],
+  storyboardBeats: Beat[]
 ): Promise<void> {
   checks.buildReport.exists = true;
   try {
@@ -392,10 +467,14 @@ async function inspectBuildReport(
         videoPath?: unknown;
         musicPath?: unknown;
         compositionPath?: unknown;
-        narration?: { path?: unknown; sourcePath?: unknown };
-        backdrop?: { path?: unknown; sourcePath?: unknown };
-        video?: { path?: unknown; sourcePath?: unknown };
-        music?: { path?: unknown; sourcePath?: unknown };
+        narrationStatus?: unknown;
+        backdropStatus?: unknown;
+        videoStatus?: unknown;
+        musicStatus?: unknown;
+        narration?: BuildReportAsset;
+        backdrop?: BuildReportAsset;
+        video?: BuildReportAsset;
+        music?: BuildReportAsset;
         composition?: { path?: unknown };
       }>;
       jobs?: Array<{
@@ -422,6 +501,52 @@ async function inspectBuildReport(
     }
     for (const beat of selectedReportBeats) {
       const id = typeof beat.id === "string" ? beat.id : undefined;
+      const storyboardBeat = id ? storyboardBeats.find((item) => item.id === id) : undefined;
+      inspectAssetFreshness({
+        projectDir,
+        beatId: id,
+        kind: "narration",
+        asset: beat.narration,
+        checks,
+        issues,
+        retryWith,
+      });
+      inspectAssetFreshness({
+        projectDir,
+        beatId: id,
+        kind: "backdrop",
+        asset: beat.backdrop,
+        checks,
+        issues,
+        retryWith,
+      });
+      inspectAssetFreshness({
+        projectDir,
+        beatId: id,
+        kind: "video",
+        asset: beat.video,
+        checks,
+        issues,
+        retryWith,
+      });
+      inspectAssetFreshness({
+        projectDir,
+        beatId: id,
+        kind: "music",
+        asset: beat.music,
+        checks,
+        issues,
+        retryWith,
+      });
+      inspectCueReadiness({
+        projectDir,
+        beatId: id,
+        storyboardBeat,
+        beat,
+        checks,
+        issues,
+        retryWith,
+      });
       for (const key of [
         "narrationPath",
         "backdropPath",
@@ -517,6 +642,94 @@ function inspectReportedAsset(opts: {
   });
   opts.retryWith.push(
     `vibe build ${opts.projectDir}${opts.scene ? ` --beat ${opts.scene}` : ""} --stage assets --force --json`
+  );
+}
+
+interface BuildReportAsset {
+  path?: unknown;
+  sourcePath?: unknown;
+  status?: unknown;
+  freshness?: unknown;
+  metadataPath?: unknown;
+}
+
+function inspectAssetFreshness(opts: {
+  projectDir: string;
+  beatId?: string;
+  kind: "narration" | "backdrop" | "video" | "music";
+  asset?: BuildReportAsset;
+  checks: ProjectInspectResult["checks"];
+  issues: ReviewIssue[];
+  retryWith: string[];
+}): void {
+  const freshness = typeof opts.asset?.freshness === "string" ? opts.asset.freshness : undefined;
+  if (freshness !== "stale" && freshness !== "unknown") return;
+  const label = `${opts.kind}${opts.beatId ? ` for beat "${opts.beatId}"` : ""}`;
+  const path =
+    typeof opts.asset?.path === "string"
+      ? opts.asset.path
+      : typeof opts.asset?.sourcePath === "string"
+        ? opts.asset.sourcePath
+        : `${opts.kind}:${opts.beatId ?? "unknown"}`;
+  if (freshness === "stale") {
+    opts.checks.assets.stale.push(path);
+  } else {
+    opts.checks.assets.unknownFreshness.push(path);
+  }
+  opts.issues.push({
+    severity: "warning",
+    code: freshness === "stale" ? "STALE_ASSET" : "UNKNOWN_ASSET_FRESHNESS",
+    message:
+      freshness === "stale"
+        ? `Build report marks ${label} as stale against the current cue.`
+        : `Build report cannot prove freshness for ${label}.`,
+    file: typeof opts.asset?.metadataPath === "string" ? opts.asset.metadataPath : undefined,
+    scene: opts.beatId,
+    beatId: opts.beatId,
+    fixOwner: "vibe",
+    suggestedFix: "Rerun the relevant assets stage with --force.",
+  });
+  opts.retryWith.push(
+    `vibe build ${opts.projectDir}${opts.beatId ? ` --beat ${opts.beatId}` : ""} --stage assets --force --json`
+  );
+}
+
+function inspectCueReadiness(opts: {
+  projectDir: string;
+  beatId?: string;
+  storyboardBeat?: Beat;
+  beat: {
+    musicPath?: unknown;
+    musicStatus?: unknown;
+    music?: BuildReportAsset;
+  };
+  checks: ProjectInspectResult["checks"];
+  issues: ReviewIssue[];
+  retryWith: string[];
+}): void {
+  if (!opts.beatId || typeof opts.storyboardBeat?.cues?.music !== "string") return;
+  const nestedPath = typeof opts.beat.music?.path === "string" ? opts.beat.music.path : undefined;
+  const legacyPath = typeof opts.beat.musicPath === "string" ? opts.beat.musicPath : undefined;
+  const status =
+    typeof opts.beat.music?.status === "string"
+      ? opts.beat.music.status
+      : typeof opts.beat.musicStatus === "string"
+        ? opts.beat.musicStatus
+        : undefined;
+  if ((nestedPath || legacyPath) && status !== "pending" && status !== "failed") return;
+  opts.issues.push({
+    severity: "warning",
+    code: "MUSIC_CUE_NOT_READY",
+    message: `Beat "${opts.beatId}" declares a music cue, but build-report.json does not contain ready music audio.`,
+    file: "build-report.json",
+    scene: opts.beatId,
+    beatId: opts.beatId,
+    fixOwner: "vibe",
+    suggestedFix: "Run `vibe build --stage assets --json` without --skip-music, then rerun sync.",
+  });
+  opts.retryWith.push(
+    `vibe build ${opts.projectDir} --beat ${opts.beatId} --stage assets --json`,
+    `vibe build ${opts.projectDir} --stage sync --json`
   );
 }
 

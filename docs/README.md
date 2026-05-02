@@ -4,6 +4,7 @@ This directory is intentionally small. Exact CLI behavior should come from the
 live schema, not handwritten docs:
 
 ```bash
+vibe schema --list --surface public --json
 vibe schema --list --json
 vibe schema <command.path> --json
 ```

@@ -10,12 +10,14 @@ export const ROOT_SYNC_FIX_CODES = {
   clipRefs: "root_clip_refs_synced",
   duration: "root_duration_synced",
   narrationAudio: "root_narration_audio_synced",
+  musicAudio: "root_music_audio_synced",
 } as const;
 
 export interface RootSyncBeatInput {
   id: string;
   duration?: number;
   narrationPath?: string;
+  musicPath?: string;
   sceneDurationSec?: number;
 }
 
@@ -35,9 +37,12 @@ interface ExpectedRootSync {
   totalDurationSec: number;
   audioRefs: Array<{
     beatId: string;
+    kind: "narration" | "music";
     src: string;
     start: number;
     duration: number;
+    trackIndex: number;
+    volume?: number;
   }>;
 }
 
@@ -50,8 +55,10 @@ interface BuildReportAsset {
 interface BuildReportBeat {
   id?: unknown;
   narrationPath?: unknown;
+  musicPath?: unknown;
   sceneDurationSec?: unknown;
   narration?: BuildReportAsset;
+  music?: BuildReportAsset;
 }
 
 export async function createRootSyncPlan(opts: {
@@ -98,6 +105,7 @@ export async function createRootSyncPlan(opts: {
   const fixCodes = issueCodes.map((code) => {
     if (code === "ROOT_CLIP_REFS_OUT_OF_SYNC") return ROOT_SYNC_FIX_CODES.clipRefs;
     if (code === "ROOT_DURATION_OUT_OF_SYNC") return ROOT_SYNC_FIX_CODES.duration;
+    if (code === "ROOT_MUSIC_AUDIO_OUT_OF_SYNC") return ROOT_SYNC_FIX_CODES.musicAudio;
     return ROOT_SYNC_FIX_CODES.narrationAudio;
   });
 
@@ -150,6 +158,10 @@ export async function loadProjectRootSyncBeats(projectDir: string): Promise<Root
         stringOrUndefined(reportBeat?.narration?.path) ??
         stringOrUndefined(reportBeat?.narrationPath) ??
         firstExisting(root, [`assets/narration-${beat.id}.mp3`, `assets/narration-${beat.id}.wav`]),
+      musicPath:
+        stringOrUndefined(reportBeat?.music?.path) ??
+        stringOrUndefined(reportBeat?.musicPath) ??
+        firstExisting(root, [`assets/music-${beat.id}.mp3`, `assets/music-${beat.id}.wav`]),
       sceneDurationSec:
         numberOrUndefined(reportBeat?.sceneDurationSec) ??
         numberOrUndefined(reportBeat?.narration?.sceneDurationSec),
@@ -178,9 +190,30 @@ async function expectedRootSync(opts: {
       `      <div class="clip" data-composition-id="${compositionId}" data-composition-src="compositions/${compositionId}.html" data-start="${cursor}" data-duration="${duration}" data-track-index="0"></div>`
     );
     if (beat.narrationPath) {
-      audioRefs.push({ beatId: beat.id, src: beat.narrationPath, start: cursor, duration });
+      audioRefs.push({
+        beatId: beat.id,
+        kind: "narration",
+        src: beat.narrationPath,
+        start: cursor,
+        duration,
+        trackIndex: 2,
+      });
       audioLines.push(
         `      <audio id="narration-${beat.id}" src="${beat.narrationPath}" data-start="${cursor}" data-duration="${duration}" data-track-index="2"></audio>`
+      );
+    }
+    if (beat.musicPath) {
+      audioRefs.push({
+        beatId: beat.id,
+        kind: "music",
+        src: beat.musicPath,
+        start: cursor,
+        duration,
+        trackIndex: 1,
+        volume: 0.22,
+      });
+      audioLines.push(
+        `      <audio id="music-${beat.id}" src="${beat.musicPath}" data-start="${cursor}" data-duration="${duration}" data-track-index="1" data-volume="0.22"></audio>`
       );
     }
     cursor = Number((cursor + duration).toFixed(2));
@@ -217,10 +250,16 @@ function rootSyncIssueCodes(
   html: string,
   expected: ExpectedRootSync
 ): Array<
-  "ROOT_CLIP_REFS_OUT_OF_SYNC" | "ROOT_DURATION_OUT_OF_SYNC" | "ROOT_NARRATION_AUDIO_OUT_OF_SYNC"
+  | "ROOT_CLIP_REFS_OUT_OF_SYNC"
+  | "ROOT_DURATION_OUT_OF_SYNC"
+  | "ROOT_NARRATION_AUDIO_OUT_OF_SYNC"
+  | "ROOT_MUSIC_AUDIO_OUT_OF_SYNC"
 > {
   const codes: Array<
-    "ROOT_CLIP_REFS_OUT_OF_SYNC" | "ROOT_DURATION_OUT_OF_SYNC" | "ROOT_NARRATION_AUDIO_OUT_OF_SYNC"
+    | "ROOT_CLIP_REFS_OUT_OF_SYNC"
+    | "ROOT_DURATION_OUT_OF_SYNC"
+    | "ROOT_NARRATION_AUDIO_OUT_OF_SYNC"
+    | "ROOT_MUSIC_AUDIO_OUT_OF_SYNC"
   > = [];
   const currentBlock = html.match(rootSyncMarkerRe())?.[0]?.trim();
   if (currentBlock !== expected.block.trim()) codes.push("ROOT_CLIP_REFS_OUT_OF_SYNC");
@@ -230,8 +269,13 @@ function rootSyncIssueCodes(
     codes.push("ROOT_DURATION_OUT_OF_SYNC");
   }
 
-  if (expected.audioRefs.some((ref) => !hasExpectedAudioRef(html, ref))) {
+  if (
+    expected.audioRefs.some((ref) => ref.kind === "narration" && !hasExpectedAudioRef(html, ref))
+  ) {
     codes.push("ROOT_NARRATION_AUDIO_OUT_OF_SYNC");
+  }
+  if (expected.audioRefs.some((ref) => ref.kind === "music" && !hasExpectedAudioRef(html, ref))) {
+    codes.push("ROOT_MUSIC_AUDIO_OUT_OF_SYNC");
   }
 
   return codes;
@@ -245,7 +289,7 @@ function rootSyncIssue(code: string, rootRel: string): ReviewIssue {
       message: "Root composition duration does not match storyboard/build timing.",
       file: rootRel,
       fixOwner: "vibe",
-      suggestedFix: "Run `vibe scene repair --project <project> --json`.",
+      suggestedFix: "Run `vibe scene repair <project> --json`.",
     };
   }
   if (code === "ROOT_NARRATION_AUDIO_OUT_OF_SYNC") {
@@ -255,7 +299,17 @@ function rootSyncIssue(code: string, rootRel: string): ReviewIssue {
       message: "Root composition is missing generated narration audio wiring.",
       file: rootRel,
       fixOwner: "vibe",
-      suggestedFix: "Run `vibe scene repair --project <project> --json`.",
+      suggestedFix: "Run `vibe scene repair <project> --json`.",
+    };
+  }
+  if (code === "ROOT_MUSIC_AUDIO_OUT_OF_SYNC") {
+    return {
+      severity: "warning",
+      code,
+      message: "Root composition is missing generated music audio wiring.",
+      file: rootRel,
+      fixOwner: "vibe",
+      suggestedFix: "Run `vibe scene repair <project> --json`.",
     };
   }
   return {
@@ -264,7 +318,7 @@ function rootSyncIssue(code: string, rootRel: string): ReviewIssue {
     message: "Root composition clip references are out of sync with storyboard beats.",
     file: rootRel,
     fixOwner: "vibe",
-    suggestedFix: "Run `vibe scene repair --project <project> --json`.",
+    suggestedFix: "Run `vibe scene repair <project> --json`.",
   };
 }
 
@@ -324,17 +378,27 @@ function readRootDuration(html: string): number | undefined {
 
 function hasExpectedAudioRef(
   html: string,
-  ref: { beatId: string; src: string; start: number; duration: number }
+  ref: {
+    beatId: string;
+    kind: "narration" | "music";
+    src: string;
+    start: number;
+    duration: number;
+    trackIndex: number;
+    volume?: number;
+  }
 ): boolean {
   const tag = html.match(
-    new RegExp(`<audio\\b[^>]*id="${escapeRegExp(`narration-${ref.beatId}`)}"[^>]*>`, "i")
+    new RegExp(`<audio\\b[^>]*id="${escapeRegExp(`${ref.kind}-${ref.beatId}`)}"[^>]*>`, "i")
   )?.[0];
   if (!tag) return false;
-  return (
+  const baseMatches =
     tag.includes(`src="${ref.src}"`) &&
     tag.includes(`data-start="${ref.start}"`) &&
-    tag.includes(`data-duration="${ref.duration}"`)
-  );
+    tag.includes(`data-duration="${ref.duration}"`) &&
+    tag.includes(`data-track-index="${ref.trackIndex}"`);
+  if (!baseMatches) return false;
+  return ref.volume === undefined || tag.includes(`data-volume="${ref.volume}"`);
 }
 
 async function readBuildReportBeats(projectDir: string): Promise<BuildReportBeat[]> {

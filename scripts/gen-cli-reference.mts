@@ -188,7 +188,20 @@ function renderCostTiers(leaves: SchemaListEntry[]): string {
     untiered: [],
   };
 
-  for (const leaf of leaves) {
+  const surfaceRank: Record<ProductSurface, number> = {
+    public: 0,
+    agent: 1,
+    advanced: 2,
+    legacy: 3,
+    internal: 4,
+  };
+  const sortedLeaves = leaves.slice().sort((a, b) => {
+    const bySurface = surfaceRank[a.surface] - surfaceRank[b.surface];
+    if (bySurface !== 0) return bySurface;
+    return a.path.localeCompare(b.path);
+  });
+
+  for (const leaf of sortedLeaves) {
     const tier = leaf.cost ?? "untiered";
     buckets[tier].push(leaf.path);
   }
@@ -202,7 +215,9 @@ function renderCostTiers(leaves: SchemaListEntry[]): string {
   const lines: string[] = [
     "## Cost tiers",
     "",
-    "Generated from the live `cost` field in `vibe schema --list`.",
+    "Generated from the live `cost` field in `vibe schema --list`. Examples",
+    "prefer public and agent-facing commands; legacy/internal commands remain",
+    "listed in their command sections for compatibility.",
     "",
     "| Tier | Count | Examples | Per-call cost |",
     "|---|---:|---|---|",

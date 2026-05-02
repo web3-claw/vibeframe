@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 
 import { createBuildPlan } from "./build-plan.js";
 import { backdropCacheDescriptor, narrationCacheDescriptor } from "./build-cache.js";
+import { writeAssetMetadata } from "./build-asset-metadata.js";
 import { projectConfigJson } from "./project-config.js";
 
 const ENV_KEYS = [
@@ -107,6 +108,67 @@ describe("createBuildPlan", () => {
     expect(plan.estimatedCostUsd).toBe(0);
     expect(plan.beats[0].assets.narration?.exists).toBe(true);
     expect(plan.beats[0].assets.backdrop?.exists).toBe(true);
+    expect(plan.beats[0].assets.backdrop?.reason).toBe("canonical-unknown");
+    expect(plan.warnings.some((warning) => warning.includes("freshness metadata"))).toBe(true);
+  });
+
+  it("treats canonical assets with matching metadata as fresh", async () => {
+    const dir = await makeProject();
+    const cache = narrationCacheDescriptor({
+      beatId: "hook",
+      cue: "Say the thing.",
+      provider: "kokoro",
+      ext: "wav",
+    });
+    await writeFile(resolve(dir, "assets/narration-hook.wav"), "fake", "utf-8");
+    await writeAssetMetadata({
+      projectDir: dir,
+      kind: "narration",
+      beatId: "hook",
+      cue: "Say the thing.",
+      provider: "kokoro",
+      cacheKey: cache.key,
+      canonicalPath: "assets/narration-hook.wav",
+      cachePath: cache.path,
+    });
+
+    const plan = await createBuildPlan({ projectDir: dir, stage: "assets" });
+
+    expect(plan.beats[0].assets.narration).toMatchObject({
+      reason: "canonical-exists",
+      freshness: "fresh",
+      willGenerate: false,
+    });
+  });
+
+  it("plans stale canonical assets for cache copy or regeneration", async () => {
+    const dir = await makeProject();
+    const oldCache = narrationCacheDescriptor({
+      beatId: "hook",
+      cue: "Old line.",
+      provider: "kokoro",
+      ext: "wav",
+    });
+    await writeFile(resolve(dir, "assets/narration-hook.wav"), "fake", "utf-8");
+    await writeAssetMetadata({
+      projectDir: dir,
+      kind: "narration",
+      beatId: "hook",
+      cue: "Old line.",
+      provider: "kokoro",
+      cacheKey: oldCache.key,
+      canonicalPath: "assets/narration-hook.wav",
+      cachePath: oldCache.path,
+    });
+
+    const plan = await createBuildPlan({ projectDir: dir, stage: "assets" });
+
+    expect(plan.beats[0].assets.narration).toMatchObject({
+      reason: "canonical-stale",
+      freshness: "stale",
+      willGenerate: true,
+    });
+    expect(plan.missing).toContain("assets");
   });
 
   it("detects content cache hits without estimating provider cost", async () => {

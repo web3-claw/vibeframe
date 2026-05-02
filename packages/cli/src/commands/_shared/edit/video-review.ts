@@ -30,6 +30,21 @@ export interface VideoReviewCategory {
   suggestions?: string[];
 }
 
+/** Beat-level issue returned by project-aware render review. */
+export interface VideoReviewBeatIssue {
+  beatId?: string;
+  scene?: string;
+  timeRange?: {
+    start: number;
+    end: number;
+    duration?: number;
+  };
+  severity?: "error" | "warning" | "info";
+  category?: "pacing" | "color" | "textReadability" | "audioVisualSync" | "composition";
+  message: string;
+  suggestedFix?: string;
+}
+
 /** Complete AI video review feedback from Gemini analysis. */
 export interface VideoReviewFeedback {
   /** Overall quality score from 1-10 */
@@ -46,4 +61,6 @@ export interface VideoReviewFeedback {
   autoFixable: AutoFix[];
   /** General improvement recommendations */
   recommendations: string[];
+  /** Optional beat-level findings for project-aware review loops. */
+  beatIssues?: VideoReviewBeatIssue[];
 }

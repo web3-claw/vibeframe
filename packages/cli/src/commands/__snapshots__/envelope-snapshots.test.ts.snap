@@ -63,7 +63,7 @@ exports[`CLI --describe schemas (drift detection) > vibe agent --describe 1`] = 
 exports[`CLI --describe schemas (drift detection) > vibe audio clone-voice --describe 1`] = `
 {
   "cost": "low",
-  "description": "Clone a voice from audio samples using ElevenLabs",
+  "description": "Clone a voice from audio samples using ElevenLabs (requires explicit consent)",
   "name": "audio.clone-voice",
   "note": "Requires explicit user consent for voice cloning.",
   "parameters": {
@@ -1815,7 +1815,7 @@ exports[`CLI --describe schemas (drift detection) > vibe generate image --descri
 exports[`CLI --describe schemas (drift detection) > vibe generate motion --describe 1`] = `
 {
   "cost": "high",
-  "description": "Generate motion graphics using Claude + Remotion (render & composite)",
+  "description": "Advanced: generate standalone motion graphics using Claude + Remotion",
   "name": "generate.motion",
   "note": "Standalone motion generation is a power primitive.",
   "parameters": {
@@ -3637,7 +3637,7 @@ exports[`CLI --describe schemas (drift detection) > vibe scene repair --describe
         "type": "string",
       },
       "root": {
-        "description": "Root composition file relative to --project",
+        "description": "Project directory, or root composition file relative to --project",
         "type": "string",
       },
     },

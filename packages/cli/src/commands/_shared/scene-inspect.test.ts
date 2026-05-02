@@ -75,6 +75,48 @@ Body.
     expect(result.retryWith[0]).toContain("vibe init");
   });
 
+  it("warns when storyboard and design still contain starter placeholders", async () => {
+    const dir = await makeTmp();
+    await writeFile(
+      resolve(dir, "vibe.config.json"),
+      projectConfigJson({ name: "promo" }),
+      "utf-8"
+    );
+    await writeFile(
+      resolve(dir, "DESIGN.md"),
+      "# Design\n\n## Palette\n\n- _hex_ — primary\n\n## What NOT to do\n\n- _anti-pattern 1_\n",
+      "utf-8"
+    );
+    await writeFile(
+      resolve(dir, "index.html"),
+      "<!doctype html><html><body></body></html>",
+      "utf-8"
+    );
+    await writeFile(
+      resolve(dir, "STORYBOARD.md"),
+      `# Promo
+
+## Beat hook - Hook
+
+\`\`\`yaml
+duration: 3
+narration: "Open with the viewer's problem and the clearest promise from the brief."
+backdrop: "Polished opening frame for: 24-second calm video"
+\`\`\`
+`,
+      "utf-8"
+    );
+
+    const result = await inspectProject({ projectDir: dir, writeReport: false });
+
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "STORYBOARD_PLACEHOLDER_CUE", fixOwner: "host-agent" }),
+        expect.objectContaining({ code: "DESIGN_PLACEHOLDER_FIELD", fixOwner: "host-agent" }),
+      ])
+    );
+  });
+
   it("checks video, music, and job asset paths from build-report.json", async () => {
     const dir = await makeTmp();
     await writeFile(
@@ -279,7 +321,136 @@ narration: "Hello."
         }),
       ])
     );
-    expect(result.retryWith).toContain(`vibe scene repair --project ${dir} --json`);
+    expect(result.retryWith).toContain(`vibe scene repair ${dir} --json`);
     expect(result.retryWith).toContain(`vibe build ${dir} --stage sync --json`);
+  });
+
+  it("reports missing root music wiring when generated music exists", async () => {
+    const dir = await makeTmp();
+    await writeFile(
+      resolve(dir, "vibe.config.json"),
+      projectConfigJson({ name: "promo" }),
+      "utf-8"
+    );
+    await writeFile(resolve(dir, "DESIGN.md"), "# Design\n", "utf-8");
+    await writeFile(
+      resolve(dir, "index.html"),
+      '<!doctype html><html><body><div id="root" data-duration="3"></div></body></html>',
+      "utf-8"
+    );
+    await mkdir(resolve(dir, "compositions"), { recursive: true });
+    await mkdir(resolve(dir, "assets"), { recursive: true });
+    await writeFile(
+      resolve(dir, "compositions", "scene-hook.html"),
+      "<template></template>",
+      "utf-8"
+    );
+    await writeFile(resolve(dir, "assets", "music-hook.mp3"), Buffer.from([1, 2, 3]));
+    await writeFile(
+      resolve(dir, "STORYBOARD.md"),
+      `# Promo
+
+## Beat hook - Hook
+
+\`\`\`yaml
+duration: 3
+music: "Quiet pulse."
+\`\`\`
+`,
+      "utf-8"
+    );
+    await writeFile(
+      resolve(dir, "build-report.json"),
+      JSON.stringify({
+        schemaVersion: "1",
+        kind: "build",
+        beats: [
+          {
+            id: "hook",
+            sceneDurationSec: 3,
+            music: { path: "assets/music-hook.mp3", status: "generated" },
+          },
+        ],
+      }),
+      "utf-8"
+    );
+
+    const result = await inspectProject({ projectDir: dir, writeReport: false });
+
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "ROOT_MUSIC_AUDIO_OUT_OF_SYNC",
+          file: "index.html",
+          fixOwner: "vibe",
+        }),
+      ])
+    );
+  });
+
+  it("warns on stale asset metadata and declared music cues without ready audio", async () => {
+    const dir = await makeTmp();
+    await writeFile(
+      resolve(dir, "vibe.config.json"),
+      projectConfigJson({ name: "promo" }),
+      "utf-8"
+    );
+    await writeFile(resolve(dir, "DESIGN.md"), "# Design\n", "utf-8");
+    await writeFile(
+      resolve(dir, "index.html"),
+      "<!doctype html><html><body></body></html>",
+      "utf-8"
+    );
+    await mkdir(resolve(dir, "compositions"), { recursive: true });
+    await writeFile(
+      resolve(dir, "compositions", "scene-hook.html"),
+      "<template></template>",
+      "utf-8"
+    );
+    await writeFile(
+      resolve(dir, "STORYBOARD.md"),
+      `# Promo
+
+## Beat hook - Hook
+
+\`\`\`yaml
+duration: 3
+backdrop: "Summit."
+music: "Quiet pulse."
+\`\`\`
+`,
+      "utf-8"
+    );
+    await writeFile(
+      resolve(dir, "build-report.json"),
+      JSON.stringify({
+        schemaVersion: "1",
+        kind: "build",
+        beats: [
+          {
+            id: "hook",
+            backdrop: {
+              path: "assets/backdrop-hook.png",
+              status: "cached",
+              freshness: "stale",
+              metadataPath: ".vibeframe/assets/backdrop-hook.json",
+            },
+            music: { status: "skipped" },
+            musicStatus: "skipped",
+          },
+        ],
+      }),
+      "utf-8"
+    );
+
+    const result = await inspectProject({ projectDir: dir, writeReport: false });
+
+    expect(result.checks.assets.stale).toContain("assets/backdrop-hook.png");
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "STALE_ASSET", beatId: "hook", fixOwner: "vibe" }),
+        expect.objectContaining({ code: "MUSIC_CUE_NOT_READY", beatId: "hook", fixOwner: "vibe" }),
+      ])
+    );
   });
 });

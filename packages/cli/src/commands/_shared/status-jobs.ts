@@ -1,10 +1,12 @@
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync, statSync } from "node:fs";
 import { copyFile, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
-import { dirname, join, parse, resolve } from "node:path";
+import { dirname, join, parse, relative, resolve } from "node:path";
 
 import { executeVideoStatus } from "../ai-video.js";
 import { executeMusicStatus } from "../generate/music-status.js";
+import type { BuildAssetKind } from "./build-cache.js";
+import { writeAssetMetadata } from "./build-asset-metadata.js";
 import { parseStoryboard } from "./storyboard-parse.js";
 
 export type JobStatus = "queued" | "running" | "completed" | "failed" | "cancelled" | "unknown";
@@ -45,6 +47,12 @@ export interface JobRecord {
   beatId?: string;
   outputPath?: string;
   cachePath?: string;
+  assetKind?: BuildAssetKind;
+  assetCue?: string;
+  assetOptions?: Record<string, unknown>;
+  cacheKey?: string;
+  canonicalPath?: string;
+  metadataPath?: string;
   error?: string;
   promptPreview?: string;
   retryWith: string[];
@@ -67,6 +75,12 @@ export interface CreateJobRecordOptions {
   beatId?: string;
   outputPath?: string;
   cachePath?: string;
+  assetKind?: BuildAssetKind;
+  assetCue?: string;
+  assetOptions?: Record<string, unknown>;
+  cacheKey?: string;
+  canonicalPath?: string;
+  metadataPath?: string;
   error?: string;
 }
 
@@ -258,6 +272,12 @@ export function createJobRecord(opts: CreateJobRecordOptions): JobRecord {
     beatId: opts.beatId,
     outputPath: opts.outputPath,
     cachePath: opts.cachePath,
+    assetKind: opts.assetKind,
+    assetCue: opts.assetCue,
+    assetOptions: opts.assetOptions,
+    cacheKey: opts.cacheKey,
+    canonicalPath: opts.canonicalPath,
+    metadataPath: opts.metadataPath,
     error: opts.error,
     promptPreview: previewPrompt(opts.prompt),
     retryWith: [],
@@ -345,6 +365,7 @@ export async function refreshJobRecord(
         error: result.error,
       });
       await maybeCacheOutput(updated);
+      await maybeWriteCompletedAssetMetadata(updated);
     } else if (record.jobType === "generate-music") {
       const result = await refreshMusicStatus(record.providerTaskId, opts.wait);
       if (!result.success) throw new Error(result.error ?? "Music status check failed");
@@ -360,6 +381,7 @@ export async function refreshJobRecord(
         error: result.error,
       });
       await maybeCacheOutput(updated);
+      await maybeWriteCompletedAssetMetadata(updated);
     }
     if (opts.write !== false) await writeJobRecord(updated);
     return makeJobStatusResult(updated, {
@@ -397,6 +419,7 @@ export async function inspectProjectStatus(
       refreshed.push(result.job);
     }
     records = refreshed.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    await refreshBuildReportFromJobs(project, records);
   }
 
   const build = await readBuildSummary(project);
@@ -641,6 +664,112 @@ async function maybeCacheOutput(record: JobRecord): Promise<void> {
     await copyFile(record.outputPath, record.cachePath);
   } catch {
     // Cache writes should not hide provider status refresh success.
+  }
+}
+
+async function maybeWriteCompletedAssetMetadata(record: JobRecord): Promise<void> {
+  const kind = assetKindForJob(record);
+  if (
+    record.status !== "completed" ||
+    !kind ||
+    !record.beatId ||
+    !record.assetCue ||
+    !record.cacheKey ||
+    !record.outputPath ||
+    !existsSync(record.outputPath)
+  ) {
+    return;
+  }
+
+  try {
+    await writeAssetMetadata({
+      projectDir: record.projectDir,
+      kind,
+      beatId: record.beatId,
+      cue: record.assetCue,
+      provider: record.provider,
+      options: record.assetOptions,
+      cacheKey: record.cacheKey,
+      canonicalPath: record.canonicalPath ?? projectRelativePath(record.projectDir, record.outputPath),
+      cachePath: record.cachePath
+        ? projectRelativePath(record.projectDir, record.cachePath)
+        : undefined,
+    });
+  } catch {
+    // Metadata writes should not hide provider status refresh success.
+  }
+}
+
+async function refreshBuildReportFromJobs(
+  projectDir: string,
+  records: JobRecord[]
+): Promise<void> {
+  const reportPath = join(projectDir, "build-report.json");
+  const report = await readJson(reportPath);
+  if (!report || !Array.isArray(report.beats)) return;
+
+  let changed = false;
+  const jobs = Array.isArray(report.jobs) ? report.jobs : [];
+  for (const record of records) {
+    if (record.status !== "completed" || !record.beatId) continue;
+    const kind = assetKindForJob(record);
+    if (!kind || (kind !== "video" && kind !== "music")) continue;
+    const outputPath = record.outputPath
+      ? projectRelativePath(projectDir, record.outputPath)
+      : record.canonicalPath;
+    if (!outputPath) continue;
+    const cachePath = record.cachePath
+      ? projectRelativePath(projectDir, record.cachePath)
+      : undefined;
+
+    for (const beat of report.beats) {
+      if (!beat || typeof beat !== "object") continue;
+      const beatRecord = beat as Record<string, unknown>;
+      if (beatRecord.id !== record.beatId) continue;
+      const nested =
+        beatRecord[kind] && typeof beatRecord[kind] === "object"
+          ? (beatRecord[kind] as Record<string, unknown>)
+          : {};
+      nested.provider = record.provider;
+      nested.path = outputPath;
+      nested.status = "generated";
+      nested.jobId = record.id;
+      nested.cachePath = cachePath;
+      nested.cacheKey = record.cacheKey;
+      nested.metadataPath = record.metadataPath;
+      nested.freshness = record.cacheKey ? "fresh" : nested.freshness;
+      if (
+        kind === "music" &&
+        record.assetOptions &&
+        typeof record.assetOptions.duration === "number"
+      ) {
+        nested.durationSec = record.assetOptions.duration;
+      }
+      beatRecord[kind] = stripUndefined(nested);
+      beatRecord[`${kind}Path`] = outputPath;
+      beatRecord[`${kind}Status`] = "generated";
+      beatRecord[`${kind}JobId`] = record.id;
+      delete beatRecord[`${kind}Error`];
+      changed = true;
+    }
+
+    for (const job of jobs) {
+      if (!job || typeof job !== "object") continue;
+      const jobRecord = job as Record<string, unknown>;
+      if (jobRecord.id !== record.id) continue;
+      jobRecord.status = record.status;
+      jobRecord.outputPath = outputPath;
+      jobRecord.cachePath = cachePath;
+      jobRecord.retryWith = record.retryWith;
+      changed = true;
+    }
+  }
+
+  if (!changed) return;
+  try {
+    await writeFile(reportPath, JSON.stringify(stripUndefined(report), null, 2) + "\n", "utf-8");
+  } catch {
+    // Status should still be useful if build-report refresh fails.
   }
 }
 
@@ -1047,6 +1176,19 @@ function previewPrompt(prompt: string | undefined): string | undefined {
   const compact = prompt.replace(/\s+/g, " ").trim();
   if (!compact) return undefined;
   return compact.length > 160 ? `${compact.slice(0, 157)}...` : compact;
+}
+
+function assetKindForJob(record: JobRecord): BuildAssetKind | undefined {
+  if (record.assetKind) return record.assetKind;
+  if (record.jobType === "generate-video") return "video";
+  if (record.jobType === "generate-music") return "music";
+  return undefined;
+}
+
+function projectRelativePath(projectDir: string, path: string): string {
+  const rel = relative(resolve(projectDir), resolve(path));
+  if (!rel || rel.startsWith("..")) return path;
+  return rel.replace(/\\/g, "/");
 }
 
 async function readJson(path: string): Promise<Record<string, unknown> | null> {

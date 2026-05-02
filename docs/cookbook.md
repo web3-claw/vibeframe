@@ -195,7 +195,7 @@ failed provider key, network issue, or invalid step input.
 
 - Use `--dry-run` before provider-backed steps.
 - Add `--json` where available when an agent needs structured output.
-- Use `vibe schema --list` to inspect the command surface.
+- Use `vibe schema --list --surface public` to inspect the first-run command surface.
 - Use `vibe guide` for built-in step-by-step guides.
 - Prefer explicit providers in docs and demos, for example `-p openai` or
   `-p seedance`, so new users can see which API key is required.

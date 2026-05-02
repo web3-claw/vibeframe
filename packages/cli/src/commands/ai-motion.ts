@@ -10,16 +10,16 @@
  * @see MODELS.md for AI model configuration
  */
 
-import { type Command } from 'commander';
-import { resolve } from 'node:path';
-import { existsSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
-import chalk from 'chalk';
-import ora from 'ora';
-import { ClaudeProvider, GeminiProvider } from '@vibeframe/ai-providers';
-import { getApiKey, loadEnv } from '../utils/api-key.js';
+import { type Command } from "commander";
+import { resolve } from "node:path";
+import { existsSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
+import chalk from "chalk";
+import ora from "ora";
+import { ClaudeProvider, GeminiProvider } from "@vibeframe/ai-providers";
+import { getApiKey, loadEnv } from "../utils/api-key.js";
 import { getApiKeyFromConfig } from "../config/index.js";
-import { exitWithError, outputSuccess, apiError, generalError, usageError } from './output.js';
+import { exitWithError, outputSuccess, apiError, generalError, usageError } from "./output.js";
 import { validateOutputPath } from "./validate.js";
 
 // ── Motion: exported function for Agent tool ────────────────────────────────
@@ -63,10 +63,10 @@ export interface MotionCommandResult {
 
 // Map model alias → { provider, modelId }
 const MODEL_MAP: Record<string, { provider: "claude" | "gemini"; modelId: string }> = {
-  sonnet:          { provider: "claude",  modelId: "claude-sonnet-4-6" },
-  opus:            { provider: "claude",  modelId: "claude-opus-4-7" },
-  "opus-4-6":      { provider: "claude",  modelId: "claude-opus-4-6" },
-  gemini:          { provider: "gemini",  modelId: "gemini-2.5-pro" },
+  sonnet: { provider: "claude", modelId: "claude-sonnet-4-6" },
+  opus: { provider: "claude", modelId: "claude-opus-4-7" },
+  "opus-4-6": { provider: "claude", modelId: "claude-opus-4-6" },
+  gemini: { provider: "gemini", modelId: "gemini-2.5-pro" },
   "gemini-3.1-pro": { provider: "gemini", modelId: "gemini-3.1-pro-preview" },
 };
 
@@ -98,10 +98,20 @@ export async function executeMotion(options: MotionCommandOptions): Promise<Moti
   let apiKey: string | null;
   if (useGemini) {
     apiKey = await getApiKey("GOOGLE_API_KEY", "Google");
-    if (!apiKey) return { success: false, error: "GOOGLE_API_KEY required for Gemini motion generation. Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
+    if (!apiKey)
+      return {
+        success: false,
+        error:
+          "GOOGLE_API_KEY required for Gemini motion generation. Run 'vibe setup' or set GOOGLE_API_KEY in .env",
+      };
   } else {
     apiKey = await getApiKey("ANTHROPIC_API_KEY", "Anthropic");
-    if (!apiKey) return { success: false, error: "ANTHROPIC_API_KEY required for Claude motion generation. Run 'vibe setup' or set ANTHROPIC_API_KEY in .env" };
+    if (!apiKey)
+      return {
+        success: false,
+        error:
+          "ANTHROPIC_API_KEY required for Claude motion generation. Run 'vibe setup' or set ANTHROPIC_API_KEY in .env",
+      };
   }
 
   // Step 0 (optional): Analyze reference media with Gemini, inject into description.
@@ -112,7 +122,11 @@ export async function executeMotion(options: MotionCommandOptions): Promise<Moti
   if (options.image) {
     const geminiApiKey = await getApiKey("GOOGLE_API_KEY", "Google");
     if (!geminiApiKey) {
-      return { success: false, error: "GOOGLE_API_KEY required for image analysis (--image). Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
+      return {
+        success: false,
+        error:
+          "GOOGLE_API_KEY required for image analysis (--image). Run 'vibe setup' or set GOOGLE_API_KEY in .env",
+      };
     }
 
     const imagePath = resolve(process.cwd(), options.image);
@@ -121,14 +135,17 @@ export async function executeMotion(options: MotionCommandOptions): Promise<Moti
     const gemini = new GeminiProvider();
     await gemini.initialize({ apiKey: geminiApiKey });
 
-    const analysisResult = await gemini.analyzeImage(imageBuffer, `Analyze this image for motion graphics design purposes. Describe:
+    const analysisResult = await gemini.analyzeImage(
+      imageBuffer,
+      `Analyze this image for motion graphics design purposes. Describe:
 1. Dominant color palette (exact hex values if possible)
 2. Subject placement and safe zones (where NOT to put text/graphics)
 3. Overall mood and atmosphere
 4. Lighting style (warm/cool, bright/dark, dramatic/soft)
 5. Key visual elements and their positions
 
-Be specific and concise — this analysis will guide a Remotion animation generator.`);
+Be specific and concise — this analysis will guide a Remotion animation generator.`
+    );
 
     if (analysisResult.success && analysisResult.response) {
       enrichedDescription = `${options.description}
@@ -148,7 +165,11 @@ Use this image analysis to inform the color palette, typography placement, and o
     }
 
     if (!geminiApiKey && understand === "required") {
-      return { success: false, error: "GOOGLE_API_KEY required for video understanding (--understand required). Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
+      return {
+        success: false,
+        error:
+          "GOOGLE_API_KEY required for video understanding (--understand required). Run 'vibe setup' or set GOOGLE_API_KEY in .env",
+      };
     }
 
     if (geminiApiKey) {
@@ -158,7 +179,9 @@ Use this image analysis to inform the color palette, typography placement, and o
       const gemini = new GeminiProvider();
       await gemini.initialize({ apiKey: geminiApiKey });
 
-      const analysisPrompt = options.understandingPrompt || `Analyze this video for motion graphics composition. Return concise production guidance:
+      const analysisPrompt =
+        options.understandingPrompt ||
+        `Analyze this video for motion graphics composition. Return concise production guidance:
 1. Visual summary and primary subject
 2. Dominant color palette and lighting
 3. Camera motion / scene motion that overlays should respect
@@ -201,13 +224,20 @@ Use this video understanding to place motion graphics in safe zones, match the c
       const gemini = new GeminiProvider();
       await gemini.initialize({ apiKey });
       result = await gemini.refineMotion(existingCode, options.description, {
-        duration, width, height, fps, model: modelConfig.modelId,
+        duration,
+        width,
+        height,
+        fps,
+        model: modelConfig.modelId,
       });
     } else {
       const claude = new ClaudeProvider();
       await claude.initialize({ apiKey });
       result = await claude.refineMotion(existingCode, options.description, {
-        duration, width, height, fps,
+        duration,
+        width,
+        height,
+        fps,
       });
     }
   } else {
@@ -215,7 +245,10 @@ Use this video understanding to place motion graphics in safe zones, match the c
       const gemini = new GeminiProvider();
       await gemini.initialize({ apiKey });
       result = await gemini.generateMotion(enrichedDescription, {
-        duration, width, height, fps,
+        duration,
+        width,
+        height,
+        fps,
         style: options.style,
         model: modelConfig.modelId,
       });
@@ -223,7 +256,10 @@ Use this video understanding to place motion graphics in safe zones, match the c
       const claude = new ClaudeProvider();
       await claude.initialize({ apiKey });
       result = await claude.generateMotion(enrichedDescription, {
-        duration, width, height, fps,
+        duration,
+        width,
+        height,
+        fps,
         style: options.style as "minimal" | "corporate" | "playful" | "cinematic" | undefined,
       });
     }
@@ -234,7 +270,12 @@ Use this video understanding to place motion graphics in safe zones, match the c
   }
 
   const { component } = result;
-  const defaultOutput = (options.video || options.image) ? "motion-output.mp4" : options.render ? "motion.webm" : "motion.tsx";
+  const defaultOutput =
+    options.video || options.image
+      ? "motion-output.mp4"
+      : options.render
+        ? "motion.webm"
+        : "motion.tsx";
   const outputPath = resolve(process.cwd(), options.output || defaultOutput);
 
   // Save TSX code
@@ -285,7 +326,12 @@ Use this video understanding to place motion graphics in safe zones, match the c
       return { success: false, codePath, componentName: component.name, error: renderResult.error };
     }
 
-    return { success: true, codePath, componentName: component.name, compositedPath: renderResult.outputPath };
+    return {
+      success: true,
+      codePath,
+      componentName: component.name,
+      compositedPath: renderResult.outputPath,
+    };
   }
 
   if (baseImage) {
@@ -310,7 +356,12 @@ Use this video understanding to place motion graphics in safe zones, match the c
       return { success: false, codePath, componentName: component.name, error: renderResult.error };
     }
 
-    return { success: true, codePath, componentName: component.name, compositedPath: renderResult.outputPath };
+    return {
+      success: true,
+      codePath,
+      componentName: component.name,
+      compositedPath: renderResult.outputPath,
+    };
   }
 
   // No base media — render standalone
@@ -329,7 +380,12 @@ Use this video understanding to place motion graphics in safe zones, match the c
     return { success: false, codePath, componentName: component.name, error: renderResult.error };
   }
 
-  return { success: true, codePath, componentName: component.name, renderedPath: renderResult.outputPath };
+  return {
+    success: true,
+    codePath,
+    componentName: component.name,
+    renderedPath: renderResult.outputPath,
+  };
 }
 
 /**
@@ -339,7 +395,7 @@ Use this video understanding to place motion graphics in safe zones, match the c
 export function registerMotionCommand(aiCommand: Command): void {
   aiCommand
     .command("motion")
-    .description("Generate motion graphics using Claude + Remotion (render & composite)")
+    .description("Advanced: generate standalone motion graphics using Claude + Remotion")
     .argument("<description>", "Natural language description of the motion graphic")
     .option("-k, --api-key <key>", "Anthropic API key (or set ANTHROPIC_API_KEY env)")
     .option("-o, --output <path>", "Output file path", "motion.tsx")
@@ -358,7 +414,11 @@ export function registerMotionCommand(aiCommand: Command): void {
     )
     .option("--understanding-prompt <text>", "Custom prompt for --video understanding")
     .option("--from-tsx <path>", "Refine an existing TSX file instead of generating from scratch")
-    .option("-m, --model <alias>", "LLM model: sonnet (default), opus, gemini, gemini-3.1-pro", "sonnet")
+    .option(
+      "-m, --model <alias>",
+      "LLM model: sonnet (default), opus, gemini, gemini-3.1-pro",
+      "sonnet"
+    )
     .option("--dry-run", "Preview parameters without executing")
     .action(async (description: string, options) => {
       const startedAt = Date.now();
@@ -372,28 +432,34 @@ export function registerMotionCommand(aiCommand: Command): void {
         if (options.duration !== undefined) {
           const d = parseFloat(options.duration);
           if (!Number.isFinite(d) || d <= 0 || d > 60) {
-            exitWithError(usageError(
-              `Invalid --duration: ${options.duration}`,
-              "Must be a positive number ≤ 60 seconds.",
-            ));
+            exitWithError(
+              usageError(
+                `Invalid --duration: ${options.duration}`,
+                "Must be a positive number ≤ 60 seconds."
+              )
+            );
           }
         }
         if (options.width !== undefined) {
           const w = parseInt(options.width, 10);
           if (!Number.isFinite(w) || w < 16 || w > 7680) {
-            exitWithError(usageError(
-              `Invalid --width: ${options.width}`,
-              "Must be an integer between 16 and 7680.",
-            ));
+            exitWithError(
+              usageError(
+                `Invalid --width: ${options.width}`,
+                "Must be an integer between 16 and 7680."
+              )
+            );
           }
         }
         if (options.height !== undefined) {
           const h = parseInt(options.height, 10);
           if (!Number.isFinite(h) || h < 16 || h > 4320) {
-            exitWithError(usageError(
-              `Invalid --height: ${options.height}`,
-              "Must be an integer between 16 and 4320.",
-            ));
+            exitWithError(
+              usageError(
+                `Invalid --height: ${options.height}`,
+                "Must be an integer between 16 and 4320."
+              )
+            );
           }
         }
 
@@ -479,12 +545,18 @@ export function registerMotionCommand(aiCommand: Command): void {
           console.log(chalk.dim("To render this standalone motion asset, add --render:"));
           console.log(chalk.dim(`  vibe generate motion "${description}" --render -o motion.webm`));
           console.log(chalk.dim("For overlays on an existing video, use:"));
-          console.log(chalk.dim(`  vibe edit motion-overlay input.mp4 "${description}" --understand auto -o output.mp4`));
+          console.log(
+            chalk.dim(
+              `  vibe edit motion-overlay input.mp4 "${description}" --understand auto -o output.mp4`
+            )
+          );
         }
 
         console.log();
       } catch (error) {
-        exitWithError(generalError(error instanceof Error ? error.message : "Motion generation failed"));
+        exitWithError(
+          generalError(error instanceof Error ? error.message : "Motion generation failed")
+        );
       }
     });
 }

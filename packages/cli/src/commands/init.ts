@@ -305,6 +305,8 @@ async function runSceneInit(projectDirArg: string, options: Record<string, unkno
       name: projectName,
       brief: fromBrief,
       durationSec: duration,
+      aspect,
+      visualStyle,
     });
     const storyboardPath = resolve(projectDir, "STORYBOARD.md");
     const designPath = resolve(projectDir, "DESIGN.md");

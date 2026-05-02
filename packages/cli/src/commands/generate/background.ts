@@ -33,13 +33,13 @@ export interface ExecuteBackgroundResult {
 }
 
 export async function executeBackground(
-  options: ExecuteBackgroundOptions,
+  options: ExecuteBackgroundOptions
 ): Promise<ExecuteBackgroundResult> {
   try {
     const apiKey =
       options.apiKey ??
       (hasApiKey("OPENAI_API_KEY")
-        ? ((await getApiKeyFromConfig("openai")) || process.env.OPENAI_API_KEY!)
+        ? (await getApiKeyFromConfig("openai")) || process.env.OPENAI_API_KEY!
         : null);
     if (!apiKey)
       return { success: false, error: "OPENAI_API_KEY required for background generation" };
@@ -90,7 +90,7 @@ export async function executeBackground(
 
 export function registerBackgroundCommand(parent: Command): void {
   parent
-    .command("background")
+    .command("background", { hidden: true })
     .description("Generate video background using DALL-E")
     .argument("<description>", "Background description")
     .option("-k, --api-key <key>", "OpenAI API key (or set OPENAI_API_KEY env)")
@@ -115,11 +115,7 @@ export function registerBackgroundCommand(parent: Command): void {
           return;
         }
 
-        const apiKey = await requireApiKey(
-          "OPENAI_API_KEY",
-          "OpenAI",
-          options.apiKey,
-        );
+        const apiKey = await requireApiKey("OPENAI_API_KEY", "OpenAI", options.apiKey);
 
         const spinner = ora("Generating background...").start();
 

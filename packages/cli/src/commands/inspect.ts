@@ -28,7 +28,14 @@ import { requireApiKey } from "../utils/api-key.js";
 import { applySuggestion } from "./ai-helpers.js";
 import { executeAnalyze, executeGeminiVideo } from "./ai-analyze.js";
 import { registerReviewCommand } from "./ai-review.js";
-import { isJsonMode, outputSuccess, exitWithError, apiError, generalError, usageError } from "./output.js";
+import {
+  isJsonMode,
+  outputSuccess,
+  exitWithError,
+  apiError,
+  generalError,
+  usageError,
+} from "./output.js";
 import { sanitizeLLMResponse } from "./sanitize.js";
 import { rejectControlChars } from "./validate.js";
 import { applyTier } from "./_shared/cost-tier.js";
@@ -43,7 +50,7 @@ import type { ReviewIssue, ReviewStatus } from "./_shared/review-report.js";
 const VALID_RENDER_AI_MODELS: RenderInspectModel[] = ["flash", "flash-2.5", "pro"];
 
 export const inspectCommand = new Command("inspect")
-  .description("Inspect media using AI (images, videos, YouTube URLs)")
+  .description("Inspect projects, renders, and media")
   .addHelpText(
     "after",
     `
@@ -54,14 +61,17 @@ Examples:
   $ vibe inspect media image.png "Describe this image"
   $ vibe inspect media video.mp4 "Summarize this video"
   $ vibe inspect media "https://youtube.com/watch?v=..." "Key takeaways"
-  $ vibe inspect video video.mp4 "List all scene changes" --low-res
-  $ vibe inspect review video.mp4 --auto-apply -o fixed.mp4
-  $ vibe inspect suggest timeline.json "make it more dramatic"
+
+Advanced and legacy:
+  inspect video    Legacy alias; use 'vibe inspect media'
+  inspect review   Legacy render review; use 'vibe inspect render --ai'
+  inspect suggest  Advanced suggestion primitive; reports should drive host-agent edits
 
 API Keys:
-  GOOGLE_API_KEY  Required for all inspect commands (Gemini)
+  GOOGLE_API_KEY  Required for 'inspect media' and 'inspect render --ai'
 
 Use '--fields response,model' to limit output size.
+Run 'vibe schema --list --surface public' for the first-run inspect surface.
 Run 'vibe schema inspect.<command>' for structured parameter info.
 `
   );
@@ -70,10 +80,15 @@ Run 'vibe schema inspect.<command>' for structured parameter info.
 
 inspectCommand
   .command("project")
-  .description("Inspect project completeness, storyboard validity, scene lint, and asset references")
+  .description(
+    "Inspect project completeness, storyboard validity, scene lint, and asset references"
+  )
   .argument("[project-dir]", "VibeFrame project directory", ".")
   .option("--beat <id>", "Inspect only one storyboard beat where beat-scoped checks apply")
-  .option("-o, --output <path>", "Write review report to this path (default: <project>/review-report.json)")
+  .option(
+    "-o, --output <path>",
+    "Write review report to this path (default: <project>/review-report.json)"
+  )
   .option("--no-report", "Do not write review-report.json")
   .action(async (projectDirArg: string, options) => {
     const startedAt = Date.now();
@@ -94,10 +109,20 @@ inspectCommand
         return;
       }
 
-      printInspectSummary("Project Inspection", result.status, result.score, result.issues, result.reportPath);
+      printInspectSummary(
+        "Project Inspection",
+        result.status,
+        result.score,
+        result.issues,
+        result.reportPath
+      );
       if (result.status === "fail") process.exitCode = 1;
     } catch (error) {
-      exitWithError(generalError(`Project inspection failed: ${error instanceof Error ? error.message : String(error)}`));
+      exitWithError(
+        generalError(
+          `Project inspection failed: ${error instanceof Error ? error.message : String(error)}`
+        )
+      );
     }
   });
 applyTier(inspectCommand.commands[inspectCommand.commands.length - 1], "free");
@@ -112,8 +137,14 @@ inspectCommand
   .option("--ai", "Also run Gemini video review and merge findings into review-report.json")
   .option("-m, --model <model>", "Gemini model for --ai: flash (default), flash-2.5, pro", "flash")
   .option("--beat <id>", "Inspect a render for one storyboard beat")
-  .option("--video <path>", "Rendered video path. Defaults to build-report outputPath or latest renders/* video.")
-  .option("-o, --output <path>", "Write review report to this path (default: <project>/review-report.json)")
+  .option(
+    "--video <path>",
+    "Rendered video path. Defaults to build-report outputPath or latest renders/* video."
+  )
+  .option(
+    "-o, --output <path>",
+    "Write review report to this path (default: <project>/review-report.json)"
+  )
   .option("--no-report", "Do not write review-report.json")
   .option("--dry-run", "Preview parameters without probing video or calling Gemini")
   .action(async (projectDirArg: string, options) => {
@@ -160,10 +191,20 @@ inspectCommand
         return;
       }
 
-      printInspectSummary("Render Inspection", result.status, result.score, result.issues, result.reportPath);
+      printInspectSummary(
+        "Render Inspection",
+        result.status,
+        result.score,
+        result.issues,
+        result.reportPath
+      );
       if (result.status === "fail") process.exitCode = 1;
     } catch (error) {
-      exitWithError(generalError(`Render inspection failed: ${error instanceof Error ? error.message : String(error)}`));
+      exitWithError(
+        generalError(
+          `Render inspection failed: ${error instanceof Error ? error.message : String(error)}`
+        )
+      );
     }
   });
 applyTier(inspectCommand.commands[inspectCommand.commands.length - 1], "low");
@@ -236,7 +277,11 @@ inspectCommand
       const response = sanitizeLLMResponse(result.response || "");
 
       if (isJsonMode()) {
-        const data: Record<string, unknown> = { response, sourceType: result.sourceType, model: result.model };
+        const data: Record<string, unknown> = {
+          response,
+          sourceType: result.sourceType,
+          model: result.model,
+        };
         if (result.totalTokens) {
           data.promptTokens = result.promptTokens;
           data.responseTokens = result.responseTokens;
@@ -277,7 +322,7 @@ function printInspectSummary(
   status: ReviewStatus,
   score: number,
   issues: ReviewIssue[],
-  reportPath?: string,
+  reportPath?: string
 ): void {
   const color = status === "pass" ? chalk.green : status === "warn" ? chalk.yellow : chalk.red;
   console.log();
@@ -292,8 +337,17 @@ function printInspectSummary(
   }
   console.log();
   for (const issue of issues) {
-    const tag = issue.severity === "error" ? chalk.red("error") : issue.severity === "warning" ? chalk.yellow("warn") : chalk.blue("info");
-    const loc = issue.file ? chalk.dim(` ${issue.file}`) : issue.scene ? chalk.dim(` ${issue.scene}`) : "";
+    const tag =
+      issue.severity === "error"
+        ? chalk.red("error")
+        : issue.severity === "warning"
+          ? chalk.yellow("warn")
+          : chalk.blue("info");
+    const loc = issue.file
+      ? chalk.dim(` ${issue.file}`)
+      : issue.scene
+        ? chalk.dim(` ${issue.scene}`)
+        : "";
     console.log(`  ${tag} ${chalk.dim(`[${issue.code}]`)}${loc} ${issue.message}`);
     if (issue.suggestedFix) console.log(`       ${chalk.dim(issue.suggestedFix)}`);
   }
@@ -303,13 +357,15 @@ function parseRenderAiModel(value: string): RenderInspectModel {
   if (VALID_RENDER_AI_MODELS.includes(value as RenderInspectModel)) {
     return value as RenderInspectModel;
   }
-  exitWithError(usageError(`Invalid --model: ${value}`, `Must be one of: ${VALID_RENDER_AI_MODELS.join(", ")}`));
+  exitWithError(
+    usageError(`Invalid --model: ${value}`, `Must be one of: ${VALID_RENDER_AI_MODELS.join(", ")}`)
+  );
 }
 
 // ── analyze video ──────────────────────────────────────────────────────
 
 inspectCommand
-  .command("video")
+  .command("video", { hidden: true })
   .description("Analyze video using Gemini (summarize, Q&A, extract info)")
   .argument("<source>", "Video file path or YouTube URL")
   .argument("<prompt>", "Analysis prompt (e.g., 'Summarize this video')")
@@ -468,7 +524,13 @@ inspectCommand
           command: "inspect suggest",
           startedAt,
           data: {
-            suggestions: suggestions.map(s => ({ type: s.type, description: s.description, confidence: s.confidence, clipIds: s.clipIds, params: s.params })),
+            suggestions: suggestions.map((s) => ({
+              type: s.type,
+              description: s.description,
+              confidence: s.confidence,
+              clipIds: s.clipIds,
+              params: s.params,
+            })),
           },
         });
         return;

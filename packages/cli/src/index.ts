@@ -47,6 +47,11 @@ import { exitWithError, usageError } from "./commands/output.js";
 import { rejectControlChars } from "./utils/input-validation.js";
 import { buildSchema } from "./commands/schema.js";
 import { getCostTier, TIER_DESCRIPTION, type CostTier } from "./commands/_shared/cost-tier.js";
+import { productSurfaceForCommandPath } from "./commands/_shared/product-surface.js";
+
+interface HelpHiddenCommand {
+  _hidden?: boolean;
+}
 
 /**
  * Build the "Cost tiers" footer for `vibe --help`.
@@ -60,14 +65,19 @@ import { getCostTier, TIER_DESCRIPTION, type CostTier } from "./commands/_shared
 function renderCostTierFooter(prog: Command): string {
   const buckets: Record<CostTier, string[]> = { free: [], low: [], high: [], "very-high": [] };
   const walk = (cmd: Command, prefix: string) => {
+    if ((cmd as unknown as HelpHiddenCommand)._hidden) return;
+    const path = prefix ? `${prefix}.${cmd.name()}` : cmd.name();
     const tier = getCostTier(cmd);
-    if (tier) buckets[tier].push(prefix ? `${prefix}.${cmd.name()}` : cmd.name());
-    for (const child of cmd.commands) walk(child, prefix ? `${prefix}.${cmd.name()}` : cmd.name());
+    const surface = productSurfaceForCommandPath(path).surface;
+    if (tier && surface !== "legacy" && surface !== "internal") buckets[tier].push(path);
+    for (const child of cmd.commands) walk(child, path);
   };
   for (const top of prog.commands) walk(top, "");
 
   const order: CostTier[] = ["free", "low", "high", "very-high"];
-  const lines: string[] = ["Cost tiers (`vibe --describe <cmd>` for the per-command tag):"];
+  const lines: string[] = [
+    "Cost tiers (`vibe --describe <cmd>` for each tag; legacy/internal omitted here):",
+  ];
   for (const tier of order) {
     const examples = buckets[tier].slice(0, 3).join(", ");
     if (!examples) continue;
@@ -91,7 +101,14 @@ async function readStdin(): Promise<string> {
 export { startAgent } from "./commands/agent.js";
 export { loadConfig, saveConfig, isConfigured, type VibeConfig } from "./config/index.js";
 export { AgentExecutor, ToolRegistry, ConversationMemory } from "./agent/index.js";
-export type { AgentConfig, AgentContext, AgentMessage, ToolCall, ToolResult, LLMAdapter } from "./agent/index.js";
+export type {
+  AgentConfig,
+  AgentContext,
+  AgentMessage,
+  ToolCall,
+  ToolResult,
+  LLMAdapter,
+} from "./agent/index.js";
 
 const program = new Command();
 
@@ -110,7 +127,16 @@ program
     outputError: (str, write) => {
       // In JSON mode, output structured error to stderr
       if (process.env.VIBE_JSON_OUTPUT === "1" || process.argv.includes("--json")) {
-        const err = { success: false, error: str.trim(), message: str.trim(), code: "USAGE_ERROR", exitCode: 2, retryable: false, recoverable: false, retryWith: ["Run with --help for full options."] };
+        const err = {
+          success: false,
+          error: str.trim(),
+          message: str.trim(),
+          code: "USAGE_ERROR",
+          exitCode: 2,
+          retryable: false,
+          recoverable: false,
+          retryWith: ["Run with --help for full options."],
+        };
         process.stderr.write(JSON.stringify(err, null, 2) + "\n");
       } else {
         write(chalk.red(str.trim()) + "\n");
@@ -131,9 +157,10 @@ this section shows the typical entry points by use case):
     vibe storyboard validate my-video   Validate STORYBOARD.md cues
     vibe plan my-video                  Preview build stages, cost, and missing work
     vibe build my-video                 Build STORYBOARD.md → scene assets
-    vibe render my-video                Render the project to MP4
     vibe status project my-video        Check build/review/jobs status
-    vibe demo                           Try VibeFrame without API keys
+    vibe inspect project my-video       Inspect files, assets, and scene wiring
+    vibe render my-video                Render the project to MP4
+    vibe inspect render my-video        Inspect the final MP4
 
   One-shot media:
     vibe generate image "..."           Generate a still image
@@ -146,13 +173,14 @@ this section shows the typical entry points by use case):
     vibe run workflow.yaml              Video-as-YAML pipeline
     vibe guide                          Choose the right workflow
     vibe guide motion                   Text vs motion overlay guidance
+    vibe schema --list --surface public Compact first-run command catalog
     vibe schema generate.video          JSON schema for any command
     vibe context                        Agent integration quickstart
     vibe agent                          Optional built-in agent when you do not use Claude Code/Codex/etc.
 
 Common-flag note: most commands accept --dry-run to preview cost/output
 before invoking paid providers.
-`,
+`
   )
   // Cost tiers block — generated from the live cost-tier registry so
   // it can't drift from `_shared/cost-tier.ts`. Picks two representative
@@ -183,16 +211,31 @@ program.hook("preAction", async (thisCommand, actionCommand) => {
   // Usage: echo '{"output":"out.mp4","provider":"kling"}' | vibe generate video "prompt" --stdin
   if (opts.stdin) {
     if (process.stdin.isTTY) {
-      exitWithError(usageError("--stdin requires piped input.", "echo '{\"key\":\"value\"}' | vibe <command> --stdin"));
+      exitWithError(
+        usageError(
+          "--stdin requires piped input.",
+          'echo \'{"key":"value"}\' | vibe <command> --stdin'
+        )
+      );
     }
     try {
       const raw = await readStdin();
       if (!raw) {
-        exitWithError(usageError("--stdin received empty input.", "Pipe JSON to stdin: echo '{...}' | vibe <command> --stdin"));
+        exitWithError(
+          usageError(
+            "--stdin received empty input.",
+            "Pipe JSON to stdin: echo '{...}' | vibe <command> --stdin"
+          )
+        );
       }
       const json = JSON.parse(raw);
       if (typeof json !== "object" || json === null || Array.isArray(json)) {
-        exitWithError(usageError("--stdin expects a JSON object.", 'Example: {"output":"out.mp4","provider":"kling"}'));
+        exitWithError(
+          usageError(
+            "--stdin expects a JSON object.",
+            'Example: {"output":"out.mp4","provider":"kling"}'
+          )
+        );
       }
       // Merge JSON keys into the action command's options (CLI flags take precedence)
       for (const [key, value] of Object.entries(json)) {
@@ -203,7 +246,12 @@ program.hook("preAction", async (thisCommand, actionCommand) => {
           try {
             rejectControlChars(value, key);
           } catch {
-            exitWithError(usageError(`--stdin field '${key}' contains control characters.`, "Remove non-printable characters from the JSON value."));
+            exitWithError(
+              usageError(
+                `--stdin field '${key}' contains control characters.`,
+                "Remove non-printable characters from the JSON value."
+              )
+            );
           }
         }
         // Only set if not already explicitly specified via CLI flag
@@ -214,7 +262,12 @@ program.hook("preAction", async (thisCommand, actionCommand) => {
       }
     } catch (err) {
       if (err instanceof SyntaxError) {
-        exitWithError(usageError(`--stdin received invalid JSON: ${err.message}`, "Ensure valid JSON: echo '{\"key\":\"value\"}' | vibe <command> --stdin"));
+        exitWithError(
+          usageError(
+            `--stdin received invalid JSON: ${err.message}`,
+            'Ensure valid JSON: echo \'{"key":"value"}\' | vibe <command> --stdin'
+          )
+        );
       }
       throw err;
     }
@@ -250,7 +303,7 @@ program.addCommand(buildCommand);
 program.addCommand(renderCommand);
 program.addCommand(statusCommand);
 program.addCommand(doctorCommand);
-program.addCommand(demoCommand);
+program.addCommand(demoCommand, { hidden: true });
 program.addCommand(runCommand);
 program.addCommand(agentCommand);
 
@@ -266,7 +319,7 @@ program.addCommand(projectCommand, { hidden: true });
 program.addCommand(sceneCommand, { hidden: true });
 program.addCommand(timelineCommand, { hidden: true });
 program.addCommand(detectCommand);
-program.addCommand(batchCommand);
+program.addCommand(batchCommand, { hidden: true });
 
 // Agent integration commands
 program.addCommand(schemaCommand);
@@ -286,7 +339,16 @@ function propagateErrorHandling(cmd: Command): void {
     sub.configureOutput({
       outputError: (str, write) => {
         if (process.env.VIBE_JSON_OUTPUT === "1" || process.argv.includes("--json")) {
-          const err = { success: false, error: str.trim(), message: str.trim(), code: "USAGE_ERROR", exitCode: 2, retryable: false, recoverable: false, retryWith: ["Run with --help for full options."] };
+          const err = {
+            success: false,
+            error: str.trim(),
+            message: str.trim(),
+            code: "USAGE_ERROR",
+            exitCode: 2,
+            retryable: false,
+            recoverable: false,
+            retryWith: ["Run with --help for full options."],
+          };
           process.stderr.write(JSON.stringify(err, null, 2) + "\n");
         } else {
           write(chalk.red(str.trim()) + "\n");
@@ -301,12 +363,12 @@ propagateErrorHandling(program);
 
 // Global --describe: resolve command and output schema without parsing args
 if (process.argv.includes("--describe")) {
-  const args = process.argv.slice(2).filter(a => a !== "--describe" && a !== "--json");
+  const args = process.argv.slice(2).filter((a) => a !== "--describe" && a !== "--json");
   // Walk the command tree to find the target command
   let cmd: Command = program;
   const nameParts: string[] = [];
   for (const arg of args) {
-    const sub = cmd.commands.find(c => c.name() === arg || c.aliases().includes(arg));
+    const sub = cmd.commands.find((c) => c.name() === arg || c.aliases().includes(arg));
     if (sub) {
       cmd = sub;
       nameParts.push(sub.name());

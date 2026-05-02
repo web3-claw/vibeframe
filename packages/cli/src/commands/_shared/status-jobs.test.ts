@@ -303,4 +303,99 @@ describe("status job records", () => {
     expect(Array.from(await readFile(outputPath))).toEqual([7, 8, 9]);
     expect(Array.from(await readFile(cachePath))).toEqual([7, 8, 9]);
   });
+
+  it("refreshes completed music jobs into build-report and asset metadata", async () => {
+    const dir = await tempProject();
+    const outputPath = join(dir, "assets", "music-hook.mp3");
+    const cachePath = join(dir, ".vibeframe", "cache", "assets", "music-test.mp3");
+    await writeFile(
+      join(dir, "build-report.json"),
+      JSON.stringify({
+        schemaVersion: "1",
+        kind: "build",
+        success: true,
+        phase: "pending-jobs",
+        status: "running",
+        currentStage: "assets",
+        beats: [
+          {
+            id: "hook",
+            narrationStatus: "no-cue",
+            backdropStatus: "no-cue",
+            videoStatus: "no-cue",
+            musicStatus: "pending",
+            music: { status: "pending", jobId: "job_music_refresh" },
+          },
+        ],
+        jobs: [
+          {
+            id: "job_music_refresh",
+            jobType: "generate-music",
+            status: "running",
+            beatId: "hook",
+          },
+        ],
+        retryWith: [`vibe status project ${dir} --refresh --json`],
+        warnings: [],
+      }),
+      "utf-8"
+    );
+    await createAndWriteJobRecord({
+      id: "job_music_refresh",
+      jobType: "generate-music",
+      provider: "replicate",
+      providerTaskId: "music_3",
+      projectDir: dir,
+      command: "build --stage assets",
+      prompt: "Minimal confident pulse.",
+      beatId: "hook",
+      outputPath,
+      cachePath,
+      assetKind: "music",
+      assetCue: "Minimal confident pulse.",
+      assetOptions: { duration: 3 },
+      cacheKey: "music-cache-key",
+      canonicalPath: "assets/music-hook.mp3",
+      metadataPath: ".vibeframe/assets/music-hook.json",
+    });
+    vi.mocked(executeMusicStatus).mockResolvedValueOnce({
+      success: true,
+      status: "completed",
+      audioUrl: "https://example.test/music.mp3",
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        arrayBuffer: async () => new Uint8Array([4, 5, 6]).buffer,
+      })
+    );
+
+    const status = await inspectProjectStatus(dir, { refresh: true });
+
+    expect(status.beats.assetsReady).toBe(1);
+    const report = JSON.parse(await readFile(join(dir, "build-report.json"), "utf-8"));
+    expect(report.beats[0]).toMatchObject({
+      musicStatus: "generated",
+      musicPath: "assets/music-hook.mp3",
+      music: {
+        path: "assets/music-hook.mp3",
+        status: "generated",
+        cacheKey: "music-cache-key",
+        metadataPath: ".vibeframe/assets/music-hook.json",
+        freshness: "fresh",
+      },
+    });
+    const metadata = JSON.parse(
+      await readFile(join(dir, ".vibeframe", "assets", "music-hook.json"), "utf-8")
+    );
+    expect(metadata).toMatchObject({
+      kind: "music",
+      beatId: "hook",
+      cue: "Minimal confident pulse.",
+      cacheKey: "music-cache-key",
+      canonicalPath: "assets/music-hook.mp3",
+      cachePath: ".vibeframe/cache/assets/music-test.mp3",
+    });
+  });
 });

@@ -20,6 +20,11 @@ import {
   narrationCacheDescriptor,
   videoCacheDescriptor,
 } from "./build-cache.js";
+import {
+  assetFreshnessFromMetadata,
+  assetMetadataPath,
+  type AssetFreshness,
+} from "./build-asset-metadata.js";
 import { composerEnvVar, isComposerProvider, type ComposerProvider } from "./composer-resolve.js";
 import { parseStoryboard, type ParsedStoryboard } from "./storyboard-parse.js";
 import { readProjectConfig, type LoadedProjectConfig } from "./project-config.js";
@@ -29,6 +34,8 @@ export type BuildStage = "assets" | "compose" | "sync" | "render" | "all";
 export type BuildPlanStatus = "ready" | "invalid";
 export type AssetPlanReason =
   | "canonical-exists"
+  | "canonical-stale"
+  | "canonical-unknown"
   | "content-cache-hit"
   | "force"
   | "missing"
@@ -62,6 +69,8 @@ export interface AssetPlan {
   path: string;
   cachePath?: string;
   cacheKey?: string;
+  metadataPath?: string;
+  freshness?: AssetFreshness;
   sourcePath?: string;
   referenceError?: string;
   exists: boolean;
@@ -302,6 +311,7 @@ export async function createBuildPlan(opts: CreateBuildPlanOptions): Promise<Bui
       narrationCue && !opts.skipNarration
         ? assetPlan({
             kind: "narration",
+            beatId: beat.id,
             cue: narrationCue,
             provider: resolved.narration.resolved,
             path:
@@ -321,6 +331,7 @@ export async function createBuildPlan(opts: CreateBuildPlanOptions): Promise<Bui
       backdropCue && !opts.skipBackdrop
         ? assetPlan({
             kind: "backdrop",
+            beatId: beat.id,
             cue: backdropCue,
             provider: resolved.image.resolved,
             path: `assets/backdrop-${beat.id}.png`,
@@ -336,6 +347,7 @@ export async function createBuildPlan(opts: CreateBuildPlanOptions): Promise<Bui
       videoCue && !opts.skipVideo
         ? assetPlan({
             kind: "video",
+            beatId: beat.id,
             cue: videoCue,
             provider: resolved.video.resolved,
             path: `assets/video-${beat.id}.mp4`,
@@ -351,6 +363,7 @@ export async function createBuildPlan(opts: CreateBuildPlanOptions): Promise<Bui
       musicCue && !opts.skipMusic
         ? assetPlan({
             kind: "music",
+            beatId: beat.id,
             cue: musicCue,
             provider: resolved.music.resolved,
             path: `assets/music-${beat.id}.mp3`,
@@ -375,10 +388,16 @@ export async function createBuildPlan(opts: CreateBuildPlanOptions): Promise<Bui
         );
         continue;
       }
-      if (asset.willGenerate) {
+      if (asset.willGenerate || asset.willCopyFromCache) {
         estimatedCostUsd += asset.estimatedCostUsd;
         missing.add("assets");
         providers.add(asset.provider);
+      }
+      if (asset.reason === "canonical-unknown") {
+        warnings.push(
+          `${asset.kind} asset for beat "${beat.id}" exists without freshness metadata; use --force if the cue changed.`
+        );
+        retryWith.push(`vibe build ${projectDir} --beat ${beat.id} --stage assets --force --json`);
       }
     }
     if (narration?.willGenerate) noteProviderNeed(resolved.narration, "Narration");
@@ -504,6 +523,7 @@ function nextCommandsForPlan(
 
 function assetPlan(opts: {
   kind: BuildAssetKind;
+  beatId: string;
   cue: string;
   provider: string;
   path: string;
@@ -522,6 +542,7 @@ function assetPlan(opts: {
       path: opts.path,
       cachePath: opts.cache?.path,
       cacheKey: opts.cache?.key,
+      metadataPath: assetMetadataPath(opts.kind, opts.beatId),
       exists: false,
       canonicalExists: false,
       cacheHit: false,
@@ -542,6 +563,7 @@ function assetPlan(opts: {
       path: ready ? sourcePath : opts.path,
       sourcePath,
       referenceError: opts.reference.error,
+      freshness: ready ? "referenced" : undefined,
       exists: ready,
       canonicalExists: false,
       cacheHit: false,
@@ -554,13 +576,26 @@ function assetPlan(opts: {
 
   const canonicalExists = existsSync(join(opts.projectDir, opts.path));
   const cacheHit = opts.cache ? existsSync(join(opts.projectDir, opts.cache.path)) : false;
+  const freshness = assetFreshnessFromMetadata({
+    projectDir: opts.projectDir,
+    kind: opts.kind,
+    beatId: opts.beatId,
+    expectedCacheKey: opts.cache?.key,
+    canonicalExists,
+  });
   const force = !!opts.force;
-  const willCopyFromCache = !force && !canonicalExists && cacheHit;
-  const willGenerate = force || (!canonicalExists && !cacheHit);
+  const canonicalUsable = canonicalExists && freshness !== "stale";
+  const needsAssetRefresh = !canonicalUsable;
+  const willCopyFromCache = !force && needsAssetRefresh && cacheHit;
+  const willGenerate = force || (needsAssetRefresh && !cacheHit);
   const reason: AssetPlanReason = force
     ? "force"
-    : canonicalExists
-      ? "canonical-exists"
+    : canonicalExists && freshness === "stale"
+      ? "canonical-stale"
+      : canonicalExists && freshness === "unknown"
+        ? "canonical-unknown"
+        : canonicalExists
+          ? "canonical-exists"
       : cacheHit
         ? "content-cache-hit"
         : "missing";
@@ -571,6 +606,8 @@ function assetPlan(opts: {
     path: opts.path,
     cachePath: opts.cache?.path,
     cacheKey: opts.cache?.key,
+    metadataPath: assetMetadataPath(opts.kind, opts.beatId),
+    freshness,
     exists: canonicalExists,
     canonicalExists,
     cacheHit,

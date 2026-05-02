@@ -30,6 +30,8 @@ export interface ReviewOptions {
   videoPath: string;
   /** Optional storyboard JSON for context-aware review */
   storyboardPath?: string;
+  /** Optional project context for beat-aware review */
+  projectContext?: string;
   /** Automatically apply fixable corrections via FFmpeg */
   autoApply?: boolean;
   /** Run a verification pass after applying fixes */
@@ -90,7 +92,14 @@ function parseReviewFeedback(response: string): VideoReviewFeedback | null {
  * @returns Result with structured feedback and optional fix details
  */
 export async function executeReview(options: ReviewOptions): Promise<ReviewResult> {
-  const { videoPath, storyboardPath, autoApply = false, verify = false, model = "flash" } = options;
+  const {
+    videoPath,
+    storyboardPath,
+    projectContext,
+    autoApply = false,
+    verify = false,
+    model = "flash",
+  } = options;
 
   const absVideoPath = resolve(process.cwd(), videoPath);
   if (!existsSync(absVideoPath)) {
@@ -99,7 +108,11 @@ export async function executeReview(options: ReviewOptions): Promise<ReviewResul
 
   const apiKey = process.env.GOOGLE_API_KEY || (await getApiKey("GOOGLE_API_KEY", "Google"));
   if (!apiKey) {
-    return { success: false, error: "Google API key required for Gemini video review. Run 'vibe setup' or set GOOGLE_API_KEY in .env" };
+    return {
+      success: false,
+      error:
+        "Google API key required for Gemini video review. Run 'vibe setup' or set GOOGLE_API_KEY in .env",
+    };
   }
 
   let storyboardContext = "";
@@ -110,6 +123,9 @@ export async function executeReview(options: ReviewOptions): Promise<ReviewResul
       storyboardContext = `\n\nOriginal storyboard for reference:\n${content}`;
     }
   }
+  const extraProjectContext = projectContext
+    ? `\n\nProject context for beat-aware review:\n${projectContext}`
+    : "";
 
   const modelMap: Record<string, string> = {
     flash: "gemini-3-flash-preview",
@@ -132,10 +148,20 @@ export async function executeReview(options: ReviewOptions): Promise<ReviewResul
   "autoFixable": [
     { "type": "color_grade"|"text_overlay_adjust"|"speed_adjust"|"crop", "description": "...", "ffmpegFilter": "..." }
   ],
+  "beatIssues": [
+    {
+      "beatId": "<beat id when identifiable>",
+      "timeRange": { "start": <seconds>, "end": <seconds>, "duration": <seconds> },
+      "severity": "error"|"warning"|"info",
+      "category": "pacing"|"color"|"textReadability"|"audioVisualSync"|"composition",
+      "message": "...",
+      "suggestedFix": "..."
+    }
+  ],
   "recommendations": ["..."]
 }
 
-Score each category 1-10. For fixable issues, provide an FFmpeg filter in autoFixable. Be specific and practical.${storyboardContext}`;
+Score each category 1-10. Prefer beatIssues when you can map a problem to a storyboard beat or timestamp. Use the exact beatId values from the storyboard or beat timing summary, and include timeRange in seconds for every localized finding. In particular, flag narration/visual mismatches, overly static holds, and audio-visual sync problems as beatIssues. Use category issue arrays only for problems that cannot be localized to a beat. For fixable issues, provide an FFmpeg filter in autoFixable. Be specific and practical.${storyboardContext}${extraProjectContext}`;
 
   const gemini = new GeminiProvider();
   await gemini.initialize({ apiKey });
@@ -172,15 +198,24 @@ Score each category 1-10. For fixable issues, provide an FFmpeg filter in autoFi
     for (const fix of feedback.autoFixable) {
       if (fix.type === "color_grade" && fix.ffmpegFilter) {
         try {
-          const tempOutput = outputBase.replace(/(\.[^.]+)$/, `-fix-${result.appliedFixes!.length}$1`);
-          await execSafe("ffmpeg", ["-i", currentInput, "-vf", fix.ffmpegFilter, "-c:a", "copy", tempOutput, "-y"], { timeout: 600000, maxBuffer: 50 * 1024 * 1024 });
+          const tempOutput = outputBase.replace(
+            /(\.[^.]+)$/,
+            `-fix-${result.appliedFixes!.length}$1`
+          );
+          await execSafe(
+            "ffmpeg",
+            ["-i", currentInput, "-vf", fix.ffmpegFilter, "-c:a", "copy", tempOutput, "-y"],
+            { timeout: 600000, maxBuffer: 50 * 1024 * 1024 }
+          );
           currentInput = tempOutput;
           result.appliedFixes!.push(`${fix.type}: ${fix.description}`);
         } catch {
           // Skip failed fix, continue with others
         }
       } else if (fix.type === "text_overlay_adjust") {
-        result.appliedFixes!.push(`${fix.type}: ${fix.description} (manual adjustment recommended)`);
+        result.appliedFixes!.push(
+          `${fix.type}: ${fix.description} (manual adjustment recommended)`
+        );
       }
     }
 
@@ -199,7 +234,7 @@ Score each category 1-10. For fixable issues, provide an FFmpeg filter in autoFi
     const verifyVideoData = await readFile(result.outputPath);
     const verifyResult = await gemini.analyzeVideo(
       verifyVideoData,
-      "Rate this video overall quality on a scale of 1-10. Return ONLY a JSON object: {\"score\": <number>}",
+      'Rate this video overall quality on a scale of 1-10. Return ONLY a JSON object: {"score": <number>}',
       { model: modelId as "gemini-3-flash-preview" | "gemini-2.5-flash" | "gemini-2.5-pro" }
     );
 
@@ -222,7 +257,7 @@ Score each category 1-10. For fixable issues, provide an FFmpeg filter in autoFi
 
 export function registerReviewCommand(aiCommand: Command): void {
   aiCommand
-    .command("review")
+    .command("review", { hidden: true })
     .description("Review video quality using Gemini AI and optionally auto-fix issues")
     .argument("<source>", "Video file path")
     .option("--storyboard <path>", "Storyboard JSON file for context")
@@ -281,7 +316,9 @@ export function registerReviewCommand(aiCommand: Command): void {
         const fb = result.feedback!;
         console.log(chalk.bold.cyan("Video Review"));
         console.log(chalk.dim("─".repeat(60)));
-        console.log(`Overall Score: ${chalk.bold(fb.overallScore >= 7 ? chalk.green(String(fb.overallScore)) : fb.overallScore >= 5 ? chalk.yellow(String(fb.overallScore)) : chalk.red(String(fb.overallScore)))}/10`);
+        console.log(
+          `Overall Score: ${chalk.bold(fb.overallScore >= 7 ? chalk.green(String(fb.overallScore)) : fb.overallScore >= 5 ? chalk.yellow(String(fb.overallScore)) : chalk.red(String(fb.overallScore)))}/10`
+        );
         console.log();
 
         const categories = [
@@ -293,9 +330,12 @@ export function registerReviewCommand(aiCommand: Command): void {
         ] as const;
 
         for (const [name, cat] of categories) {
-          const scoreColor = cat.score >= 7 ? chalk.green : cat.score >= 5 ? chalk.yellow : chalk.red;
+          const scoreColor =
+            cat.score >= 7 ? chalk.green : cat.score >= 5 ? chalk.yellow : chalk.red;
           const fixable = cat.fixable ? chalk.dim(" [fixable]") : "";
-          console.log(`  ${name.padEnd(20)} ${scoreColor(String(cat.score).padStart(2))}/10${fixable}`);
+          console.log(
+            `  ${name.padEnd(20)} ${scoreColor(String(cat.score).padStart(2))}/10${fixable}`
+          );
           if (cat.issues.length > 0) {
             for (const issue of cat.issues) {
               console.log(chalk.dim(`    - ${issue}`));

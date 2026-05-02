@@ -228,14 +228,20 @@ Requirements (non-negotiable):
   This is the #2 source of "text disappears mid-beat" bugs after \`.clip\` sizing.
 - Timed children inside the composition have \`class="clip"\` plus
   \`data-start\`, \`data-duration\`, \`data-track-index\`.
-- If the beat cues include \`backdrop\`, the build step has already generated
-  \`assets/backdrop-${ctx.beat.id}.png\`. Use that local file as the full-frame
-  visual backdrop. Do NOT replace it with abstract CSS, an external stock image,
-  Unsplash, a CDN URL, or a remote placeholder.
-- The exact backdrop path string is \`assets/backdrop-${ctx.beat.id}.png\`.
-  Do NOT prefix it with \`../\` or \`./\`: sub-composition fragments are mounted
-  from the project root \`index.html\`, so \`../assets/...\` resolves outside the
-  project and renders black.
+- If \`assets/backdrop-${ctx.beat.id}.png\` exists, use that local file as the
+  full-frame visual backdrop. The exact path string is
+  \`assets/backdrop-${ctx.beat.id}.png\`; do NOT prefix it with \`../\` or \`./\`
+  because fragments are mounted from the project root.
+- If no generated backdrop is available (for example the user ran
+  \`--skip-backdrop\`), create a cue-derived CSS/HTML visual instead. The
+  fallback must still match the beat's \`backdrop\`, \`motion\`, and
+  \`narration\` cues; do not fall back to generic abstract cards.
+- Visible copy must be derived from the beat narration and motion cues. Do not
+  invent unrelated slogans, metrics, URLs, or CTAs that contradict the
+  narration.
+- Keep a meaningful visual progression across the full beat duration: line
+  tracing, gentle camera drift, staged labels, value cards, or parallax. Avoid
+  a completed static frame holding silently for most of the beat.
 - Do not import external font or image URLs. Use the project DESIGN.md font
   choice when explicit; otherwise use \`Inter\`, which is available in the
   deterministic render font map.
@@ -428,22 +434,27 @@ const defaultCallLLM: LLMCallFn = async (req) => {
   }
   if (req.provider === "openai") {
     const client = new OpenAI({ apiKey: req.apiKey });
-    const response = await client.chat.completions.create({
+    const response = await client.responses.create({
       model: req.model,
-      max_completion_tokens: req.maxTokens,
-      messages: [
-        { role: "system", content: req.systemPrompt },
-        { role: "user", content: req.userPrompt },
-      ],
+      instructions: req.systemPrompt,
+      input: req.userPrompt,
+      max_output_tokens: req.maxTokens,
+      reasoning: { effort: "low" },
     });
-    const text = response.choices[0]?.message?.content ?? "";
+    const text = response.output_text ?? "";
     if (!text) {
-      throw new ComposeBeatError("no-text-block", "OpenAI response had no text content.");
+      const incomplete = response.incomplete_details?.reason
+        ? ` Incomplete reason: ${response.incomplete_details.reason}.`
+        : "";
+      throw new ComposeBeatError(
+        "no-text-block",
+        `OpenAI response had no text content.${incomplete}`
+      );
     }
     return {
       text,
-      inputTokens: response.usage?.prompt_tokens ?? 0,
-      outputTokens: response.usage?.completion_tokens ?? 0,
+      inputTokens: response.usage?.input_tokens ?? 0,
+      outputTokens: response.usage?.output_tokens ?? 0,
     };
   }
   // gemini
@@ -635,7 +646,22 @@ export async function composeBeatWithRetry(
   overrides?: { callLLM?: LLMCallFn; now?: () => number }
 ): Promise<ComposeBeatWithRetryResult> {
   // Attempt 1 — no retry feedback (cache-friendly first shot).
-  const first = await composeBeatHtml(ctx, overrides);
+  let first: ComposeBeatResult;
+  try {
+    first = await composeBeatHtml(ctx, overrides);
+  } catch (err) {
+    if (!isRetryableFirstAttemptError(err)) throw err;
+    const feedback = formatComposeAttemptFeedback(err);
+    const second = await composeBeatHtml({ ...ctx, retryFeedback: feedback }, overrides);
+    const lint2 = lintBeatHtml(second.html, ctx.beat.id);
+    if (lint2.errorCount === 0) {
+      return { ...second, lintAttempts: 2, lint: lint2 };
+    }
+    throw new ComposeBeatError(
+      "lint-failed-after-retry",
+      `Beat "${ctx.beat.id}" failed lint after retry. Final findings:\n${formatLintFeedback(lint2.findings)}`
+    );
+  }
   const lint1 = lintBeatHtml(first.html, ctx.beat.id);
   if (lint1.errorCount === 0) {
     return { ...first, lintAttempts: 1, lint: lint1 };
@@ -654,6 +680,20 @@ export async function composeBeatWithRetry(
     "lint-failed-after-retry",
     `Beat "${ctx.beat.id}" failed lint after retry. Final findings:\n${formatLintFeedback(lint2.findings)}`
   );
+}
+
+function isRetryableFirstAttemptError(err: unknown): err is ComposeBeatError {
+  return (
+    err instanceof ComposeBeatError &&
+    (err.code === "no-text-block" || err.code === "no-html-in-response")
+  );
+}
+
+function formatComposeAttemptFeedback(err: ComposeBeatError): string {
+  return `Previous attempt failed before lint.
+ERROR: ${err.message}
+
+Return exactly one complete HTML document for this beat, preferably inside a fenced \`\`\`html block.`;
 }
 
 // ── Pipeline action executor (C5) ───────────────────────────────────────
