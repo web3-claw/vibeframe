@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.99.1] - 2026-05-02
+
+### Added
+
+- `vibe status job <id>` polls a single async provider job *(cli)*
+- `vibe status project [project-dir]` reports build/generation state for a project (beats ready, jobs in flight, suggested `retryWith`) *(cli)*
+- `generate video` and `generate music` now emit stable job ids and write status records under `.vibeframe/jobs/` so agents can dispatch a generation, return, and poll later *(cli)*
+
+### Changed
+
+- mcp-server now surfaces 81 tools (added `status_job`, `status_project`)
+- apps/web layout `MCP_TOOLS` fallback updated to 81
+
 ## [0.99.0] - 2026-05-02
 
 ### Added
