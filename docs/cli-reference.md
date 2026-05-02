@@ -8,21 +8,35 @@ lists every command, its arguments, and its options. For agentic /
 machine-readable access use `vibe schema --list` and
 `vibe schema <command>` directly; both return JSON.
 
-> CLI version: `0.99.1`
+> CLI version: `0.100.0`
 
 ## Mental model
 
 The **storyboard project** is the primary product lane. `STORYBOARD.md`
 and `DESIGN.md` are the source of truth; generated files under
-`compositions/` are artifacts. Use `vibe storyboard *` for narrow cue
-edits and direct Markdown edits for larger creative rewrites.
+`compositions/` are artifacts. Use `vibe storyboard revise --dry-run`
+for project-aware STORYBOARD.md rewrites, `vibe storyboard *` for narrow
+cue edits, and direct Markdown edits for larger DESIGN.md rewrites.
 
 ```
-init --from → storyboard validate → plan → build → inspect → render  ← storyboard-to-video
+init --from → storyboard revise → storyboard validate → plan → build → inspect → render
 generate / edit / inspect / remix                          ← one-shot media tools
 scene / timeline                                            ← lower-level authoring
 run / agent / schema / context                              ← automation + agents
 ```
+
+`vibe plan --json` emits `data.kind:"build-plan"`,
+`schemaVersion:"1"`, `status:"ready"|"invalid"`, `summary`,
+`validation`, `retryWith`, and `nextCommands`. `vibe plan`,
+`vibe build --dry-run`, and `vibe build` validate `STORYBOARD.md`
+before cost caps or provider dispatch. Invalid storyboards return
+`code:"STORYBOARD_VALIDATION_FAILED"` with validate/revise recovery
+commands.
+
+Real `vibe build` runs deterministic scene repair after compose
+(sub-compositions only) and after sync (including root `index.html`) before
+render. Repair failures return `code:"SCENE_REPAIR_FAILED"` with
+`sceneRepair.retryWith`, and `build-report.json` includes `sceneRepair`.
 
 ## Global flags
 
@@ -49,17 +63,31 @@ flags, `--stdin`, or schema fields over one-letter aliases.
 support it, but it is not a root/global flag. Check the command schema or
 `--help` page before assuming it exists.
 
+## Product surfaces
+
+Generated from the live `surface` field in `vibe schema --list`. Use
+`vibe schema --list --surface public` for the small first-run command
+surface, and inspect `replacement` on legacy commands before using them.
+
+| Surface      | Count | Examples                                                                                                                                                                                                                  |
+| ------------ | ----: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Public**   |    36 | `generate.image` · `generate.video` · `generate.narration` · `generate.sound-effect` · `generate.music` · `generate.thumbnail` · `edit.silence-cut` · `edit.caption` · `edit.noise-reduce` · `edit.jump-cut` · +26 more   |
+| **Agent**    |     8 | `storyboard.list` · `storyboard.get` · `storyboard.set` · `storyboard.move` · `run` · `scene.lint` · `scene.repair` · `context`                                                                                           |
+| **Advanced** |    40 | `generate.motion` · `generate.video-cancel` · `generate.video-extend` · `edit.fade` · `edit.translate-srt` · `edit.fill-gaps` · `edit.motion-overlay` · `edit.grade` · `edit.text-overlay` · `edit.speed-ramp` · +30 more |
+| **Legacy**   |     8 | `generate.speech` · `generate.music-status` · `generate.storyboard` · `generate.background` · `generate.video-status` · `inspect.video` · `inspect.review` · `remix.regenerate-scene`                                     |
+| **Internal** |     2 | `scene.install-skill` · `scene.compose-prompts`                                                                                                                                                                           |
+
 ## Cost tiers
 
 Generated from the live `cost` field in `vibe schema --list`.
 
 | Tier           | Count | Examples                                                                                                                                                                                     | Per-call cost                                                                                     |
 | -------------- | ----: | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| **Free**       |    41 | `generate.music-status` · `generate.thumbnail` · `generate.video-status` · `generate.video-cancel` · `edit.noise-reduce` · `edit.fade` · `edit.text-overlay` · `edit.interpolate` · +33 more | FFmpeg only, no API call                                                                          |
-| **Low**        |    21 | `generate.speech` · `generate.narration` · `generate.sound-effect` · `generate.music` · `edit.silence-cut` · `edit.caption` · `edit.translate-srt` · `edit.jump-cut` · +13 more              | $0.01–$0.10 per call                                                                              |
+| **Free**       |    46 | `generate.music-status` · `generate.thumbnail` · `generate.video-status` · `generate.video-cancel` · `edit.noise-reduce` · `edit.fade` · `edit.text-overlay` · `edit.interpolate` · +38 more | FFmpeg only, no API call                                                                          |
+| **Low**        |    22 | `generate.speech` · `generate.narration` · `generate.sound-effect` · `generate.music` · `edit.silence-cut` · `edit.caption` · `edit.translate-srt` · `edit.jump-cut` · +14 more              | $0.01–$0.10 per call                                                                              |
 | **High**       |    10 | `generate.image` · `generate.storyboard` · `generate.motion` · `generate.background` · `edit.reframe` · `edit.image` · `edit.upscale` · `audio.dub` · +2 more                                | $1–$5 per call                                                                                    |
 | **Very High**  |     4 | `generate.video` · `generate.video-extend` · `edit.fill-gaps` · `remix.regenerate-scene`                                                                                                     | $5–$50+ per call                                                                                  |
-| **Not tagged** |    18 | `setup` · `init` · `storyboard.list` · `storyboard.get` · `storyboard.set` · `storyboard.move` · `storyboard.revise` · `storyboard.validate` · +10 more                                      | Utility/orchestration/reference commands; inspect command behavior before assuming provider spend |
+| **Not tagged** |    12 | `setup` · `init` · `plan` · `build` · `render` · `doctor` · `demo` · `run` · +4 more                                                                                                         | Utility/orchestration/reference commands; inspect command behavior before assuming provider spend |
 
 > **Tip:** Run `<paid command> --dry-run --json` first — the response
 > includes a `costUsd` estimate when the command supports dry-run.
@@ -87,9 +115,12 @@ Generated from the live `cost` field in `vibe schema --list`.
 {
   "success": false,
   "error": "<message>",
+  "message": "<message>",
   "code": "USAGE_ERROR | NOT_FOUND | API_ERROR | NETWORK_ERROR | AUTH_ERROR | ERROR",
   "exitCode": 0 | 1 | 2 | 3 | 4 | 5 | 6,
   "suggestion": "<actionable next step>",
+  "retryWith": ["<command or action>"],
+  "recoverable": true,
   "retryable": true | false
 }
 ```
@@ -129,6 +160,9 @@ Rule 3.  Interactive diagnostics and local setup commands may remain
 
 Optional built-in natural-language agent (fallback when no external coding agent is driving vibe)
 
+Product surface: `advanced`
+Note: Optional fallback REPL; external coding agents are the primary workflow.
+
 Cost tier: _not tagged_
 
 **Parameters:**
@@ -147,6 +181,9 @@ Cost tier: _not tagged_
 
 Build a VibeFrame video project from STORYBOARD.md
 
+Product surface: `public`
+Note: Primary storyboard-to-video build engine.
+
 Cost tier: _not tagged_
 
 **Parameters:**
@@ -160,18 +197,28 @@ Cost tier: _not tagged_
 - `maxCost` _(number)_ — Fail before provider spend when estimated cost exceeds this USD cap
 - `skipNarration` _(boolean)_ — Don't dispatch TTS even when beats declare narration cues
 - `skipBackdrop` _(boolean)_ — Don't dispatch image-gen even when beats declare backdrop cues
+- `skipVideo` _(boolean)_ — Don't dispatch video generation even when beats declare video cues
+- `skipMusic` _(boolean)_ — Don't dispatch music generation even when beats declare music cues
 - `skipRender` _(boolean)_ — Compose only — don't render to MP4
 - `tts` _(string)_ — TTS provider: auto|elevenlabs|kokoro
 - `voice` _(string)_ — Voice id
 - `imageProvider` _(string)_ — Image provider: openai
+- `videoProvider` _(string)_ — Video provider: seedance|grok|kling|runway|veo
+- `musicProvider` _(string)_ — Music provider: elevenlabs|replicate
 - `quality` _(string)_ _(default: `"hd"`)_ — Image quality: standard|hd
 - `imageSize` _(string)_ _(default: `"1536x1024"`)_ — Image size: 1024x1024|1536x1024|1024x1536
 - `force` _(boolean)_ — Re-dispatch primitives even when assets already exist
 - `dryRun` _(boolean)_ — Preview parameters without dispatching
 
+`--dry-run --json` returns `data.plan.kind:"build-plan"`. `build --dry-run` and real `build` validate `STORYBOARD.md` before cost caps or provider dispatch, and invalid storyboards fail with `code:"STORYBOARD_VALIDATION_FAILED"` plus validate/revise `retryWith` commands.
+Real `build` runs deterministic scene repair after compose and sync before render. JSON/build-report payloads include `sceneRepair`; repair failures use `code:"SCENE_REPAIR_FAILED"` and `sceneRepair.retryWith`.
+
 #### `vibe completion`
 
 Print a shell completion script for `vibe`
+
+Product surface: `advanced`
+Note: Shell ergonomics helper.
 
 Cost tier: _not tagged_
 
@@ -183,6 +230,9 @@ Cost tier: _not tagged_
 
 Print CLI context/guidelines for AI agent integration
 
+Product surface: `agent`
+Note: Host-agent integration contract.
+
 Cost tier: _not tagged_
 
 **Parameters:**
@@ -192,6 +242,9 @@ Cost tier: _not tagged_
 #### `vibe demo`
 
 Run sample edits on a test video (no API keys needed)
+
+Product surface: `advanced`
+Note: Smoke-test/demo helper, not a core workflow.
 
 Cost tier: _not tagged_
 
@@ -203,6 +256,9 @@ Cost tier: _not tagged_
 #### `vibe doctor`
 
 Check system health and available commands
+
+Product surface: `public`
+Note: System and provider health check.
 
 Cost tier: _not tagged_
 
@@ -216,6 +272,9 @@ Cost tier: _not tagged_
 
 Step-by-step guide for a vibe workflow (universal /vibe-\* slash-command equivalent)
 
+Product surface: `public`
+Note: Workflow chooser and first-run guidance.
+
 Cost tier: _not tagged_
 
 **Parameters:**
@@ -226,6 +285,9 @@ Cost tier: _not tagged_
 #### `vibe init`
 
 Scaffold a VibeFrame project (video scene project or project-scope agent files)
+
+Product surface: `public`
+Note: Storyboard-to-video cold-start entrypoint.
 
 Cost tier: _not tagged_
 
@@ -246,6 +308,9 @@ Cost tier: _not tagged_
 
 Read STORYBOARD.md and show build plan, costs, missing cues, and provider needs
 
+Product surface: `public`
+Note: Storyboard-to-video planning contract.
+
 Cost tier: _not tagged_
 
 **Parameters:**
@@ -259,9 +324,14 @@ Cost tier: _not tagged_
 - `force` _(boolean)_ — Plan regeneration even when outputs already exist
 - `maxCost` _(number)_ — Fail if estimated cost exceeds this USD cap
 
+JSON payload: `data.kind` is `"build-plan"` and includes `schemaVersion:"1"`, `status:"ready"|"invalid"`, `summary`, `validation`, `retryWith`, and `nextCommands`. Invalid storyboards exit non-zero with `code:"STORYBOARD_VALIDATION_FAILED"`.
+
 #### `vibe render`
 
 Render a VibeFrame video project to MP4/WebM/MOV
+
+Product surface: `public`
+Note: Project render entrypoint.
 
 Cost tier: _not tagged_
 
@@ -270,6 +340,7 @@ Cost tier: _not tagged_
 - `project-dir` _(string)_ — Video project directory
 - `out` _(string)_ — Output file (default: renders/<name>-<timestamp>.<format>)
 - `root` _(string)_ _(default: `"index.html"`)_ — Root composition file
+- `beat` _(string)_ — Render only one storyboard beat using a temporary root
 - `fps` _(number)_ _(default: `30`)_ — Frames per second: 24|30|60
 - `quality` _(string)_ _(default: `"standard"`)_ — Quality preset: draft|standard|high
 - `format` _(string)_ _(default: `"mp4"`)_ — Output container: mp4|webm|mov
@@ -279,6 +350,9 @@ Cost tier: _not tagged_
 #### `vibe run`
 
 Execute a YAML video pipeline (Video as Code)
+
+Product surface: `agent`
+Note: Automation surface for YAML pipelines.
 
 Cost tier: _not tagged_
 
@@ -298,6 +372,9 @@ Cost tier: _not tagged_
 #### `vibe setup`
 
 Configure VibeFrame (LLM provider, API keys)
+
+Product surface: `public`
+Note: Initial configuration helper.
 
 Cost tier: _not tagged_
 
@@ -320,6 +397,10 @@ Cost tier: _not tagged_
 
 Generate video background using DALL-E
 
+Product surface: `legacy`
+Replacement: `vibe generate image or vibe build --stage assets`
+Note: Backdrops are generated through image generation or the project build.
+
 Cost tier: `high`
 
 **Parameters:**
@@ -333,6 +414,8 @@ Cost tier: `high`
 #### `vibe generate image`
 
 Generate image using AI (Gemini, OpenAI gpt-image, Grok, or Runway)
+
+Product surface: `public`
 
 Cost tier: `high`
 
@@ -353,6 +436,10 @@ Cost tier: `high`
 #### `vibe generate motion`
 
 Generate motion graphics using Claude + Remotion (render & composite)
+
+Product surface: `advanced`
+Replacement: `vibe edit motion-overlay or vibe build --stage compose`
+Note: Standalone motion generation is a power primitive.
 
 Cost tier: `high`
 
@@ -379,6 +466,8 @@ Cost tier: `high`
 
 Generate background music from a text prompt (ElevenLabs or Replicate MusicGen)
 
+Product surface: `public`
+
 Cost tier: `low`
 
 **Parameters:**
@@ -398,6 +487,10 @@ Cost tier: `low`
 
 Check music generation status
 
+Product surface: `legacy`
+Replacement: `vibe status job <job-id> --json`
+Note: Provider-task polling primitive retained for compatibility.
+
 Cost tier: `free`
 
 **Parameters:**
@@ -408,6 +501,9 @@ Cost tier: `free`
 #### `vibe generate narration`
 
 Generate narration from text (product-facing TTS)
+
+Product surface: `public`
+Note: Product-facing TTS command.
 
 Cost tier: `low`
 
@@ -423,6 +519,8 @@ Cost tier: `low`
 
 Generate sound effect using ElevenLabs
 
+Product surface: `public`
+
 Cost tier: `low`
 
 **Parameters:**
@@ -437,6 +535,10 @@ Cost tier: `low`
 #### `vibe generate speech`
 
 Generate speech from text using ElevenLabs
+
+Product surface: `legacy`
+Replacement: `vibe generate narration`
+Note: Compatibility alias for product-facing narration generation.
 
 Cost tier: `low`
 
@@ -454,6 +556,10 @@ Cost tier: `low`
 
 Generate video storyboard from content using Claude
 
+Product surface: `legacy`
+Replacement: `vibe init --from <brief> or vibe storyboard revise`
+Note: Project-ready storyboard drafting belongs in init/revise.
+
 Cost tier: `high`
 
 **Parameters:**
@@ -470,6 +576,8 @@ Cost tier: `high`
 
 Generate video thumbnail (DALL-E) or extract best frame from video (Gemini)
 
+Product surface: `public`
+
 Cost tier: `free`
 
 **Parameters:**
@@ -485,6 +593,8 @@ Cost tier: `free`
 #### `vibe generate video`
 
 Generate video using AI (Seedance, Grok, Kling, Runway, or Veo)
+
+Product surface: `public`
 
 Cost tier: `very-high`
 
@@ -514,6 +624,9 @@ Cost tier: `very-high`
 
 Cancel video generation (Grok or Runway)
 
+Product surface: `advanced`
+Note: Provider lifecycle control.
+
 Cost tier: `free`
 
 **Parameters:**
@@ -525,6 +638,9 @@ Cost tier: `free`
 #### `vibe generate video-extend`
 
 Extend video duration (Kling by video ID, Veo by operation name)
+
+Product surface: `advanced`
+Note: Provider lifecycle control.
 
 Cost tier: `very-high`
 
@@ -545,6 +661,10 @@ Cost tier: `very-high`
 
 Check video generation status (Grok, Runway, or Kling)
 
+Product surface: `legacy`
+Replacement: `vibe status job <job-id> --json`
+Note: Provider-task polling primitive retained for compatibility.
+
 Cost tier: `free`
 
 **Parameters:**
@@ -561,6 +681,8 @@ Cost tier: `free`
 #### `vibe edit caption`
 
 Transcribe and burn styled captions onto video (Whisper + FFmpeg)
+
+Product surface: `public`
 
 Cost tier: `low`
 
@@ -580,6 +702,8 @@ Cost tier: `low`
 
 Apply fade in/out effects to video (FFmpeg only, no API key needed)
 
+Product surface: `advanced`
+
 Cost tier: `free`
 
 **Parameters:**
@@ -595,6 +719,8 @@ Cost tier: `free`
 #### `vibe edit fill-gaps`
 
 Fill timeline gaps with AI-generated video (Kling image-to-video)
+
+Product surface: `advanced`
 
 Cost tier: `very-high`
 
@@ -613,6 +739,8 @@ Cost tier: `very-high`
 
 Apply AI-generated color grading (Claude + FFmpeg)
 
+Product surface: `advanced`
+
 Cost tier: `low`
 
 **Parameters:**
@@ -628,6 +756,8 @@ Cost tier: `low`
 #### `vibe edit image`
 
 Edit image(s) using AI (Gemini, OpenAI, or Grok)
+
+Product surface: `advanced`
 
 Cost tier: `high`
 
@@ -646,6 +776,8 @@ Cost tier: `high`
 
 Create slow motion with frame interpolation (FFmpeg)
 
+Product surface: `advanced`
+
 Cost tier: `free`
 
 **Parameters:**
@@ -660,6 +792,8 @@ Cost tier: `free`
 #### `vibe edit jump-cut`
 
 Remove filler words (um, uh, like, etc.) from video using Whisper word-level timestamps
+
+Product surface: `public`
 
 Cost tier: `low`
 
@@ -677,6 +811,8 @@ Cost tier: `low`
 #### `vibe edit motion-overlay`
 
 Apply designed motion graphics overlays to an existing video
+
+Product surface: `advanced`
 
 Cost tier: `low`
 
@@ -703,6 +839,8 @@ Cost tier: `low`
 
 Remove background noise from audio/video using FFmpeg (no API key needed)
 
+Product surface: `public`
+
 Cost tier: `free`
 
 **Parameters:**
@@ -716,6 +854,8 @@ Cost tier: `free`
 #### `vibe edit reframe`
 
 Auto-reframe video to different aspect ratio (Claude Vision + FFmpeg)
+
+Product surface: `public`
 
 Cost tier: `high`
 
@@ -733,6 +873,8 @@ Cost tier: `high`
 #### `vibe edit silence-cut`
 
 Remove silent segments from video (FFmpeg default, or Gemini for smart detection)
+
+Product surface: `public`
 
 Cost tier: `low`
 
@@ -754,6 +896,8 @@ Cost tier: `low`
 
 Apply content-aware speed ramping (Whisper + Claude + FFmpeg)
 
+Product surface: `advanced`
+
 Cost tier: `low`
 
 **Parameters:**
@@ -771,6 +915,8 @@ Cost tier: `low`
 #### `vibe edit text-overlay`
 
 Apply simple static text burn-in to video (FFmpeg drawtext)
+
+Product surface: `advanced`
 
 Cost tier: `free`
 
@@ -791,6 +937,8 @@ Cost tier: `free`
 
 Translate SRT subtitle file to another language (Claude or OpenAI)
 
+Product surface: `advanced`
+
 Cost tier: `low`
 
 **Parameters:**
@@ -806,6 +954,8 @@ Cost tier: `low`
 #### `vibe edit upscale`
 
 Upscale video resolution using AI or FFmpeg
+
+Product surface: `public`
 
 Cost tier: `high`
 
@@ -825,6 +975,8 @@ Cost tier: `high`
 #### `vibe inspect media`
 
 Analyze any media: images, videos, or YouTube URLs using Gemini
+
+Product surface: `public`
 
 Cost tier: `low`
 
@@ -846,17 +998,22 @@ Cost tier: `low`
 
 Inspect project completeness, storyboard validity, scene lint, and asset references
 
+Product surface: `public`
+
 Cost tier: `free`
 
 **Parameters:**
 
 - `project-dir` _(string)_ — VibeFrame project directory
+- `beat` _(string)_ — Inspect only one storyboard beat where beat-scoped checks apply
 - `output` _(string)_ — Write review report to this path (default: <project>/review-report.json)
 - `noReport` _(boolean)_ — Do not write review-report.json
 
 #### `vibe inspect render`
 
 Inspect a rendered project video with local checks and optional Gemini review
+
+Product surface: `public`
 
 Cost tier: `low`
 
@@ -866,6 +1023,7 @@ Cost tier: `low`
 - `cheap` _(boolean)_ — Run local checks only (default; no AI/API calls)
 - `ai` _(boolean)_ — Also run Gemini video review and merge findings into review-report.json
 - `model` _(string)_ _(default: `"flash"`)_ — Gemini model for --ai: flash (default), flash-2.5, pro
+- `beat` _(string)_ — Inspect a render for one storyboard beat
 - `video` _(string)_ — Rendered video path. Defaults to build-report outputPath or latest renders/\* video.
 - `output` _(string)_ — Write review report to this path (default: <project>/review-report.json)
 - `noReport` _(boolean)_ — Do not write review-report.json
@@ -874,6 +1032,10 @@ Cost tier: `low`
 #### `vibe inspect review`
 
 Review video quality using Gemini AI and optionally auto-fix issues
+
+Product surface: `legacy`
+Replacement: `vibe inspect render --ai`
+Note: Project render review now lives under inspect render.
 
 Cost tier: `low`
 
@@ -891,6 +1053,9 @@ Cost tier: `low`
 
 Get AI edit suggestions using Gemini
 
+Product surface: `advanced`
+Note: Suggestion primitive; reports should drive host-agent edits.
+
 Cost tier: `low`
 
 **Parameters:**
@@ -904,6 +1069,10 @@ Cost tier: `low`
 #### `vibe inspect video`
 
 Analyze video using Gemini (summarize, Q&A, extract info)
+
+Product surface: `legacy`
+Replacement: `vibe inspect media`
+Note: Compatibility alias for media understanding.
 
 Cost tier: `low`
 
@@ -927,6 +1096,9 @@ Cost tier: `low`
 
 Clone a voice from audio samples using ElevenLabs
 
+Product surface: `advanced`
+Note: Requires explicit user consent for voice cloning.
+
 Cost tier: `low`
 
 **Parameters:**
@@ -944,6 +1116,8 @@ Cost tier: `low`
 
 Dub audio/video to another language (transcribe, translate, TTS)
 
+Product surface: `public`
+
 Cost tier: `high`
 
 **Parameters:**
@@ -959,6 +1133,8 @@ Cost tier: `high`
 #### `vibe audio duck`
 
 Auto-duck background music when voice is present (FFmpeg)
+
+Product surface: `public`
 
 Cost tier: `free`
 
@@ -977,6 +1153,8 @@ Cost tier: `free`
 
 Isolate vocals from audio using ElevenLabs
 
+Product surface: `advanced`
+
 Cost tier: `low`
 
 **Parameters:**
@@ -990,6 +1168,9 @@ Cost tier: `low`
 
 List available ElevenLabs voices
 
+Product surface: `advanced`
+Note: Provider discovery helper.
+
 Cost tier: `low`
 
 **Parameters:**
@@ -999,6 +1180,8 @@ Cost tier: `low`
 #### `vibe audio transcribe`
 
 Transcribe audio using Whisper
+
+Product surface: `public`
 
 Cost tier: `low`
 
@@ -1015,6 +1198,8 @@ Cost tier: `low`
 #### `vibe remix animated-caption`
 
 Add animated captions with word-by-word effects (Whisper + Remotion/ASS)
+
+Product surface: `public`
 
 Cost tier: `low`
 
@@ -1035,6 +1220,8 @@ Cost tier: `low`
 #### `vibe remix auto-shorts`
 
 Auto-generate shorts from long-form video
+
+Product surface: `public`
 
 Cost tier: `high`
 
@@ -1058,6 +1245,8 @@ Cost tier: `high`
 
 Extract highlights from long-form video/audio content
 
+Product surface: `public`
+
 Cost tier: `high`
 
 **Parameters:**
@@ -1077,6 +1266,10 @@ Cost tier: `high`
 #### `vibe remix regenerate-scene`
 
 Regenerate a specific scene in a script-to-video output directory
+
+Product surface: `legacy`
+Replacement: `vibe build <project> --beat <id> --force --json`
+Note: Scene regeneration belongs in the project build flow.
 
 Cost tier: `very-high`
 
@@ -1100,6 +1293,8 @@ Cost tier: `very-high`
 #### `vibe scene add`
 
 Add a new scene to a project: AI narration + image + per-scene HTML
+
+Product surface: `advanced`
 
 Cost tier: `free`
 
@@ -1129,6 +1324,9 @@ Cost tier: `free`
 
 Emit the per-beat compose plan for the host agent to author HTML itself (Phase H2 — no LLM call)
 
+Product surface: `internal`
+Note: Agent-mode build primitive; prefer vibe build --mode agent.
+
 Cost tier: `free`
 
 **Parameters:**
@@ -1139,6 +1337,9 @@ Cost tier: `free`
 #### `vibe scene install-skill`
 
 Install the Hyperframes skill into a scene project so the host agent can read it (Phase H1)
+
+Product surface: `internal`
+Note: Build/init installs the host-agent composition skill when needed.
 
 Cost tier: `free`
 
@@ -1153,6 +1354,8 @@ Cost tier: `free`
 
 Validate scene HTML against composition rules (in-process, no Chrome required)
 
+Product surface: `agent`
+
 Cost tier: `free`
 
 **Parameters:**
@@ -1165,6 +1368,8 @@ Cost tier: `free`
 
 List vendored visual styles (or show one) for DESIGN.md seeding
 
+Product surface: `public`
+
 Cost tier: `free`
 
 **Parameters:**
@@ -1174,6 +1379,8 @@ Cost tier: `free`
 #### `vibe scene repair`
 
 Apply deterministic mechanical repairs to scene HTML
+
+Product surface: `agent`
 
 Cost tier: `free`
 
@@ -1188,6 +1395,9 @@ Cost tier: `free`
 #### `vibe timeline add-clip`
 
 Add a clip to the timeline
+
+Product surface: `advanced`
+Note: Power tool for low-level timeline JSON edits.
 
 Cost tier: `free`
 
@@ -1205,6 +1415,9 @@ Cost tier: `free`
 
 Add an effect to a clip
 
+Product surface: `advanced`
+Note: Power tool for low-level timeline JSON edits.
+
 Cost tier: `free`
 
 **Parameters:**
@@ -1221,6 +1434,9 @@ Cost tier: `free`
 
 Add a media source to the timeline
 
+Product surface: `advanced`
+Note: Power tool for low-level timeline JSON edits.
+
 Cost tier: `free`
 
 **Parameters:**
@@ -1236,6 +1452,9 @@ Cost tier: `free`
 
 Add a new track
 
+Product surface: `advanced`
+Note: Power tool for low-level timeline JSON edits.
+
 Cost tier: `free`
 
 **Parameters:**
@@ -1248,6 +1467,9 @@ Cost tier: `free`
 #### `vibe timeline create`
 
 Create a low-level timeline JSON file
+
+Product surface: `advanced`
+Note: Power tool for low-level timeline JSON edits.
 
 Cost tier: `free`
 
@@ -1263,6 +1485,9 @@ Cost tier: `free`
 
 Delete a clip from the timeline
 
+Product surface: `advanced`
+Note: Power tool for low-level timeline JSON edits.
+
 Cost tier: `free`
 
 **Parameters:**
@@ -1274,6 +1499,9 @@ Cost tier: `free`
 #### `vibe timeline duplicate-clip`
 
 Duplicate a clip
+
+Product surface: `advanced`
+Note: Power tool for low-level timeline JSON edits.
 
 Cost tier: `free`
 
@@ -1288,6 +1516,9 @@ Cost tier: `free`
 
 Show timeline information
 
+Product surface: `advanced`
+Note: Power tool for low-level timeline JSON edits.
+
 Cost tier: `free`
 
 **Parameters:**
@@ -1297,6 +1528,9 @@ Cost tier: `free`
 #### `vibe timeline list`
 
 List timeline contents
+
+Product surface: `advanced`
+Note: Power tool for low-level timeline JSON edits.
 
 Cost tier: `free`
 
@@ -1310,6 +1544,9 @@ Cost tier: `free`
 #### `vibe timeline move-clip`
 
 Move a clip to a new position
+
+Product surface: `advanced`
+Note: Power tool for low-level timeline JSON edits.
 
 Cost tier: `free`
 
@@ -1325,6 +1562,9 @@ Cost tier: `free`
 
 Update timeline settings
 
+Product surface: `advanced`
+Note: Power tool for low-level timeline JSON edits.
+
 Cost tier: `free`
 
 **Parameters:**
@@ -1339,6 +1579,9 @@ Cost tier: `free`
 
 Split a clip at a specific time
 
+Product surface: `advanced`
+Note: Power tool for low-level timeline JSON edits.
+
 Cost tier: `free`
 
 **Parameters:**
@@ -1351,6 +1594,9 @@ Cost tier: `free`
 #### `vibe timeline trim-clip`
 
 Trim a clip
+
+Product surface: `advanced`
+Note: Power tool for low-level timeline JSON edits.
 
 Cost tier: `free`
 
@@ -1368,6 +1614,8 @@ Cost tier: `free`
 
 Detect beats in audio (for music sync)
 
+Product surface: `public`
+
 Cost tier: `free`
 
 **Parameters:**
@@ -1379,6 +1627,8 @@ Cost tier: `free`
 #### `vibe detect scenes`
 
 Detect scene changes in video
+
+Product surface: `public`
 
 Cost tier: `free`
 
@@ -1393,6 +1643,8 @@ Cost tier: `free`
 #### `vibe detect silence`
 
 Detect silence in audio/video
+
+Product surface: `public`
 
 Cost tier: `free`
 
@@ -1409,6 +1661,9 @@ Cost tier: `free`
 #### `vibe batch apply-effect`
 
 Apply an effect to multiple clips
+
+Product surface: `advanced`
+Note: Power tool for bulk timeline/media operations.
 
 Cost tier: `free`
 
@@ -1427,6 +1682,9 @@ Cost tier: `free`
 
 Concatenate multiple sources into sequential clips
 
+Product surface: `advanced`
+Note: Power tool for bulk timeline/media operations.
+
 Cost tier: `free`
 
 **Parameters:**
@@ -1443,6 +1701,9 @@ Cost tier: `free`
 
 Import multiple media files from a directory
 
+Product surface: `advanced`
+Note: Power tool for bulk timeline/media operations.
+
 Cost tier: `free`
 
 **Parameters:**
@@ -1458,6 +1719,9 @@ Cost tier: `free`
 
 Show batch processing statistics
 
+Product surface: `advanced`
+Note: Power tool for bulk timeline/media operations.
+
 Cost tier: `free`
 
 **Parameters:**
@@ -1467,6 +1731,9 @@ Cost tier: `free`
 #### `vibe batch remove-clips`
 
 Remove multiple clips from the timeline
+
+Product surface: `advanced`
+Note: Power tool for bulk timeline/media operations.
 
 Cost tier: `free`
 
@@ -1484,6 +1751,9 @@ Cost tier: `free`
 
 Get media duration in seconds (for scripting)
 
+Product surface: `advanced`
+Note: Script utility for media metadata.
+
 Cost tier: `free`
 
 **Parameters:**
@@ -1493,6 +1763,9 @@ Cost tier: `free`
 #### `vibe media info`
 
 Get media file information
+
+Product surface: `advanced`
+Note: Script utility for media metadata.
 
 Cost tier: `free`
 
@@ -1506,7 +1779,9 @@ Cost tier: `free`
 
 Print one beat as structured JSON
 
-Cost tier: _not tagged_
+Product surface: `agent`
+
+Cost tier: `free`
 
 **Parameters:**
 
@@ -1517,7 +1792,9 @@ Cost tier: _not tagged_
 
 List beats, ids, cues, and durations from STORYBOARD.md
 
-Cost tier: _not tagged_
+Product surface: `agent`
+
+Cost tier: `free`
 
 **Parameters:**
 
@@ -1527,7 +1804,9 @@ Cost tier: _not tagged_
 
 Reorder beats safely
 
-Cost tier: _not tagged_
+Product surface: `agent`
+
+Cost tier: `free`
 
 **Parameters:**
 
@@ -1539,20 +1818,27 @@ Cost tier: _not tagged_
 
 Revise STORYBOARD.md from a request or source file
 
-Cost tier: _not tagged_
+Product surface: `public`
+
+Cost tier: `low`
 
 **Parameters:**
 
 - `project-dir` _(string)_ **required** — Project directory
 - `from` _(string)_ — Revision request or path to a text/markdown file
 - `duration` _(number)_ — Target total duration in seconds
+- `composer` _(string)_ — Revision LLM provider: claude|openai|gemini
 - `dryRun` _(boolean)_ — Preview the revised storyboard without writing
+
+JSON payload: `data.kind` is `"storyboard-revision"` and includes `provider`, `summary`, `changedBeats`, `validation`, `wrote`, `warnings`, and `retryWith`. Use `--dry-run` before writing.
 
 #### `vibe storyboard set`
 
 Update one cue in one beat without raw Markdown editing
 
-Cost tier: _not tagged_
+Product surface: `agent`
+
+Cost tier: `free`
 
 **Parameters:**
 
@@ -1567,7 +1853,9 @@ Cost tier: _not tagged_
 
 Validate cue blocks and beat ids
 
-Cost tier: _not tagged_
+Product surface: `public`
+
+Cost tier: `free`
 
 **Parameters:**
 
@@ -1579,6 +1867,8 @@ Cost tier: _not tagged_
 
 Show one async job status
 
+Product surface: `public`
+
 Cost tier: `free`
 
 **Parameters:**
@@ -1589,9 +1879,13 @@ Cost tier: `free`
 - `wait` _(boolean)_ — Wait for completion when the provider status helper supports it
 - `output` _(string)_ — Download result media when complete
 
+JSON payload: `data.kind` is `"job"` and includes flat job fields (`id`, `jobType`, `provider`, `status`, timestamps), `progress`, `result`, `retryWith`, and the raw `job` record for compatibility.
+
 #### `vibe status project`
 
 Summarize build, review, and async job status for a project
+
+Product surface: `public`
 
 Cost tier: `free`
 
@@ -1599,3 +1893,5 @@ Cost tier: `free`
 
 - `project-dir` _(string)_ — VibeFrame project directory
 - `refresh` _(boolean)_ — Refresh active supported jobs before summarizing
+
+JSON payload: `data.kind` is `"project"` and includes `status`, `currentStage`, `beats` readiness counts, `jobs.latest`, `build`, `review`, `warnings`, and `retryWith`. `review` includes issue/error/warning counts plus `retryWith`, and top-level `retryWith` is the resume contract.

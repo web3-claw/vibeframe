@@ -5,117 +5,66 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.100.0] - 2026-05-02
+
+### Added
+
+- add product-surface taxonomy + LLM storyboard revise + beat-scoped flows — FUNCTIONS-TOBE P2 *(cli)*
+
 ## [0.99.1] - 2026-05-02
 
 ### Added
 
-- `vibe status job <id>` polls a single async provider job *(cli)*
-- `vibe status project [project-dir]` reports build/generation state for a project (beats ready, jobs in flight, suggested `retryWith`) *(cli)*
-- `generate video` and `generate music` now emit stable job ids and write status records under `.vibeframe/jobs/` so agents can dispatch a generation, return, and poll later *(cli)*
-
-### Changed
-
-- mcp-server now surfaces 81 tools (added `status_job`, `status_project`)
-- apps/web layout `MCP_TOOLS` fallback updated to 81
+- add vibe status job/project — completes FUNCTIONS-TOBE P1 #6 *(cli)*
 
 ## [0.99.0] - 2026-05-02
 
 ### Added
 
-- `vibe inspect render --ai` now invokes Gemini video review and merges findings into `review-report.json` alongside the local `--cheap` checks *(cli)*
-- `vibe inspect render --model flash|flash-2.5|pro` selects the Gemini model used by `--ai` (default: `flash`) *(cli)*
-- `vibe inspect render --dry-run` previews resolved video path, provider, model, and estimated cost without probing the file or calling Gemini *(cli)*
-
-### Changed
-
-- `vibe inspect render` cost tier moves from `free` to `low` (the `--ai` path now does paid Gemini calls)
-- `vibe context` refresh: inspect/repair examples in the preferred-flow listing
+- wire inspect render --ai through Gemini + add --model/--dry-run *(cli)*
 
 ## [0.98.0] - 2026-05-02
 
 ### Added
 
-- `vibe inspect project` reports missing storyboard/design/asset/composition state and structural risks before a paid build *(cli)*
-- `vibe inspect render --cheap` runs local-only render checks (black frames, duration drift, missing audio, broken paths) *(cli)*
-- `vibe inspect render --ai` invokes LLM critique of the rendered output *(cli)*
-- `vibe scene repair` applies deterministic mechanical fixes — root timeline wiring, duration sync, missing markers, malformed HTML shells *(cli)*
-- `_shared/review-report` defines a stable JSON contract for `review-report.json` so host agents can drive repair loops *(cli)*
-
-### Changed
-
-- `vibe context` output now includes the inspect/repair loop in the preferred-flow listing
-- mcp-server now surfaces 79 tools (added `inspect_project`, `inspect_render`, `scene_repair`)
-- apps/web layout `MCP_TOOLS` fallback updated to 79
-
-### Internal
-
-- `.gitignore` now excludes `build-report.json` / `review-report.json` so per-project artifacts can't be committed by accident
+- land FUNCTIONS-TOBE P1 — inspect project/render, scene repair, review-report *(cli)*
 
 ## [0.97.1] - 2026-05-02
 
 ### Fixed
 
-- mcp-server: update hardcoded tool count (69 → 76) and `CLI_TREE` to include the 0.97 storyboard/plan/narration surface so `cli-sync.test.ts` and `index.test.ts` pass on CI
+- update CLI_TREE + tool count for 0.97 surface *(mcp-server)*
 
 ## [0.97.0] - 2026-05-02
 
 ### Added
 
-- `vibe init --from <brief>` cold-starts a project with drafted `STORYBOARD.md` and `DESIGN.md` *(cli)*
-- `vibe plan` reads `STORYBOARD.md` and reports beats, missing cues, providers, and an estimated cost *(cli)*
-- `vibe storyboard list/get/set/move/validate/revise` agent-safe mutation API for the storyboard intent layer *(cli)*
-- `vibe build --stage assets|compose|sync|render|all` and `--beat <id>` for staged and per-beat builds *(cli)*
-- `vibe build --max-cost <usd>` hard cap with `retryWith` on overrun *(cli)*
-- `vibe generate narration` as the product-facing TTS name (existing `generate speech` stays as a compat alias) *(cli)*
+- land FUNCTIONS-TOBE P0 — init --from, plan, storyboard, build stages *(cli)*
 
-### Changed
+### CI/CD
 
-- Stage-specific report sections in `build-report.json`
-- `vibe context` output refreshed to reflect the storyboard-vs-scene mental model and preferred command flow
+- fix GitHub Release auto-creation for auto-tag dispatched runs
+- add concurrency cancel + dedupe lint into single run
 
 ### Documentation
 
-- README, ROADMAP, `docs/cli-reference.md`, `docs/video-project-concepts.md`, and `packages/cli/CONTEXT.md` updated to match the FUNCTIONS-TOBE P0 surface
-
-## [0.96.4] - 2026-05-02
+- require rebuild before gen:reference in manual flow *(release)*
 
 ### Fixed
 
-- regenerate `docs/cli-reference.md` after rebuilding `packages/cli/dist`, so the embedded CLI version matches `package.json`. Earlier 0.96.x bumps regenerated against a stale dist and produced a file that failed `gen:reference:check` on CI.
-- `gen-cli-reference.mts --check` now prints up to 20 divergent lines on failure so future drift is diagnosable from CI logs.
+- swap quickstart demo for coming-soon placeholder *(web)*
 
-## [0.96.3] - 2026-05-02
+### Maintenance
 
-### Fixed
-
-- bundle the `docs/cli-reference.md` regeneration with the version bump so `gen:reference:check` doesn't fail right after a release
+- close pre-push gaps + add permissions allowlist *(.claude)*
 
 ## [0.96.2] - 2026-05-02
 
 ### Fixed
 
-- `scene-build-mode.test.ts` now partial-mocks `@vibeframe/ai-providers` so `config/schema.ts` can still derive `PROVIDER_ENV_VARS` *(cli)*
-- regenerate `docs/cli-reference.md` so `gen:reference:check` matches the current CLI surface
+- use partial mock for ai-providers + regenerate cli-reference *(cli)*
 
 ## [0.96.1] - 2026-05-02
-
-### Changed
-
-- composer and AI-provider key resolution now reads from config first, env as fallback *(cli)*
-- tighten scene composition rules for backdrop file paths and narration audio wiring *(cli)*
-- agent `--budget-usd` parsing cleanup *(cli)*
-
-### Documentation
-
-- prune archived docs (`CLI_UX_AUDIT`, `cli-architecture`/`mental-model`/`redesign`, `design/`, `plans/`, `v059-impl-plan`)
-- replace legacy demo tapes with Claude Code workflow demos (quickstart, dogfood)
-- refresh `.claude` agent infra and `.github` templates/workflows
-
-### Removed
-
-- v059-preflight test fixtures and `tests/comparison/render-bench.sh`
-
-## [0.96.0] - 2026-05-02
 
 ### Added
 
@@ -125,6 +74,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - align README, web, and docs with guide rename + motion-overlay
 - rewrite DEMO_v2 to mirror real Claude Code flow + clarify two-yaml setup
+
+### Maintenance
+
+- clean up legacy docs/demos and refresh infrastructure
 
 ## [0.95.2] - 2026-05-01
 
