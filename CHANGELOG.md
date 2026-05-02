@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.99.0] - 2026-05-02
+
+### Added
+
+- `vibe inspect render --ai` now invokes Gemini video review and merges findings into `review-report.json` alongside the local `--cheap` checks *(cli)*
+- `vibe inspect render --model flash|flash-2.5|pro` selects the Gemini model used by `--ai` (default: `flash`) *(cli)*
+- `vibe inspect render --dry-run` previews resolved video path, provider, model, and estimated cost without probing the file or calling Gemini *(cli)*
+
+### Changed
+
+- `vibe inspect render` cost tier moves from `free` to `low` (the `--ai` path now does paid Gemini calls)
+- `vibe context` refresh: inspect/repair examples in the preferred-flow listing
+
 ## [0.98.0] - 2026-05-02
 
 ### Added
