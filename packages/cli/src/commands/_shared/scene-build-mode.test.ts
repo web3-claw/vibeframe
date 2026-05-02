@@ -20,9 +20,13 @@ vi.mock("./tts-resolve.js", () => ({
   TtsKeyMissingError: class TtsKeyMissingError extends Error {},
 }));
 
-vi.mock("@vibeframe/ai-providers", () => ({
-  OpenAIImageProvider: vi.fn(),
-}));
+vi.mock("@vibeframe/ai-providers", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@vibeframe/ai-providers")>();
+  return {
+    ...actual,
+    OpenAIImageProvider: vi.fn(),
+  };
+});
 
 vi.mock("./compose-scenes-skills.js", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./compose-scenes-skills.js")>();
