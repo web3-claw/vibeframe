@@ -13,7 +13,7 @@
  *
  * Scope held tight for v0.60:
  *   - TTS via `resolveTtsProvider` (ElevenLabs / Kokoro auto-fallback)
- *   - T2I via OpenAI gpt-image-2 only (Gemini/Grok routing in a follow-up)
+ *   - T2I via OpenAI, Gemini, or Grok
  *   - No Whisper transcribe step (compose handles its own)
  *   - No root `index.html` synthesis — driver expects the project to
  *     already have one with sub-composition references.
@@ -24,7 +24,12 @@ import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
 import { config as loadDotenv } from "dotenv";
-import { OpenAIImageProvider, type ImageOptions } from "@vibeframe/ai-providers";
+import {
+  GeminiProvider,
+  GrokProvider,
+  OpenAIImageProvider,
+  type ImageOptions,
+} from "@vibeframe/ai-providers";
 
 import { getAudioDuration } from "../../utils/audio.js";
 import {
@@ -51,6 +56,7 @@ import { syncRootComposition, type RootSyncBeatInput } from "./root-sync.js";
 import {
   backdropCacheDescriptor,
   type BuildAssetKind,
+  imageRatioForSize,
   musicCacheDescriptor,
   narrationCacheDescriptor,
   normalizeMusicDuration,
@@ -69,6 +75,8 @@ import { executeMusic } from "../generate/music.js";
 import { createAndWriteJobRecord, type JobRecord } from "./status-jobs.js";
 import { executeSceneRepair, type SceneRepairResult } from "./scene-repair.js";
 import { resolveTtsProvider, TtsKeyMissingError, type TtsProviderName } from "./tts-resolve.js";
+
+export type BuildImageProvider = "openai" | "gemini" | "grok";
 
 // ── Public types ─────────────────────────────────────────────────────────
 
@@ -199,8 +207,8 @@ export interface SceneBuildOptions {
   ttsProvider?: TtsProviderName;
   /** Voice override (TTS-provider-specific id). */
   voice?: string;
-  /** Override frontmatter providers.image. Currently only "openai" supported. */
-  imageProvider?: "openai";
+  /** Override frontmatter providers.image. */
+  imageProvider?: BuildImageProvider;
   /** Video provider for per-beat `video` cues. */
   videoProvider?: BuildVideoProvider;
   /** Music provider for per-beat `music` cues. */
@@ -474,7 +482,7 @@ export async function executeSceneBuild(opts: SceneBuildOptions): Promise<SceneB
   const imageProvider = (opts.imageProvider ??
     stringOrUndefined(frontmatterProviders?.image) ??
     buildPlan.config.config.providers.image ??
-    "openai") as "openai";
+    "openai") as BuildImageProvider;
   const videoProvider = resolveBuildVideoProvider(
     opts.videoProvider ??
       stringOrUndefined(frontmatterProviders?.video) ??
@@ -913,7 +921,7 @@ interface BeatDispatchContext {
   projectDir: string;
   ttsProvider: TtsProviderName;
   voice?: string;
-  imageProvider: "openai";
+  imageProvider: BuildImageProvider;
   videoProvider: BuildVideoProvider;
   musicProvider: BuildMusicProvider;
   imageQuality: "standard" | "hd";
@@ -1228,20 +1236,18 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
   const prompt = stringOrUndefined(beat.cues?.backdrop);
   if (!prompt) return { status: "no-cue" };
 
-  if (ctx.imageProvider !== "openai") {
-    const error = `image provider "${ctx.imageProvider}" not yet supported (use openai)`;
-    ctx.onProgress({ type: "backdrop-failed", beatId: beat.id, error });
-    return { status: "failed", error };
-  }
-
   const rel = `assets/backdrop-${beat.id}.png`;
   const abs = join(ctx.projectDir, rel);
+  const size = ctx.imageSize ?? "1536x1024";
+  const ratio = imageRatioForSize(size);
+  const metadataOptions = { quality: ctx.imageQuality, size, ratio };
   const cache = backdropCacheDescriptor({
     beatId: beat.id,
     cue: prompt,
     provider: ctx.imageProvider,
     quality: ctx.imageQuality,
-    size: ctx.imageSize ?? "1536x1024",
+    size,
+    ratio,
   });
   const metadataPath = assetMetadataPath("backdrop", beat.id);
   if (existsSync(abs) && !ctx.force) {
@@ -1254,7 +1260,7 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
         beatId: beat.id,
         cue: prompt,
         provider: ctx.imageProvider,
-        options: { quality: ctx.imageQuality, size: ctx.imageSize ?? "1536x1024" },
+        options: metadataOptions,
         cacheKey: cache.key,
       })
     ) {
@@ -1280,7 +1286,7 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
       beatId: beat.id,
       cue: prompt,
       provider: ctx.imageProvider,
-      options: { quality: ctx.imageQuality, size: ctx.imageSize ?? "1536x1024" },
+      options: metadataOptions,
       cacheKey: cache.key,
       canonicalPath: rel,
       cachePath: cache.path,
@@ -1297,32 +1303,15 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
     };
   }
 
-  loadSceneBuildEnv(ctx.projectDir);
-  const apiKey =
-    (await getApiKeyFromConfig("openai", { cwd: ctx.projectDir })) ??
-    process.env.OPENAI_API_KEY ??
-    "";
-  if (!apiKey) {
-    const error = "OPENAI_API_KEY not set — cannot dispatch backdrop";
-    ctx.onProgress({ type: "backdrop-failed", beatId: beat.id, error });
-    return { status: "failed", error };
-  }
-
-  const provider = new OpenAIImageProvider();
-  await provider.initialize({ apiKey });
-  const result = await provider.generateImage(prompt, {
-    model: "gpt-image-2",
-    size: ctx.imageSize,
-    quality: ctx.imageQuality,
-  });
-  if (!result.success || !result.images?.[0]?.base64) {
-    const error = result.error ?? "no image data returned";
+  const generated = await generateBackdropImage(prompt, ctx, ratio);
+  if (!generated.success) {
+    const error = generated.error;
     ctx.onProgress({ type: "backdrop-failed", beatId: beat.id, error });
     return { status: "failed", error };
   }
 
   await mkdir(dirname(abs), { recursive: true });
-  const buffer = Buffer.from(result.images[0].base64, "base64");
+  const buffer = generated.buffer;
   await writeFile(abs, buffer);
   await mkdir(dirname(cacheAbs), { recursive: true });
   await writeFile(cacheAbs, buffer);
@@ -1331,8 +1320,8 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
     kind: "backdrop",
     beatId: beat.id,
     cue: prompt,
-    provider: "openai",
-    options: { quality: ctx.imageQuality, size: ctx.imageSize ?? "1536x1024" },
+    provider: ctx.imageProvider,
+    options: metadataOptions,
     cacheKey: cache.key,
     canonicalPath: rel,
     cachePath: cache.path,
@@ -1341,17 +1330,100 @@ async function dispatchBackdrop(beat: Beat, ctx: BeatDispatchContext): Promise<P
     type: "backdrop-generated",
     beatId: beat.id,
     path: rel,
-    provider: "openai",
+    provider: ctx.imageProvider,
   });
   return {
     status: "generated",
     path: rel,
-    provider: "openai",
+    provider: ctx.imageProvider,
     cachePath: cache.path,
     cacheKey: cache.key,
     metadataPath,
     freshness: "fresh",
   };
+}
+
+interface GeneratedImageData {
+  base64?: string;
+  url?: string;
+}
+
+type GeneratedBackdropResult =
+  | { success: true; buffer: Buffer }
+  | { success: false; error: string };
+
+async function generateBackdropImage(
+  prompt: string,
+  ctx: BeatDispatchContext,
+  ratio: string
+): Promise<GeneratedBackdropResult> {
+  loadSceneBuildEnv(ctx.projectDir);
+  const keyInfo = imageProviderKeyInfo(ctx.imageProvider);
+  const apiKey =
+    (await getApiKeyFromConfig(keyInfo.configKey, { cwd: ctx.projectDir })) ??
+    process.env[keyInfo.envVar] ??
+    "";
+  if (!apiKey) {
+    return {
+      success: false,
+      error: `${keyInfo.envVar} not set — cannot dispatch backdrop with ${ctx.imageProvider}`,
+    };
+  }
+
+  if (ctx.imageProvider === "openai") {
+    const provider = new OpenAIImageProvider();
+    await provider.initialize({ apiKey });
+    const result = await provider.generateImage(prompt, {
+      model: "gpt-image-2",
+      size: ctx.imageSize,
+      quality: ctx.imageQuality,
+    });
+    return imageBufferFromResult(result);
+  }
+
+  if (ctx.imageProvider === "gemini") {
+    const provider = new GeminiProvider();
+    await provider.initialize({ apiKey });
+    const result = await provider.generateImage(prompt, {
+      model: "flash",
+      aspectRatio: ratio as "1:1" | "2:3" | "3:2" | "16:9",
+    });
+    return imageBufferFromResult(result);
+  }
+
+  const provider = new GrokProvider();
+  await provider.initialize({ apiKey });
+  const result = await provider.generateImage(prompt, {
+    aspectRatio: ratio,
+    n: 1,
+  });
+  return imageBufferFromResult(result);
+}
+
+async function imageBufferFromResult(result: {
+  success: boolean;
+  error?: string;
+  images?: GeneratedImageData[];
+}): Promise<GeneratedBackdropResult> {
+  const image = result.images?.[0];
+  if (!result.success || !image) {
+    return { success: false, error: result.error ?? "no image data returned" };
+  }
+  if (image.base64) return { success: true, buffer: Buffer.from(image.base64, "base64") };
+  if (image.url) {
+    const response = await fetch(image.url);
+    if (!response.ok) {
+      return { success: false, error: `failed to download image: HTTP ${response.status}` };
+    }
+    return { success: true, buffer: Buffer.from(await response.arrayBuffer()) };
+  }
+  return { success: false, error: "no image data returned" };
+}
+
+function imageProviderKeyInfo(provider: BuildImageProvider): { configKey: string; envVar: string } {
+  if (provider === "gemini") return { configKey: "google", envVar: "GOOGLE_API_KEY" };
+  if (provider === "grok") return { configKey: "xai", envVar: "XAI_API_KEY" };
+  return { configKey: "openai", envVar: "OPENAI_API_KEY" };
 }
 
 async function dispatchVideo(beat: Beat, ctx: BeatDispatchContext): Promise<PrimitiveOutcome> {

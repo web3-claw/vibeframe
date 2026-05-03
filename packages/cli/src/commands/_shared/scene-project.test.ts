@@ -10,6 +10,7 @@ import {
   buildEmptyRootHtml,
   buildHyperframesConfig,
   buildHyperframesMeta,
+  buildProjectAgentsMd,
   buildProjectClaudeMd,
   buildStoryboardMd,
   buildSceneGitignore,
@@ -117,9 +118,9 @@ describe("buildEmptyRootHtml", () => {
   });
 });
 
-describe("buildProjectClaudeMd", () => {
+describe("buildProjectAgentsMd", () => {
   it("names the project and references both toolchains", () => {
-    const md = buildProjectClaudeMd("my-promo");
+    const md = buildProjectAgentsMd("my-promo");
     expect(md).toContain("# my-promo");
     expect(md).toContain("/vibe-scene");
     expect(md).toContain("/hyperframes");
@@ -128,11 +129,20 @@ describe("buildProjectClaudeMd", () => {
   });
 
   it("introduces the DESIGN.md hard-gate and hyperframes skill install", () => {
-    const md = buildProjectClaudeMd("my-promo");
+    const md = buildProjectAgentsMd("my-promo");
     expect(md).toContain("DESIGN.md");
     expect(md).toContain("STORYBOARD.md");
     expect(md).toContain("hard-gate");
     expect(md).toContain("npx skills add heygen-com/hyperframes");
+  });
+});
+
+describe("buildProjectClaudeMd", () => {
+  it("imports AGENTS.md so scene guidance stays cross-tool", () => {
+    const md = buildProjectClaudeMd("my-promo");
+    expect(md.startsWith("@AGENTS.md")).toBe(true);
+    expect(md).toContain("Claude Code Overrides");
+    expect(md).toContain("Codex");
   });
 });
 
@@ -233,6 +243,7 @@ describe("scaffoldSceneProject", () => {
       "index.html",
       "vibe.config.json",
       "vibe.project.yaml",
+      "AGENTS.md",
       "CLAUDE.md",
       "DESIGN.md",
       "STORYBOARD.md",
@@ -343,6 +354,20 @@ describe("scaffoldSceneProject", () => {
     expect(first.created.map((p) => p.split("/").pop())).toContain("hyperframes.json");
   });
 
+  it("migrates an existing scene CLAUDE.md to import AGENTS.md without dropping content", async () => {
+    const dir = await makeTmp();
+    await mkdir(dir, { recursive: true });
+    await writeFile(resolve(dir, "CLAUDE.md"), "# Old scene guidance\n\nKeep this note.\n", "utf-8");
+
+    const result = await scaffoldSceneProject({ dir, name: "fixture", profile: "agent" });
+    const claude = await readFile(resolve(dir, "CLAUDE.md"), "utf-8");
+
+    expect(await pathExists(resolve(dir, "AGENTS.md"))).toBe(true);
+    expect(claude.startsWith("@AGENTS.md")).toBe(true);
+    expect(claude).toContain("Keep this note.");
+    expect(result.merged.some((p) => p.endsWith("CLAUDE.md"))).toBe(true);
+  });
+
   it("preserves user keys in existing hyperframes.json (merge, not overwrite)", async () => {
     const dir = await makeTmp();
     await mkdir(dir, { recursive: true });
@@ -397,9 +422,11 @@ describe("scaffoldSceneProject", () => {
 
     expect(await pathExists(resolve(dir, "STORYBOARD.md"))).toBe(true);
     expect(await pathExists(resolve(dir, "vibe.config.json"))).toBe(true);
+    expect(await pathExists(resolve(dir, "AGENTS.md"))).toBe(true);
     expect(await pathExists(resolve(dir, "CLAUDE.md"))).toBe(true);
     expect(await pathExists(resolve(dir, "index.html"))).toBe(false);
     expect(await pathExists(resolve(dir, "hyperframes.json"))).toBe(false);
+    expect(result.groups.agent.map((p) => p.split("/").pop())).toContain("AGENTS.md");
     expect(result.groups.agent.map((p) => p.split("/").pop())).toContain("SKILL.md");
     expect(result.groups.render).toEqual([]);
   });

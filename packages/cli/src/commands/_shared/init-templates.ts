@@ -131,7 +131,7 @@ starting from a media file and wants it transformed, it's REMIX.
 | Add static captions | \`vibe edit caption in.mp4 -o out.mp4\` |
 | Translate audio (transcribe → TTS) | \`vibe audio dub file.mp4 -t ko\` |
 | Transcribe (Whisper, word-level) | \`vibe audio transcribe file.mp4 --granularity word\` |
-| Inspect a video | \`vibe inspect video file.mp4 "summarise"\` |
+| Inspect media with Gemini | \`vibe inspect media file.mp4 "summarise" --json\` |
 
 ### Compose pipelines (Video as Code)
 
@@ -144,10 +144,10 @@ starting from a media file and wants it transformed, it's REMIX.
 
 | Tier | Examples | Approx. per call |
 |---|---|---|
-| **Free** | \`detect *\`, \`edit silence-cut/fade/noise-reduce\`, \`schema\`, \`project\`, \`timeline\` | $0 |
-| **Low** | \`inspect *\`, \`audio transcribe\`, \`generate image\` | $0.01–$0.10 |
-| **High** | \`generate video\`, \`edit image\` | $1–$5 |
-| **Very High** | \`remix *\` (highlights, auto-shorts, regenerate-scene), \`build\` | $5–$50+ |
+| **Free** | \`schema/context/doctor\`, \`detect *\`, \`status *\`, \`plan\`, \`storyboard validate\`, \`inspect project/render --cheap\`, deterministic edits | $0 |
+| **Low** | \`generate narration/sound-effect/music\`, \`audio transcribe\`, \`inspect media\`, optional AI review | $0.01–$0.10 |
+| **High** | \`generate image/motion\`, \`edit image/reframe/grade/speed-ramp\` | $1–$5 |
+| **Very High** | \`generate video\`, \`edit fill-gaps\`, \`remix highlights/auto-shorts\`, \`build\` with generated assets | $5–$50+ |
 
 ## Agent invariants
 
@@ -359,7 +359,7 @@ defaults:
 # Optional — uncomment to set per-primitive provider preferences.
 # providers:
 #   tts: elevenlabs       # auto | elevenlabs | kokoro
-#   image: openai         # openai | gemini
+#   image: openai         # openai | gemini | grok
 #   music: elevenlabs
 
 # Optional — cap total spend per pipeline run.

@@ -58,6 +58,33 @@ describe("status job records", () => {
     expect(read?.provider).toBe("runway");
   });
 
+  it("does not suggest legacy video-status for video providers without live status support", async () => {
+    const dir = await tempProject();
+    const record = await createAndWriteJobRecord({
+      id: "job_seedance",
+      now: new Date("2026-01-01T00:00:00.000Z"),
+      jobType: "generate-video",
+      provider: "seedance",
+      providerTaskId: "task_seedance",
+      projectDir: dir,
+      command: "generate video --no-wait",
+    });
+
+    expect(record.retryWith).toEqual([
+      `vibe status job job_seedance --project ${resolve(dir)} --json`,
+    ]);
+
+    const status = await refreshJobRecord(record, { write: false });
+    expect(status.refreshed).toBe(false);
+    expect(status.live.supported).toBe(false);
+    expect(status.warnings).toContain(
+      "Live status is not supported for seedance generate-video jobs yet."
+    );
+    expect(status.retryWith).toEqual([
+      `vibe status job job_seedance --project ${resolve(dir)} --json`,
+    ]);
+  });
+
   it("summarizes build, review, and job state for a project", async () => {
     const dir = await tempProject();
     await mkdir(join(dir, ".vibeframe", "jobs"), { recursive: true });

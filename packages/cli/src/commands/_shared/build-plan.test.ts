@@ -185,6 +185,7 @@ describe("createBuildPlan", () => {
       provider: "openai",
       quality: "hd",
       size: "1536x1024",
+      ratio: "3:2",
     });
     await mkdir(dirname(resolve(dir, narrationCache.path)), { recursive: true });
     await writeFile(resolve(dir, narrationCache.path), "fake", "utf-8");
@@ -213,6 +214,55 @@ describe("createBuildPlan", () => {
     });
   });
 
+  it.each(["gemini", "grok"] as const)(
+    "plans generated backdrop cues for supported %s build image provider",
+    async (imageProvider) => {
+      const dir = await makeProject();
+      const plan = await createBuildPlan({ projectDir: dir, stage: "assets", imageProvider });
+
+      expect(plan.status).toBe("ready");
+      expect(plan.validation.ok).toBe(true);
+      expect(plan.providers).toContain(imageProvider);
+      expect(plan.providerResolution).toContainEqual(
+        expect.objectContaining({
+          kind: "backdrop",
+          requested: imageProvider,
+          resolved: imageProvider,
+        })
+      );
+      expect(plan.beats[0].assets.backdrop).toMatchObject({
+        provider: imageProvider,
+        willGenerate: true,
+        reason: "missing",
+      });
+      expect(plan.validation.issues).not.toContainEqual(
+        expect.objectContaining({ code: "UNSUPPORTED_BUILD_IMAGE_PROVIDER" })
+      );
+    }
+  );
+
+  it("invalidates generated backdrop cues when the build image provider is not supported", async () => {
+    const dir = await makeProject();
+    const plan = await createBuildPlan({ projectDir: dir, stage: "assets", imageProvider: "runway" });
+
+    expect(plan.status).toBe("invalid");
+    expect(plan.validation.ok).toBe(false);
+    expect(plan.validation.issues).toContainEqual(
+      expect.objectContaining({
+        severity: "error",
+        code: "UNSUPPORTED_BUILD_IMAGE_PROVIDER",
+        beatId: "hook",
+      })
+    );
+    expect(plan.retryWith).toContain(
+      `vibe build ${dir} --stage assets --image-provider openai --json`
+    );
+    expect(plan.nextCommands).toEqual(plan.retryWith);
+    expect(plan.warnings).not.toContain(
+      "Backdrop generation will need runway (OPENAI_API_KEY), but no key/config is available."
+    );
+  });
+
   it("plans generic asset references without provider cost", async () => {
     const dir = await makeProject();
     await writeFile(resolve(dir, "assets/source.png"), "fake", "utf-8");
@@ -230,10 +280,14 @@ asset: "assets/source.png"
       "utf-8"
     );
 
-    const plan = await createBuildPlan({ projectDir: dir, stage: "assets" });
+    const plan = await createBuildPlan({ projectDir: dir, stage: "assets", imageProvider: "gemini" });
 
+    expect(plan.status).toBe("ready");
     expect(plan.estimatedCostUsd).toBe(0);
     expect(plan.providers).not.toContain("openai");
+    expect(plan.validation.issues).not.toContainEqual(
+      expect.objectContaining({ code: "UNSUPPORTED_BUILD_IMAGE_PROVIDER" })
+    );
     expect(plan.providerResolution).not.toContainEqual(
       expect.objectContaining({ kind: "backdrop" })
     );
@@ -318,6 +372,7 @@ backdrop: "../outside.png"
       provider: "openai",
       quality: "hd",
       size: "1536x1024",
+      ratio: "3:2",
     });
     await mkdir(dirname(resolve(dir, backdropCache.path)), { recursive: true });
     await writeFile(resolve(dir, backdropCache.path), "fake", "utf-8");

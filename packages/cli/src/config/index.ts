@@ -71,7 +71,7 @@ async function fileExists(path: string): Promise<boolean> {
   }
 }
 
-async function findProjectConfigPath(cwd: string = process.cwd()): Promise<string | null> {
+export async function findProjectConfigPath(cwd: string = process.cwd()): Promise<string | null> {
   let dir = resolve(cwd);
   for (;;) {
     const candidate = getProjectConfigPath(dir);

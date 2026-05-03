@@ -47,7 +47,7 @@ Type "Read DEMO-dogfood.md, then run a compact dogfood pass in this directory us
 Enter
 Type "Use vibe, not pnpm, because this is an installed-CLI workspace outside the repo. Do not print API keys or config files."
 Enter
-Type "Create a video project named my-video. Author DESIGN.md and STORYBOARD.md with four short beats about VibeFrame as a storyboard-first video CLI. Use Kokoro narration, batch composition, skipped generated backdrop/video/music, and a $5 cap."
+Type "Create a video project named my-video. Author DESIGN.md and STORYBOARD.md with four short beats about VibeFrame as a storyboard-first video CLI. Use ElevenLabs narration on all beats with voice Rachel, Gemini generated backdrops on all beats, Seedance generated video on exactly one short beat, no music cue in this VHS recording, batch composition, and a $25 cap."
 Enter
 Type "Run these concrete steps:"
 Enter
@@ -55,13 +55,13 @@ Type "1. vibe --help; vibe setup --show; vibe doctor; vibe context; vibe schema 
 Enter
 Type '2. vibe init my-video --from "30-second product video showing VibeFrame as a storyboard-first video CLI for coding agents" --profile agent --visual-style "Swiss Pulse" -r 16:9 -d 30 --json'
 Enter
-Type "3. Write my-video/DESIGN.md and my-video/STORYBOARD.md for four beats: project starts from intent, agents dry-run before spending, files and reports drive the loop, inspect/repair/render again."
+Type "3. Write my-video/DESIGN.md and my-video/STORYBOARD.md for four beats: project starts from intent, agents dry-run before spending, files and reports drive the loop, inspect/repair/render again. Use voice: Rachel, add a video cue to one beat only, do not add any music cue, and do not use Kokoro voice ids such as af_heart."
 Enter
-Type "4. vibe storyboard validate my-video --json; vibe storyboard list my-video --json; vibe inspect project my-video --json; vibe plan my-video --mode batch --composer openai --tts kokoro --skip-backdrop --skip-video --skip-music --max-cost 5 --json"
+Type "4. vibe storyboard validate my-video --json; vibe storyboard list my-video --json; vibe inspect project my-video --json; vibe plan my-video --mode batch --composer openai --tts elevenlabs --voice Rachel --image-provider gemini --video-provider seedance --skip-music --max-cost 25 --json"
 Enter
-Type "5. vibe build my-video --dry-run --mode batch --composer openai --tts kokoro --skip-backdrop --skip-video --skip-music --max-cost 5 --json; vibe build my-video --mode batch --composer openai --tts kokoro --skip-backdrop --skip-video --skip-music --skip-render --max-cost 5 --json"
+Type "5. vibe build my-video --dry-run --mode batch --composer openai --tts elevenlabs --voice Rachel --image-provider gemini --video-provider seedance --skip-music --max-cost 25 --json; vibe build my-video --mode batch --composer openai --tts elevenlabs --voice Rachel --image-provider gemini --video-provider seedance --skip-music --skip-render --max-cost 25 --json"
 Enter
-Type "6. vibe status project my-video --refresh --json; vibe inspect project my-video --json; vibe scene repair my-video --json; vibe render my-video -o renders/my-video-final.mp4 --quality standard --fps 30 --json; vibe inspect render my-video --video renders/my-video-final.mp4 --cheap --json"
+Type "6. vibe status project my-video --refresh --json; vibe inspect project my-video --json; vibe scene repair my-video --json; vibe render my-video -o renders/my-video-final.mp4 --quality standard --fps 30 --json; vibe inspect render my-video --video renders/my-video-final.mp4 --cheap --json; vibe inspect render my-video --video renders/my-video-final.mp4 --ai --json"
 Enter
 Type "7. Create my-video/video-as-yaml.yaml with scene-build and scene-render steps, then run vibe run my-video/video-as-yaml.yaml -o . --dry-run and vibe run my-video/video-as-yaml.yaml -o ."
 Enter

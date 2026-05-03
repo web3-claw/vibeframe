@@ -319,9 +319,14 @@ final beat.
 `;
 }
 
-/** Project-local CLAUDE.md that orients an AI agent to both toolchains. */
-export function buildProjectClaudeMd(name: string): string {
+/** Project-local AGENTS.md that orients every agent host to both toolchains. */
+export function buildProjectAgentsMd(name: string): string {
   return `# ${name} — Scene Authoring Project
+
+This is the canonical cross-agent guidance file for this scene project.
+Claude Code imports it through \`CLAUDE.md\`; Codex, Cursor, Aider,
+Gemini CLI, OpenCode, and other bash-capable agents should read it
+directly.
 
 This project is **bilingual**: it works with both VibeFrame (\`vibe\`) and
 HeyGen Hyperframes (\`hyperframes\`). You can run either CLI inside this
@@ -361,6 +366,8 @@ Browse named styles: \`vibe scene list-styles\`. Re-seed from one with
 \`vibe scene init . --visual-style "Swiss Pulse"\` (idempotent).
 
 ## Skills — USE THESE FIRST
+
+@SKILL.md
 
 **Always invoke the relevant skill before authoring scenes.** Skills encode
 framework-specific patterns (GSAP timeline registration, data-attribute
@@ -428,6 +435,19 @@ vibe scene lint           # preferred — in-process, no network
 vibe scene lint --fix     # auto-fix mechanical issues
 vibe scene lint --json    # structured output for agent loops
 \`\`\`
+`;
+}
+
+/** Claude Code wrapper. Keeps scene guidance single-sourced in AGENTS.md. */
+export function buildProjectClaudeMd(name: string): string {
+  return `@AGENTS.md
+
+# ${name} — Claude Code Overrides
+
+This file imports \`AGENTS.md\`; keep cross-agent VibeFrame and
+Hyperframes instructions there so Codex, Cursor, Aider, Gemini CLI, and
+OpenCode see the same project rules. Add Claude-Code-specific notes below
+only when this project needs them.
 `;
 }
 
@@ -518,6 +538,7 @@ export function describeSceneScaffold(opts: {
 
   if (profile === "agent" || profile === "full") {
     groups.agent = [
+      resolve(dir, "AGENTS.md"),
       resolve(dir, "SKILL.md"),
       resolve(dir, "references"),
       resolve(dir, "CLAUDE.md"),
@@ -620,10 +641,25 @@ export async function scaffoldSceneProject(opts: ScaffoldOptions): Promise<Scaff
   }
 
   if (profile === "agent" || profile === "full") {
-    // CLAUDE.md — preserve existing.
+    // AGENTS.md — canonical cross-tool guidance; preserve existing.
+    const agentsPath = resolve(dir, "AGENTS.md");
+    if (await pathExists(agentsPath)) {
+      skipped.push(agentsPath);
+    } else {
+      await writeFile(agentsPath, buildProjectAgentsMd(name), "utf-8");
+      created.push(agentsPath);
+    }
+
+    // CLAUDE.md — preserve existing content, but ensure it imports AGENTS.md.
     const claudePath = resolve(dir, "CLAUDE.md");
     if (await pathExists(claudePath)) {
-      skipped.push(claudePath);
+      const existing = await readFile(claudePath, "utf-8");
+      if (existing.includes("@AGENTS.md")) {
+        skipped.push(claudePath);
+      } else {
+        await writeFile(claudePath, `@AGENTS.md\n\n${existing}`, "utf-8");
+        merged.push(claudePath);
+      }
     } else {
       await writeFile(claudePath, buildProjectClaudeMd(name), "utf-8");
       created.push(claudePath);

@@ -45,6 +45,7 @@ export function backdropCacheDescriptor(opts: {
   provider: string;
   quality: "standard" | "hd";
   size: string;
+  ratio?: string;
 }): CacheAssetDescriptor {
   return cacheAssetDescriptor("backdrop", {
     beatId: opts.beatId,
@@ -52,8 +53,22 @@ export function backdropCacheDescriptor(opts: {
     provider: opts.provider,
     quality: opts.quality,
     size: opts.size,
+    ratio: opts.ratio,
     ext: "png",
   });
+}
+
+export function imageRatioForSize(size: string | undefined): string {
+  switch (size) {
+    case "1024x1024":
+      return "1:1";
+    case "1024x1536":
+      return "2:3";
+    case "1536x1024":
+      return "3:2";
+    default:
+      return "16:9";
+  }
 }
 
 export function videoCacheDescriptor(opts: {

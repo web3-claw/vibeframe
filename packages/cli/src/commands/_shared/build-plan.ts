@@ -16,6 +16,7 @@ import {
   backdropCacheDescriptor,
   type BuildAssetKind,
   type CacheAssetDescriptor,
+  imageRatioForSize,
   musicCacheDescriptor,
   narrationCacheDescriptor,
   videoCacheDescriptor,
@@ -153,6 +154,7 @@ const VIDEO_COST_USD = 5;
 const MUSIC_COST_USD = 0.5;
 const ELEVENLABS_NARRATION_COST_USD = 0.05;
 const COMPOSE_COST_USD = 0.06;
+const SUPPORTED_BUILD_IMAGE_PROVIDERS = ["openai", "gemini", "grok"] as const;
 
 export async function createBuildPlan(opts: CreateBuildPlanOptions): Promise<BuildPlanResult> {
   const projectDir = resolve(opts.projectDir);
@@ -196,6 +198,7 @@ export async function createBuildPlan(opts: CreateBuildPlanOptions): Promise<Bui
 
   const storyboardMd = await readFile(storyboardPath, "utf-8");
   const validation = validateStoryboardMarkdown(storyboardMd);
+  const validationIssues: StoryboardValidationIssue[] = [...validation.issues];
   const parsed = parseStoryboard(storyboardMd);
   let sourceBeats = parsed.beats;
   if (opts.beat) {
@@ -219,6 +222,7 @@ export async function createBuildPlan(opts: CreateBuildPlanOptions): Promise<Bui
   const mode = opts.mode ?? config.config.build.mode;
   const imageQuality = opts.imageQuality ?? config.config.build.imageQuality ?? "hd";
   const imageSize = opts.imageSize ?? config.config.build.imageSize ?? "1536x1024";
+  const imageRatio = imageRatioForSize(imageSize);
   const needsComposer =
     includeCompose &&
     mode !== "agent" &&
@@ -286,6 +290,7 @@ export async function createBuildPlan(opts: CreateBuildPlanOptions): Promise<Bui
             provider: resolved.image.resolved,
             quality: imageQuality,
             size: imageSize,
+            ratio: imageRatio,
           })
         : null;
     const videoCache =
@@ -401,7 +406,8 @@ export async function createBuildPlan(opts: CreateBuildPlanOptions): Promise<Bui
       }
     }
     if (narration?.willGenerate) noteProviderNeed(resolved.narration, "Narration");
-    if (backdrop?.willGenerate) noteProviderNeed(resolved.image, "Backdrop generation");
+    if (backdrop?.willGenerate && isSupportedBuildImageProvider(resolved.image.resolved))
+      noteProviderNeed(resolved.image, "Backdrop generation");
     if (video?.willGenerate) noteProviderNeed(resolved.video, "Video generation");
     if (music?.willGenerate) noteProviderNeed(resolved.music, "Music generation");
     if (!compositionExists) missing.add("compositions");
@@ -425,28 +431,41 @@ export async function createBuildPlan(opts: CreateBuildPlanOptions): Promise<Bui
   });
   providerResolution.push(...providerResolutionsForPlan(resolved, beats, opts, includeAssets));
 
+  if (
+    includeAssets &&
+    !opts.skipBackdrop &&
+    !isSupportedBuildImageProvider(resolved.image.resolved)
+  ) {
+    const unsupportedBackdropBeats = beats.filter((beat) =>
+      isBuildGeneratedBackdropPlan(beat.assets.backdrop)
+    );
+    for (const beat of unsupportedBackdropBeats) {
+      validationIssues.push({
+        severity: "error",
+        code: "UNSUPPORTED_BUILD_IMAGE_PROVIDER",
+        beatId: beat.id,
+        message:
+          `Build backdrop generation supports openai, gemini, and grok. Beat "${beat.id}" ` +
+          `resolves image provider "${resolved.image.resolved}"; rerun with one of those or ` +
+          "replace the backdrop cue with a project asset path.",
+      });
+    }
+    if (unsupportedBackdropBeats.length > 0) {
+      const beatFlag = opts.beat ? ` --beat ${opts.beat}` : "";
+      retryWith.push(
+        `vibe build ${projectDir}${beatFlag} --stage assets --image-provider openai --json`
+      );
+    }
+  }
+  const validationOk = !validationIssues.some((issue) => issue.severity === "error");
+
   if (!existsSync(join(projectDir, config.config.composition.entry))) {
     missing.add("root-composition");
-    if (validation.ok) retryWith.push(`vibe build ${projectDir} --stage sync --json`);
+    if (validationOk) retryWith.push(`vibe build ${projectDir} --stage sync --json`);
   }
   if (config.legacy) {
     warnings.push(
       `Using legacy ${config.source}; write ${projectDir}/vibe.config.json to use the TO-BE project contract.`
-    );
-  }
-  if (
-    resolved.image.resolved !== "openai" &&
-    beats.some((beat) => {
-      const backdrop = beat.assets.backdrop;
-      return (
-        backdrop &&
-        !["referenced-asset", "invalid-reference", "stage-skipped"].includes(backdrop.reason)
-      );
-    }) &&
-    !opts.skipBackdrop
-  ) {
-    warnings.push(
-      `Image provider "${resolved.image.resolved}" is not supported by build assets yet; use --image-provider openai.`
     );
   }
   if (!validation.ok) {
@@ -460,7 +479,7 @@ export async function createBuildPlan(opts: CreateBuildPlanOptions): Promise<Bui
     projectDir,
     config,
     stage,
-    status: validation.ok ? "ready" : "invalid",
+    status: validationOk ? "ready" : "invalid",
     currentStage: stage,
     mode,
     beat: opts.beat ?? null,
@@ -472,8 +491,8 @@ export async function createBuildPlan(opts: CreateBuildPlanOptions): Promise<Bui
     warnings,
     retryWith,
     validation: {
-      ok: validation.ok,
-      issues: validation.issues,
+      ok: validationOk,
+      issues: validationIssues,
     },
   });
 }
@@ -503,6 +522,17 @@ function finalizeBuildPlan(
     nextCommands: nextCommandsForPlan({ ...plan, missing, providers, summary }),
     retryWith: unique(plan.retryWith),
   };
+}
+
+function isBuildGeneratedBackdropPlan(asset: AssetPlan | null): boolean {
+  if (!asset || asset.kind !== "backdrop") return false;
+  return !["referenced-asset", "invalid-reference", "stage-skipped"].includes(asset.reason);
+}
+
+function isSupportedBuildImageProvider(provider: string): boolean {
+  return SUPPORTED_BUILD_IMAGE_PROVIDERS.includes(
+    provider as (typeof SUPPORTED_BUILD_IMAGE_PROVIDERS)[number]
+  );
 }
 
 function nextCommandsForPlan(

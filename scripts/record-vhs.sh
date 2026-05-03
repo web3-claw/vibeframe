@@ -5,7 +5,6 @@
 # Prerequisites (all macOS / Linux):
 #   - vhs       — `brew install vhs` (macOS) or download from
 #                 https://github.com/charmbracelet/vhs/releases (Linux)
-#   - vibe      — `npm install -g @vibeframe/cli@latest`
 #   - claude    — `claude` on PATH; Claude Code drives both recordings
 #   - API keys required by DEMO-quickstart.md / DEMO-dogfood.md in env
 #
@@ -13,8 +12,9 @@
 #   assets/demos/quickstart-claude-code.mp4 — public quickstart recording
 #   assets/demos/dogfood-claude-code.mp4    — fuller contributor dogfood recording
 #
-# Both recordings make real provider calls. Set ONLY=quickstart or ONLY=dogfood
-# to render one tape.
+# The script builds the local CLI and places a temporary `vibe` wrapper first
+# on PATH, so recordings exercise this checkout. Both recordings make real
+# provider calls. Set ONLY=quickstart or ONLY=dogfood to render one tape.
 
 set -euo pipefail
 
@@ -27,12 +27,14 @@ if ! command -v vhs >/dev/null 2>&1; then
   exit 1
 fi
 
-if ! command -v vibe >/dev/null 2>&1; then
-  echo "✗ vibe not found on PATH." >&2
-  echo "  Build locally: pnpm -F @vibeframe/cli build && export PATH=\$REPO_ROOT/packages/cli/dist:\$PATH" >&2
-  echo "  Or install:    npm install -g @vibeframe/cli" >&2
-  exit 1
-fi
+pnpm -F @vibeframe/cli build >/dev/null
+mkdir -p /tmp/vibeframe-local-bin
+cat > /tmp/vibeframe-local-bin/vibe <<EOF
+#!/usr/bin/env bash
+exec node "$REPO_ROOT/packages/cli/dist/index.js" "\$@"
+EOF
+chmod +x /tmp/vibeframe-local-bin/vibe
+export PATH="/tmp/vibeframe-local-bin:$PATH"
 
 case "${ONLY:-all}" in
   quickstart)

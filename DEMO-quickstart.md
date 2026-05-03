@@ -410,13 +410,18 @@ exercise the full asset orchestration path, raise the cap and choose providers:
 vibe build apex-story \
   --mode batch \
   --composer openai \
-  --tts kokoro \
-  --image-provider openai \
+  --tts elevenlabs \
+  --voice Rachel \
+  --image-provider gemini \
   --video-provider seedance \
   --music-provider elevenlabs \
   --max-cost 25 \
   --json
 ```
+
+If your storyboard still contains Kokoro voice ids such as `af_heart`, pass an
+ElevenLabs voice with `--voice Rachel` or update the cue blocks before using
+`--tts elevenlabs`.
 
 If you only want generated still backdrops, keep video and music skipped:
 
@@ -425,11 +430,17 @@ vibe build apex-story \
   --mode batch \
   --composer openai \
   --tts kokoro \
-  --image-provider openai \
+  --image-provider grok \
   --skip-video \
   --skip-music \
   --max-cost 15 \
   --json
+```
+
+For the repo-level paid acceptance pass, run:
+
+```bash
+VIBE_PAID_ACCEPTANCE=1 pnpm dogfood:paid -- --max-cost 25
 ```
 
 ---

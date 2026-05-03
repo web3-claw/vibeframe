@@ -7,7 +7,14 @@ import chalk from "chalk";
 import { access } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { CONFIG_PATH, getProjectConfigPath, getActiveScope, type Scope } from "../config/index.js";
+import {
+  CONFIG_PATH,
+  findProjectConfigPath,
+  getProjectConfigPath,
+  getActiveScope,
+  loadConfig,
+  type Scope,
+} from "../config/index.js";
 import { PROVIDER_ENV_ALIASES, PROVIDER_ENV_VARS } from "../config/schema.js";
 import { getCommandKeyMap, getDisplayLabelForApiKey } from "@vibeframe/ai-providers";
 import { commandExists } from "../utils/exec-safe.js";
@@ -292,19 +299,26 @@ async function runDiagnostics(): Promise<DiagnosticResults> {
     // not configured
   }
 
+  const cwd = process.cwd();
+  const activeConfig = await loadConfig({ cwd });
+
   // Provider checks
   const providers: DiagnosticResults["providers"] = {};
   let readyCount = FREE_COMMANDS.length;
   let totalCount = FREE_COMMANDS.length;
 
   for (const [envVar, commands] of Object.entries(COMMAND_KEY_MAP)) {
-    const configured = Boolean(
-      process.env[envVar] ||
-        PROVIDER_ENV_ALIASES[envVar]?.map((alias) => process.env[alias]).find(Boolean)
-    );
     const providerName =
       Object.entries(PROVIDER_ENV_VARS).find(([, v]) => v === envVar)?.[0] ??
       envVar;
+    const configuredInConfig = Boolean(
+      activeConfig?.providers[providerName as keyof typeof activeConfig.providers]
+    );
+    const configured = Boolean(
+      process.env[envVar] ||
+        PROVIDER_ENV_ALIASES[envVar]?.map((alias) => process.env[alias]).find(Boolean) ||
+        configuredInConfig
+    );
     providers[providerName] = { envVar, configured, commands };
     totalCount += commands.length;
     if (configured) {
@@ -313,7 +327,6 @@ async function runDiagnostics(): Promise<DiagnosticResults> {
   }
 
   // v0.61: scope diagnostics ─────────────────────────────────────────────
-  const cwd = process.cwd();
   const projectFiles = ["AGENTS.md", "CLAUDE.md", "vibe.project.yaml"].map((rel) => ({
     path: rel,
     exists: existsSync(resolve(cwd, rel)),
@@ -321,8 +334,9 @@ async function runDiagnostics(): Promise<DiagnosticResults> {
   const projectInitialized = projectFiles.some((f) => f.exists);
 
   // v0.90: project-scope config.yaml diagnostics ────────────────────────
-  const projectConfigPath = getProjectConfigPath(cwd);
-  const projectConfigExists = existsSync(projectConfigPath);
+  const nearestProjectConfigPath = await findProjectConfigPath(cwd);
+  const projectConfigPath = nearestProjectConfigPath ?? getProjectConfigPath(cwd);
+  const projectConfigExists = Boolean(nearestProjectConfigPath);
   const activeScope = await getActiveScope(cwd);
 
   const hosts = detectAgentHosts();
@@ -674,11 +688,13 @@ async function runLiveKeyTests(results: DiagnosticResults): Promise<void> {
 
   // Lazy import keeps the module out of `vibe doctor` (no flag) cold-start.
   const { testKey } = await import("../utils/key-live-test.js");
+  const activeConfig = await loadConfig({ cwd: process.cwd() });
 
   for (const [name, info] of configured) {
     const value =
       process.env[info.envVar] ||
-      PROVIDER_ENV_ALIASES[info.envVar]?.map((alias) => process.env[alias]).find(Boolean);
+      PROVIDER_ENV_ALIASES[info.envVar]?.map((alias) => process.env[alias]).find(Boolean) ||
+      activeConfig?.providers[name as keyof typeof activeConfig.providers];
     if (!value) continue; // shouldn't happen — info.configured already checked
     process.stdout.write(`    ${name.padEnd(12)} `);
     const result = await testKey(name, value);

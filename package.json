@@ -27,6 +27,8 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "test": "turbo test",
+    "test:dogfood": "tsx scripts/dogfood-smoke.mts",
+    "dogfood:paid": "tsx scripts/paid-dogfood.mts",
     "lint": "turbo lint",
     "typecheck": "pnpm -r exec tsc --noEmit",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",

@@ -225,7 +225,7 @@ Cost tier: _not tagged_
 - `skipRender` _(boolean)_ — Compose only — don't render to MP4
 - `tts` _(string)_ — TTS provider: auto|elevenlabs|kokoro
 - `voice` _(string)_ — Voice id
-- `imageProvider` _(string)_ — Image provider: openai
+- `imageProvider` _(string)_ — Image provider: openai|gemini|grok
 - `videoProvider` _(string)_ — Video provider: seedance|grok|kling|runway|veo
 - `musicProvider` _(string)_ — Music provider: elevenlabs|replicate
 - `quality` _(string)_ _(default: `"hd"`)_ — Image quality: standard|hd
@@ -350,7 +350,7 @@ Cost tier: _not tagged_
 - `skipMusic` _(boolean)_ — Don't include music generation in the plan
 - `tts` _(string)_ — TTS provider: auto|elevenlabs|kokoro
 - `voice` _(string)_ — Voice id
-- `imageProvider` _(string)_ — Image provider: openai
+- `imageProvider` _(string)_ — Image provider: openai|gemini|grok
 - `videoProvider` _(string)_ — Video provider: seedance|grok|kling|runway|veo
 - `musicProvider` _(string)_ — Music provider: elevenlabs|replicate
 - `quality` _(string)_ — Image quality: standard|hd

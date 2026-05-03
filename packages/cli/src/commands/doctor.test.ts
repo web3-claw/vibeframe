@@ -24,12 +24,12 @@ afterEach(() => {
   rmSync(fakeHome, { recursive: true, force: true });
 });
 
-function runDoctor(): { json: ReturnType<typeof JSON.parse>; stderr: string } {
+function runDoctor(cwd = projectDir): { json: ReturnType<typeof JSON.parse>; stderr: string } {
   const out = execFileSync(
     process.execPath,
     [CLI, "doctor", "--json"],
     {
-      cwd: projectDir,
+      cwd,
       env: {
         ...process.env,
         HOME: fakeHome,
@@ -99,6 +99,30 @@ describe("vibe doctor — scope diagnostics", () => {
     ({ json } = runDoctor());
     expect(json.data.scope.activeScope).toBe("project");
     expect(json.data.scope.project.configFileExists).toBe(true);
+  });
+
+  it("reports provider keys configured from project config.yaml", () => {
+    mkdirSync(join(projectDir, ".vibeframe"));
+    writeFileSync(join(projectDir, ".vibeframe", "config.yaml"), "providers:\n  openai: project-openai\n");
+
+    const { json } = runDoctor();
+    expect(json.data.providers.openai.configured).toBe(true);
+  });
+
+  it("finds project config from a parent directory when run inside a scene project", () => {
+    mkdirSync(join(projectDir, ".vibeframe"));
+    writeFileSync(join(projectDir, ".vibeframe", "config.yaml"), "providers:\n  openai: project-openai\n");
+    const sceneDir = join(projectDir, "launch");
+    mkdirSync(sceneDir);
+    writeFileSync(join(sceneDir, "CLAUDE.md"), "# launch\n");
+    writeFileSync(join(sceneDir, "vibe.project.yaml"), "name: launch\n");
+
+    const { json } = runDoctor(sceneDir);
+    expect(json.data.scope.activeScope).toBe("project");
+    expect(json.data.scope.project.configFileExists).toBe(true);
+    expect(json.data.scope.project.configPath).toContain("vibe-doctor-test-");
+    expect(json.data.scope.project.configPath).toMatch(/\.vibeframe[\\/]config\.yaml$/);
+    expect(json.data.providers.openai.configured).toBe(true);
   });
 });
 

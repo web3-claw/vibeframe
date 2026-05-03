@@ -47,7 +47,7 @@ Type "Read DEMO-quickstart.md, then run the storyboard-first quickstart flow in 
 Enter
 Type "Use vibe, not pnpm. Do not print API keys or config files."
 Enter
-Type "Create a video project named apex-story using the low-cost path: Kokoro narration, batch composition, skipped generated backdrop/video/music, and a $5 cap."
+Type "Create a video project named apex-story using the paid asset path under a $25 cap: ElevenLabs narration on all beats with voice Rachel, Gemini generated backdrops on all beats, Seedance generated video on exactly one short beat, no music cue in this VHS recording, and batch composition."
 Enter
 Type "Run these concrete steps:"
 Enter
@@ -55,21 +55,21 @@ Type "1. vibe setup --show; vibe doctor; vibe context; vibe schema --list --surf
 Enter
 Type '2. vibe init apex-story --from "24-second calm mountain sunrise launch video for Apex Ridge" --profile agent --visual-style "Swiss Pulse" -r 16:9 -d 24 --json'
 Enter
-Type "3. Review or rewrite apex-story/STORYBOARD.md and apex-story/DESIGN.md so they contain four concrete beats with narration, backdrop, motion, voice, and duration cues."
+Type "3. Review or rewrite apex-story/STORYBOARD.md and apex-story/DESIGN.md so they contain four concrete beats with narration, backdrop, motion, voice: Rachel, and duration cues. Add a video cue to one beat only, do not add any music cue, and do not use Kokoro voice ids such as af_heart."
 Enter
 Type "4. vibe storyboard validate apex-story --json; vibe storyboard list apex-story --json; vibe inspect project apex-story --json"
 Enter
-Type "5. vibe plan apex-story --mode batch --composer openai --tts kokoro --skip-backdrop --skip-video --skip-music --max-cost 5 --json"
+Type "5. vibe plan apex-story --mode batch --composer openai --tts elevenlabs --voice Rachel --image-provider gemini --video-provider seedance --skip-music --max-cost 25 --json"
 Enter
-Type "6. vibe build apex-story --dry-run --mode batch --composer openai --tts kokoro --skip-backdrop --skip-video --skip-music --max-cost 5 --json"
+Type "6. vibe build apex-story --dry-run --mode batch --composer openai --tts elevenlabs --voice Rachel --image-provider gemini --video-provider seedance --skip-music --max-cost 25 --json"
 Enter
-Type "7. vibe build apex-story --mode batch --composer openai --tts kokoro --skip-backdrop --skip-video --skip-music --skip-render --max-cost 5 --json"
+Type "7. vibe build apex-story --mode batch --composer openai --tts elevenlabs --voice Rachel --image-provider gemini --video-provider seedance --skip-music --skip-render --max-cost 25 --json"
 Enter
 Type "8. vibe status project apex-story --refresh --json; vibe inspect project apex-story --json; vibe scene repair apex-story --json"
 Enter
 Type "9. vibe render apex-story -o renders/storyboard-demo.mp4 --quality standard --fps 30 --json"
 Enter
-Type "10. vibe inspect render apex-story --video renders/storyboard-demo.mp4 --cheap --json"
+Type "10. vibe inspect render apex-story --video renders/storyboard-demo.mp4 --cheap --json; vibe inspect render apex-story --video renders/storyboard-demo.mp4 --ai --json"
 Enter
 Type "11. Print a compact summary of apex-story/build-report.json and apex-story/review-report.json without dumping large files, then ffprobe renders/storyboard-demo.mp4 and list generated files."
 Enter

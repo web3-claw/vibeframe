@@ -4,12 +4,23 @@
  */
 
 import { Command } from "commander";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+export function resolveContextPath(baseDir = __dirname): string | null {
+  const candidates = [
+    // Bundled package layout: packages/cli/dist/index.js -> packages/cli/CONTEXT.md
+    resolve(baseDir, "../CONTEXT.md"),
+    // Source/dev layout: packages/cli/src/commands/context.ts -> packages/cli/CONTEXT.md
+    resolve(baseDir, "../../CONTEXT.md"),
+  ];
+  return candidates.find((candidate) => existsSync(candidate)) ?? null;
+}
 
 export const contextCommand = new Command("context")
   .description("Print CLI context/guidelines for AI agent integration")
@@ -107,13 +118,9 @@ export const contextCommand = new Command("context")
       return;
     }
 
-    // CONTEXT.md lives at packages/cli/CONTEXT.md (one level up from dist/).
-    // Pre-v0.79.3 this resolved to `../../CONTEXT.md` which silently
-    // missed the file and fell through to the inline fallback every
-    // time — `vibe context` only ever printed 8 lines.
-    const contextPath = resolve(__dirname, "../CONTEXT.md");
-
     try {
+      const contextPath = resolveContextPath();
+      if (!contextPath) throw new Error("CONTEXT.md not found");
       const content = await readFile(contextPath, "utf-8");
       console.log(
         content.replace(
@@ -206,7 +213,7 @@ Use 'vibe schema <command> --json' to get parameter schemas.
 Use 'vibe doctor --json' to check configured API keys.
 Use '--dry-run --json' before any mutating/costly operation.
 
-Cost tiers: Free (detect, edit silence-cut/fade/noise-reduce, project, timeline) | Low (inspect, audio transcribe, generate image) | High (generate video, edit image) | Very High (remix highlights/auto-shorts/regenerate-scene, vibe build)
+Cost tiers: Free (schema/context/doctor/detect/status/plan/storyboard validate/inspect project/render --cheap, deterministic edits) | Low (generate narration/sound-effect/music, audio transcribe, inspect media, optional AI review) | High (generate image/motion, edit image/reframe/grade/speed-ramp) | Very High (generate video, edit fill-gaps, remix highlights/auto-shorts, build with generated assets)
 
 Group → MCP tool name: '<group>_<leaf>' (snake_case). Bare top-level (init/build/render/run) maps to bare MCP names.
 

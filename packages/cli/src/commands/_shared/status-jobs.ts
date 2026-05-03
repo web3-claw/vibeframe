@@ -1159,6 +1159,7 @@ function isActiveStatus(status: JobStatus): boolean {
 
 function providerStatusCommand(record: JobRecord): string | undefined {
   if (record.jobType === "generate-video") {
+    if (record.provider !== "runway" && record.provider !== "kling") return undefined;
     const type =
       record.provider === "kling" && record.providerTaskType
         ? ` --type ${record.providerTaskType}`

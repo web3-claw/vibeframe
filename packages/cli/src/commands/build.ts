@@ -30,6 +30,7 @@ import {
 
 const VALID_MODES: SceneBuildMode[] = ["agent", "batch", "auto"];
 const VALID_STAGES: BuildStage[] = ["assets", "compose", "sync", "render", "all"];
+const VALID_IMAGE_PROVIDERS = ["openai", "gemini", "grok"] as const;
 const VALID_VIDEO_PROVIDERS: BuildVideoProvider[] = ["seedance", "grok", "kling", "runway", "veo"];
 const VALID_MUSIC_PROVIDERS: BuildMusicProvider[] = ["elevenlabs", "replicate"];
 
@@ -49,7 +50,7 @@ export const buildCommand = new Command("build")
   .option("--skip-render", "Compose only — don't render to MP4")
   .option("--tts <provider>", "TTS provider: auto|elevenlabs|kokoro")
   .option("--voice <id>", "Voice id")
-  .option("--image-provider <name>", "Image provider: openai")
+  .option("--image-provider <name>", `Image provider: ${VALID_IMAGE_PROVIDERS.join("|")}`)
   .option("--video-provider <name>", `Video provider: ${VALID_VIDEO_PROVIDERS.join("|")}`)
   .option("--music-provider <name>", `Music provider: ${VALID_MUSIC_PROVIDERS.join("|")}`)
   .option("--quality <q>", "Image quality: standard|hd", "hd")
@@ -101,6 +102,11 @@ Advanced equivalent: \`vibe scene build\`.`
       VALID_MUSIC_PROVIDERS,
       "music"
     ) as BuildMusicProvider | undefined;
+    const imageProvider = parseOptionalProvider(
+      options.imageProvider,
+      VALID_IMAGE_PROVIDERS,
+      "image"
+    );
 
     const params = {
       projectDir,
@@ -117,7 +123,7 @@ Advanced equivalent: \`vibe scene build\`.`
       skipRender: options.skipRender ?? false,
       ttsProvider: options.tts,
       voice: options.voice,
-      imageProvider: options.imageProvider,
+      imageProvider,
       videoProvider,
       musicProvider,
       imageQuality: options.quality,
@@ -137,7 +143,7 @@ Advanced equivalent: \`vibe scene build\`.`
         skipMusic: options.skipMusic,
         ttsProvider: options.tts,
         voice: options.voice,
-        imageProvider: options.imageProvider,
+        imageProvider,
         imageQuality: options.quality,
         imageSize: options.imageSize,
         videoProvider,
@@ -229,7 +235,7 @@ Advanced equivalent: \`vibe scene build\`.`
       skipRender: options.skipRender,
       ttsProvider: options.tts,
       voice: options.voice,
-      imageProvider: options.imageProvider,
+      imageProvider,
       videoProvider,
       musicProvider,
       imageQuality: options.quality,

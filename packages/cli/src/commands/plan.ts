@@ -8,6 +8,7 @@ import { exitWithError, isJsonMode, outputSuccess, usageError } from "./output.j
 const VALID_STAGES: BuildStage[] = ["assets", "compose", "sync", "render", "all"];
 const VALID_MODES = ["agent", "batch", "auto"] as const;
 const VALID_TTS_PROVIDERS = ["auto", "elevenlabs", "kokoro"] as const;
+const VALID_IMAGE_PROVIDERS = ["openai", "gemini", "grok"] as const;
 const VALID_VIDEO_PROVIDERS = ["seedance", "grok", "kling", "runway", "veo"] as const;
 const VALID_MUSIC_PROVIDERS = ["elevenlabs", "replicate"] as const;
 const VALID_COMPOSERS = ["claude", "openai", "gemini"] as const;
@@ -25,7 +26,7 @@ export const planCommand = new Command("plan")
   .option("--skip-music", "Don't include music generation in the plan")
   .option("--tts <provider>", "TTS provider: auto|elevenlabs|kokoro")
   .option("--voice <id>", "Voice id")
-  .option("--image-provider <name>", "Image provider: openai")
+  .option("--image-provider <name>", `Image provider: ${VALID_IMAGE_PROVIDERS.join("|")}`)
   .option("--video-provider <name>", `Video provider: ${VALID_VIDEO_PROVIDERS.join("|")}`)
   .option("--music-provider <name>", `Music provider: ${VALID_MUSIC_PROVIDERS.join("|")}`)
   .option("--quality <q>", "Image quality: standard|hd")
@@ -56,6 +57,11 @@ export const planCommand = new Command("plan")
       VALID_MUSIC_PROVIDERS,
       "music"
     );
+    const imageProvider = parseOptionalProvider(
+      options.imageProvider,
+      VALID_IMAGE_PROVIDERS,
+      "image"
+    );
     const composer = parseOptionalProvider(options.composer, VALID_COMPOSERS, "composer");
     const imageQuality = parseOptionalProvider(options.quality, VALID_IMAGE_QUALITIES, "quality");
     const maxCost =
@@ -81,7 +87,7 @@ export const planCommand = new Command("plan")
       skipMusic: options.skipMusic,
       ttsProvider,
       voice: options.voice,
-      imageProvider: options.imageProvider,
+      imageProvider,
       imageQuality,
       imageSize: options.imageSize,
       videoProvider,

@@ -19,6 +19,10 @@ describe("AGENTS_MD template", () => {
     expect(AGENTS_MD).toContain("Cost tiers");
     expect(AGENTS_MD).toMatch(/Free/);
     expect(AGENTS_MD).toMatch(/Very High/);
+    expect(AGENTS_MD).toContain("generate image/motion");
+    expect(AGENTS_MD).toContain("generate video");
+    expect(AGENTS_MD).not.toContain("`inspect *`, `audio transcribe`, `generate image`");
+    expect(AGENTS_MD).not.toContain("`generate video`, `edit image`");
   });
 
   it("states the agent invariants (--json, --dry-run, schema, --stdin)", () => {
@@ -42,6 +46,8 @@ describe("AGENTS_MD template", () => {
     expect(AGENTS_MD).toContain("vibe edit silence-cut");
     expect(AGENTS_MD).toContain("vibe audio dub");
     expect(AGENTS_MD).toContain("vibe generate narration");
+    expect(AGENTS_MD).toContain("vibe inspect media");
+    expect(AGENTS_MD).not.toContain("vibe inspect video");
   });
 });
 

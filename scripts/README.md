@@ -27,6 +27,7 @@ demos, packaging, or contributor maintenance.
 
 ## Demos
 
+- `paid-dogfood.mts` - runs the opt-in paid provider acceptance pass.
 - `record-vhs.sh` - records the public VHS demos.
 - `claude-stream-pretty.mjs` - formats Claude Code stream output for those
   recordings.

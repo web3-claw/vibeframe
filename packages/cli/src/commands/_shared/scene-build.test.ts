@@ -21,6 +21,8 @@ vi.mock("./tts-resolve.js", () => ({
 
 vi.mock("@vibeframe/ai-providers", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@vibeframe/ai-providers")>()),
+  GeminiProvider: vi.fn(),
+  GrokProvider: vi.fn(),
   OpenAIImageProvider: vi.fn(),
 }));
 
@@ -48,7 +50,7 @@ vi.mock("../generate/music.js", () => ({
 }));
 
 import { resolveTtsProvider } from "./tts-resolve.js";
-import { OpenAIImageProvider } from "@vibeframe/ai-providers";
+import { GeminiProvider, GrokProvider, OpenAIImageProvider } from "@vibeframe/ai-providers";
 import { executeComposeScenesWithSkills } from "./compose-scenes-skills.js";
 import { executeSceneRender } from "./scene-render.js";
 import { executeVideoGenerate } from "../ai-video.js";
@@ -116,6 +118,26 @@ beforeEach(() => {
         }),
       }) as unknown as InstanceType<typeof OpenAIImageProvider>
   );
+  vi.mocked(GeminiProvider).mockImplementation(
+    () =>
+      ({
+        initialize: vi.fn().mockResolvedValue(undefined),
+        generateImage: vi.fn().mockResolvedValue({
+          success: true,
+          images: [{ base64: Buffer.from([9, 10, 11, 12]).toString("base64") }],
+        }),
+      }) as unknown as InstanceType<typeof GeminiProvider>
+  );
+  vi.mocked(GrokProvider).mockImplementation(
+    () =>
+      ({
+        initialize: vi.fn().mockResolvedValue(undefined),
+        generateImage: vi.fn().mockResolvedValue({
+          success: true,
+          images: [{ base64: Buffer.from([13, 14, 15, 16]).toString("base64") }],
+        }),
+      }) as unknown as InstanceType<typeof GrokProvider>
+  );
 
   vi.mocked(executeComposeScenesWithSkills).mockImplementation(async () => {
     writeFileSync(
@@ -166,6 +188,8 @@ beforeEach(() => {
   });
 
   process.env.OPENAI_API_KEY = "test-key";
+  process.env.GOOGLE_API_KEY = "test-google-key";
+  process.env.XAI_API_KEY = "test-xai-key";
   // Force the batch dispatch path so existing tests keep exercising the
   // internal-LLM compose call regardless of whether an agent host is
   // present on the developer's machine. Phase H3 dispatch behaviour is
@@ -203,6 +227,8 @@ afterEach(() => {
   rmSync(projectDir, { recursive: true, force: true });
   vi.clearAllMocks();
   delete process.env.OPENAI_API_KEY;
+  delete process.env.GOOGLE_API_KEY;
+  delete process.env.XAI_API_KEY;
   delete process.env.VIBE_BUILD_MODE;
 });
 
@@ -341,6 +367,33 @@ describe("executeSceneBuild", () => {
     expect(r.success).toBe(true);
     expect(r.beats[0].backdropStatus).toBe("generated");
     expect(OpenAIImageProvider).toHaveBeenCalled();
+  });
+
+  it.each([
+    ["gemini", GeminiProvider, [9, 10, 11, 12]],
+    ["grok", GrokProvider, [13, 14, 15, 16]],
+  ] as const)("dispatches backdrop generation with %s", async (imageProvider, Provider, bytes) => {
+    const r = await executeSceneBuild({ projectDir, stage: "assets", imageProvider });
+
+    expect(r.success).toBe(true);
+    expect(r.beats[0].backdropStatus).toBe("generated");
+    expect(Provider).toHaveBeenCalled();
+    expect(OpenAIImageProvider).not.toHaveBeenCalled();
+    expect(Array.from(readFileSync(join(projectDir, "assets", "backdrop-hook.png")))).toEqual(
+      bytes
+    );
+
+    const metadata = JSON.parse(
+      readFileSync(join(projectDir, ".vibeframe", "assets", "backdrop-hook.json"), "utf-8")
+    );
+    expect(metadata).toMatchObject({
+      provider: imageProvider,
+      options: {
+        quality: "hd",
+        size: "1536x1024",
+        ratio: "3:2",
+      },
+    });
   });
 
   it("is idempotent: skips dispatch when asset already exists", async () => {

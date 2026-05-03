@@ -40,10 +40,10 @@ vibe guide <topic> --json              # Step-by-step guides (motion | scene | p
 
 | Tier      | Commands                                                                                                                        | Per-call cost |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| Free      | `detect *`, `edit silence-cut/fade/noise-reduce/text-overlay/interpolate`, `timeline *`, `scene lint/list-styles`, `audio duck` | $0            |
-| Low       | `inspect *`, `audio transcribe/list-voices`, `generate image`                                                                   | $0.01–0.10    |
-| High      | `generate video`, `edit image`, `edit grade/reframe/speed-ramp`                                                                 | $1–5          |
-| Very High | `remix *` (highlights, auto-shorts, regenerate-scene), `vibe build` (full pipeline)                                             | $5–50+        |
+| Free      | `schema/context/doctor`, `detect *`, `status *`, `plan`, `storyboard validate`, `inspect project/render --cheap`, deterministic edits | $0            |
+| Low       | `generate narration/sound-effect/music`, `audio transcribe/list-voices`, `inspect media`, optional AI review                         | $0.01–0.10    |
+| High      | `generate image/motion`, `edit image/reframe/grade/speed-ramp`                                                                       | $1–5          |
+| Very High | `generate video`, `edit fill-gaps`, `remix highlights/auto-shorts`, `build` with generated assets                                      | $5–50+        |
 
 > Rule: **confirm with the user before any High / Very-High call**.
 

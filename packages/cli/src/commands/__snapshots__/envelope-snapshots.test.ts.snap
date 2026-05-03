@@ -551,7 +551,7 @@ exports[`CLI --describe schemas (drift detection) > vibe build --describe 1`] = 
         "type": "boolean",
       },
       "imageProvider": {
-        "description": "Image provider: openai",
+        "description": "Image provider: openai|gemini|grok",
         "type": "string",
       },
       "imageSize": {
@@ -2940,7 +2940,7 @@ exports[`CLI --describe schemas (drift detection) > vibe plan --describe 1`] = `
         "type": "boolean",
       },
       "imageProvider": {
-        "description": "Image provider: openai",
+        "description": "Image provider: openai|gemini|grok",
         "type": "string",
       },
       "imageSize": {

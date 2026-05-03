@@ -318,6 +318,13 @@ AI review is project-aware: it reads the storyboard, design file, beat timing,
 and build report so findings can land on `beatId`/`timeRange` whenever the
 model can identify the affected moment.
 
+Repo-level paid provider acceptance uses the same contract with real provider
+calls and a hard cost cap:
+
+```bash
+VIBE_PAID_ACCEPTANCE=1 pnpm dogfood:paid -- --max-cost 25
+```
+
 Expected files:
 
 ```text
@@ -554,6 +561,8 @@ ffprobe -v error \
 Run focused tests for this dogfood surface:
 
 ```bash
+pnpm test:dogfood
+
 pnpm -F @vibeframe/cli test -- \
   src/commands/_shared/build-plan.test.ts \
   src/commands/_shared/scene-build.test.ts \
@@ -608,4 +617,7 @@ assets/demos/dogfood-claude-code.tape
 ```
 
 Both tapes now target the storyboard-first project loop. Regenerate the MP4s
-when you want fresh recordings of the current CLI behavior.
+when you want fresh recordings of the current CLI behavior. They use the local
+checkout's built CLI, keep the recording under a `$25` provider cap, pin
+ElevenLabs narration to `Rachel`, and skip music in the VHS flow; full music
+provider acceptance is covered by `pnpm dogfood:paid`.
