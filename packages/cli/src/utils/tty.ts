@@ -9,6 +9,25 @@ import { openUrl } from "./open-url.js";
 
 let ttyStream: ReadStream | null = null;
 
+const ANSI_RE = new RegExp(`${String.fromCharCode(27)}\\[[0-?]*[ -/]*[@-~]`, "g");
+const ELLIPSIS = "...";
+
+function stripAnsi(value: string): string {
+  return value.replace(ANSI_RE, "");
+}
+
+function terminalColumns(): number {
+  return process.stdout.columns && process.stdout.columns > 0 ? process.stdout.columns : 80;
+}
+
+export function fitOptionToLine(value: string, prefixColumns: number): string {
+  const maxColumns = Math.max(8, terminalColumns() - prefixColumns - 1);
+  const visible = stripAnsi(value);
+  if (visible.length <= maxColumns) return value;
+  if (maxColumns <= ELLIPSIS.length) return ELLIPSIS.slice(0, maxColumns);
+  return `${visible.slice(0, maxColumns - ELLIPSIS.length)}${ELLIPSIS}`;
+}
+
 function splitTTYInput(chunk: string): string[] {
   const tokens: string[] = [];
   for (let i = 0; i < chunk.length; i++) {
@@ -216,7 +235,8 @@ export async function promptSelect(
         }
         for (let i = 0; i < options.length; i++) {
           const marker = i === selected ? "\x1b[36m❯\x1b[0m" : " ";
-          const text = i === selected ? `\x1b[1m${options[i]}\x1b[0m` : options[i];
+          const optionText = fitOptionToLine(options[i], 5);
+          const text = i === selected ? `\x1b[1m${optionText}\x1b[0m` : optionText;
           process.stdout.write(`\x1b[2K   ${marker} ${text}\n`);
         }
         renderCount++;
@@ -320,7 +340,8 @@ export async function promptConfirm(question: string, defaultYes = true): Promis
         }
         for (let i = 0; i < options.length; i++) {
           const marker = i === selected ? "\x1b[36m❯\x1b[0m" : " ";
-          const text = i === selected ? `\x1b[1m${options[i]}\x1b[0m` : options[i];
+          const optionText = fitOptionToLine(options[i], 5);
+          const text = i === selected ? `\x1b[1m${optionText}\x1b[0m` : optionText;
           process.stdout.write(`\x1b[2K   ${marker} ${text}\n`);
         }
         renderCount++;
@@ -427,7 +448,8 @@ export async function promptMultiSelect(
         for (let i = 0; i < options.length; i++) {
           const pointer = i === cursor ? "\x1b[36m❯\x1b[0m" : " ";
           const box = selected[i] ? "\x1b[36m[x]\x1b[0m" : "[ ]";
-          const text = i === cursor ? `\x1b[1m${options[i]}\x1b[0m` : options[i];
+          const optionText = fitOptionToLine(options[i], 9);
+          const text = i === cursor ? `\x1b[1m${optionText}\x1b[0m` : optionText;
           process.stdout.write(`\x1b[2K   ${pointer} ${box} ${text}\n`);
         }
         renderCount++;
