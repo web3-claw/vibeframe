@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.103.0] - 2026-05-03
+
+### Added
+
+- expand build image providers (gemini/grok) + dogfood smoke + project AGENTS.md *(cli)*
+
+### Fixed
+
+- replace explicit any with proper types (#207) (#209) *(cli)*
+
 ## [0.102.0] - 2026-05-02
 
 ### Added
@@ -78,6 +88,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.96.1] - 2026-05-02
 
+### Maintenance
+
+- clean up legacy docs/demos and refresh infrastructure
+
+## [0.96.0] - 2026-05-02
+
 ### Added
 
 - add edit motion-overlay + rename walkthrough → guide *(cli)*
@@ -86,10 +102,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - align README, web, and docs with guide rename + motion-overlay
 - rewrite DEMO_v2 to mirror real Claude Code flow + clarify two-yaml setup
-
-### Maintenance
-
-- clean up legacy docs/demos and refresh infrastructure
 
 ## [0.95.2] - 2026-05-01
 
